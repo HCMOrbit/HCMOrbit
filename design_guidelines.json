@@ -1,0 +1,125 @@
+{
+  "theme": "light",
+  "archetype": "4 (Swiss & High-Contrast - Custom HR-Tech Professional)",
+  "design_direction": "Clean, confident, dark navy + teal accent. Inspired by dbt's no-nonsense developer aesthetic but warmer. NOT corporate. NOT purple gradients. Signal over noise.",
+  "colors": {
+    "primary": "#0A1628",
+    "primary_foreground": "#FFFFFF",
+    "accent_teal": "#0D9373",
+    "accent_teal_foreground": "#FFFFFF",
+    "accent_blue": "#1D6FE8",
+    "accent_amber": "#C47B0A",
+    "success": "#16A34A",
+    "success_foreground": "#FFFFFF",
+    "warning": "#D97706",
+    "warning_foreground": "#FFFFFF",
+    "error": "#DC2626",
+    "error_foreground": "#FFFFFF",
+    "surface": "#F8FAFC",
+    "surface_foreground": "#0F172A",
+    "border": "#E2E8F0",
+    "text_primary": "#0F172A",
+    "text_secondary": "#64748B",
+    "text_muted": "#94A3B8",
+    "code_background": "#0d1117",
+    "code_foreground": "#c9d1d9"
+  },
+  "typography": {
+    "fonts": {
+      "headings": "'DM Sans', sans-serif",
+      "body": "'IBM Plex Sans', sans-serif",
+      "code": "'IBM Plex Mono', monospace"
+    },
+    "scales": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#0F172A]",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-[#0F172A]",
+      "h3": "text-xl sm:text-2xl font-semibold text-[#0F172A]",
+      "h4": "text-lg sm:text-xl font-medium text-[#0F172A]",
+      "body": "text-base text-[#64748B] leading-relaxed",
+      "body_sm": "text-sm text-[#64748B]",
+      "code": "text-sm font-code text-[#c9d1d9] bg-[#0d1117] p-4 rounded-md overflow-x-auto"
+    }
+  },
+  "spacing_and_layout": {
+    "marketing_page": {
+      "strategy": "Generous spacing. Use 'Bento' grid for Featured Spaces. No generic Bootstrap columns. Overlapping elements where suitable.",
+      "padding": "py-24 md:py-32",
+      "grid": "grid-cols-1 md:grid-cols-8 lg:grid-cols-12 gap-8"
+    },
+    "community_app": {
+      "strategy": "High density, clear hierarchy, 3-column layout (Sidebar L + Feed + Sidebar R).",
+      "sidebar_left": "w-64 fixed hidden lg:flex flex-col gap-6",
+      "feed": "flex-1 max-w-3xl min-w-0 mx-auto w-full",
+      "sidebar_right": "w-80 hidden xl:flex flex-col gap-6"
+    }
+  },
+  "components": {
+    "GroupBadge": {
+      "description": "Used inline with usernames to identify user tier.",
+      "variants": {
+        "Aspirant": "bg-[#0D9373]/10 text-[#0D9373] border-[#0D9373]/20",
+        "Practitioner": "bg-[#1D6FE8]/10 text-[#1D6FE8] border-[#1D6FE8]/20",
+        "Employer": "bg-[#C47B0A]/10 text-[#C47B0A] border-[#C47B0A]/20"
+      },
+      "style": "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border"
+    },
+    "PostTypeBadge": {
+      "description": "Tags identifying the post category (Question, Discussion, Success Story)",
+      "style": "inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0] uppercase tracking-wider"
+    },
+    "VoteComponent": {
+      "description": "Stack Overflow style vertical vote arrows with count.",
+      "style": "flex flex-col items-center gap-2 text-[#64748B]",
+      "upvote_active": "text-[#0D9373]",
+      "downvote_active": "text-[#DC2626]",
+      "count": "text-lg font-semibold text-[#0F172A]"
+    },
+    "PostCard": {
+      "description": "Feed item displaying a post summary.",
+      "style": "bg-white border border-[#E2E8F0] p-5 rounded-lg flex gap-4 hover:border-[#94A3B8] transition-colors",
+      "stats_column": "flex flex-col items-end gap-2 text-sm text-[#64748B] min-w-[60px]",
+      "content_column": "flex-1 flex flex-col gap-2"
+    },
+    "AuthorMiniCard": {
+      "description": "Sidebar or inline card showing user rep and badge.",
+      "style": "flex items-center gap-3 p-3 bg-[#F8FAFC] rounded-md border border-[#E2E8F0]"
+    },
+    "AcceptedAnswerBanner": {
+      "description": "Green banner indicating an accepted answer.",
+      "style": "flex items-center gap-2 bg-[#16A34A]/10 text-[#16A34A] border border-[#16A34A]/20 px-4 py-3 rounded-md font-medium text-sm w-full mb-4"
+    }
+  },
+  "icons": {
+    "library": "lucide-react",
+    "spaces": {
+      "Core HCM": "Users",
+      "Integrations": "Network",
+      "Security & Roles": "Shield",
+      "Reporting & Analytics": "BarChart3",
+      "Compensation": "CircleDollarSign",
+      "Payroll": "Wallet",
+      "Financials": "Landmark",
+      "Career Lounge": "Coffee"
+    }
+  },
+  "images": {
+    "hero_background": {
+      "url": "https://images.unsplash.com/photo-1488972685288-c3fd157d7c7a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MTJ8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGdlb21ldHJpYyUyMGFyY2hpdGVjdHVyZXxlbnwwfHx8fDE3ODA4ODA4MzJ8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Low angle grey building architecture - use with heavily masked navy overlay (bg-[#0A1628]/90) for serious tech professional feel."
+    },
+    "social_proof": {
+      "url": "https://images.unsplash.com/photo-1541746972996-4e0b0f43e02a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwzfHxwcm9mZXNzaW9uYWwlMjBvZmZpY2UlMjBjb2xsYWJvcmF0aW9ufGVufDB8fHx8MTc4MDg4MDgzMnww&ixlib=rb-4.1.0&q=85",
+      "description": "Group of professionals meeting - use for landing page 'trusted by' or community section."
+    }
+  },
+  "accessibility_and_testing": {
+    "test_ids": "All interactive elements (buttons, links, form inputs, toggles, vote arrows, tab items) MUST include data-testid attribute in kebab-case."
+  },
+  "instructions_to_main_agent": {
+    "tech_stack": "React (JS), Tailwind CSS, Shadcn UI.",
+    "marketing_pages": "Use pure HTML/Tailwind for structural layouts to allow asymmetric grids. Only use Shadcn for complex interactives (Forms, Modals).",
+    "dashboard_pages": "Use pure Shadcn and strict layouts.",
+    "file_extensions": "USE .jsx/.js for all React components. Do NOT use .tsx.",
+    "typography_setup": "Import DM Sans, IBM Plex Sans, and IBM Plex Mono via Google Fonts in index.html or global css."
+  }
+}
