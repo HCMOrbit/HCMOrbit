@@ -1,14 +1,27 @@
-import React, { useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { Bell, PlusCircle, LogOut, User, Settings, ChevronDown, Search } from "lucide-react";
 import { useAuth } from "../lib/auth";
+import { api } from "../lib/api";
 import GroupBadge from "./GroupBadge";
 
 export default function NavHeader() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQ, setSearchQ] = useState("");
+  const [unread, setUnread] = useState(0);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Fetch unread count when logged in, refresh on route change
+  useEffect(() => {
+    if (!user) { setUnread(0); return; }
+    let cancelled = false;
+    api.get("/notifications")
+      .then((r) => { if (!cancelled) setUnread(r.data.unread || 0); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user, location.pathname]);
 
   const submitSearch = (e) => {
     e.preventDefault();
@@ -61,8 +74,13 @@ export default function NavHeader() {
                 <PlusCircle className="w-4 h-4" />
                 New Post
               </Link>
-              <Link to="/notifications" className="p-2 hover:bg-[#F1F5F9] rounded-md text-[#64748B]" aria-label="Notifications" data-testid="bell-icon">
+              <Link to="/notifications" className="relative p-2 hover:bg-[#F1F5F9] rounded-md text-[#64748B]" aria-label="Notifications" data-testid="bell-icon">
                 <Bell className="w-5 h-5" />
+                {unread > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#DC2626] text-white text-[10px] font-semibold flex items-center justify-center counter" data-testid="bell-unread-count">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                )}
               </Link>
               <div className="relative">
                 <button

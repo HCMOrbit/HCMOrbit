@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Check, MessageSquare, Award, ArrowUp, AtSign } from "lucide-react";
 import NavHeader from "../components/NavHeader";
 import { api, timeAgo } from "../lib/api";
+import { useAuth } from "../lib/auth";
 
 const ICONS = {
   answer: MessageSquare,
@@ -15,15 +16,29 @@ const ICONS = {
 export default function Notifications() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
 
   const load = () => {
-    api.get("/notifications").then((r) => setItems(r.data.items)).finally(() => setLoading(false));
+    api.get("/notifications")
+      .then((r) => setItems(r.data.items || []))
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
   };
-  useEffect(load, []);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) { navigate("/login"); return; }
+    load();
+  }, [user, authLoading, navigate]);
 
   const markRead = async () => {
-    await api.post("/notifications/mark-read");
-    load();
+    try {
+      await api.post("/notifications/mark-read");
+      load();
+    } catch {
+      // ignore
+    }
   };
 
   const today = items.filter((i) => Date.now() - new Date(i.created_at).getTime() < 86400000);
