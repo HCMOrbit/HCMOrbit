@@ -10,7 +10,7 @@ import { toast } from "sonner";
 const WORKDAY_MODULES = ["Core HCM","Compensation","Benefits","Absence","Recruiting","Talent","Payroll","Security","Integrations","Reporting","Financials"];
 
 export default function Onboarding() {
-  const { user, refresh } = useAuth();
+  const { user, refresh, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [groupType, setGroupType] = useState("");
   const [modules, setModules] = useState([]);
@@ -20,9 +20,10 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) navigate("/login");
-    if (user?.onboarded) navigate("/community");
-  }, [user, navigate]);
+    else if (user.onboarded) navigate("/community");
+  }, [user, authLoading, navigate]);
 
   const submit = async (e) => {
     e.preventDefault();

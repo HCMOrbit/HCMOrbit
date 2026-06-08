@@ -23,12 +23,13 @@ export default function NewPost() {
   const [spaces, setSpaces] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) navigate("/login");
-    if (user && !user.onboarded) navigate("/onboarding");
-  }, [user, navigate]);
+    else if (!user.onboarded) navigate("/onboarding");
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     api.get("/spaces").then((r) => setSpaces(r.data));
