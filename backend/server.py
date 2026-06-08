@@ -5,6 +5,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 import os
+import re
 import uuid
 import logging
 import bcrypt
@@ -384,22 +385,32 @@ async def list_posts(
     type: Optional[str] = None,
     sort: str = "latest",
     unanswered: bool = False,
+    q: Optional[str] = None,
     limit: int = 20,
     offset: int = 0,
 ):
-    q = {}
+    query = {}
     if space:
         sp = await db.spaces.find_one({"slug": space}, {"_id": 0})
         if sp:
-            q["space_id"] = sp["id"]
+            query["space_id"] = sp["id"]
     if type:
-        q["type"] = type
+        query["type"] = type
     if unanswered:
-        q["answer_count"] = 0
+        query["answer_count"] = 0
+    if q:
+        # Case-insensitive search on title, tags, and body (in that priority)
+        escaped = re.escape(q.strip())
+        if escaped:
+            query["$or"] = [
+                {"title": {"$regex": escaped, "$options": "i"}},
+                {"tags": {"$regex": f"^{escaped}", "$options": "i"}},
+                {"body": {"$regex": escaped, "$options": "i"}},
+            ]
     sort_key = "vote_count" if sort in ("top", "hot") else "created_at"
-    posts = await db.posts.find(q, {"_id": 0}).sort(sort_key, -1).skip(offset).limit(limit).to_list(limit)
+    posts = await db.posts.find(query, {"_id": 0}).sort(sort_key, -1).skip(offset).limit(limit).to_list(limit)
     enriched = await _enrich_posts(posts)
-    total = await db.posts.count_documents(q)
+    total = await db.posts.count_documents(query)
     return {"posts": enriched, "total": total}
 
 
@@ -449,6 +460,23 @@ async def get_post(post_id: str):
     await db.posts.update_one({"id": post_id}, {"$inc": {"view_count": 1}})
     post["view_count"] = post.get("view_count", 0) + 1
     return (await _enrich_posts([post]))[0]
+
+
+@api.get("/posts/{post_id}/live")
+async def post_live_counts(post_id: str):
+    """Lightweight endpoint for live polling — returns just the counts that change."""
+    post = await db.posts.find_one(
+        {"id": post_id},
+        {"_id": 0, "vote_count": 1, "answer_count": 1, "view_count": 1, "is_solved": 1, "accepted_answer_id": 1},
+    )
+    if not post:
+        raise HTTPException(404, "Post not found")
+    # Per-answer vote counts
+    answers = await db.answers.find(
+        {"post_id": post_id},
+        {"_id": 0, "id": 1, "vote_count": 1, "is_accepted": 1},
+    ).to_list(500)
+    return {"post": post, "answers": answers}
 
 
 @api.get("/posts/{post_id}/answers")
@@ -528,6 +556,43 @@ async def create_answer(post_id: str, payload: AnswerIn, user: dict = Depends(ge
     }
     doc["comments"] = []
     return doc
+
+
+@api.patch("/answers/{answer_id}")
+async def edit_answer(answer_id: str, payload: AnswerIn, user: dict = Depends(get_current_user)):
+    ans = await db.answers.find_one({"id": answer_id}, {"_id": 0})
+    if not ans:
+        raise HTTPException(404, "Answer not found")
+    if ans["author_id"] != user["user_id"]:
+        raise HTTPException(403, "Only the answer author can edit")
+    if len(payload.body) < 50:
+        raise HTTPException(400, "Answer must be at least 50 characters")
+    await db.answers.update_one(
+        {"id": answer_id},
+        {"$set": {"body": payload.body, "updated_at": now_iso()}},
+    )
+    return {"ok": True, "body": payload.body, "updated_at": now_iso()}
+
+
+@api.delete("/answers/{answer_id}")
+async def delete_answer(answer_id: str, user: dict = Depends(get_current_user)):
+    ans = await db.answers.find_one({"id": answer_id}, {"_id": 0})
+    if not ans:
+        raise HTTPException(404, "Answer not found")
+    if ans["author_id"] != user["user_id"]:
+        raise HTTPException(403, "Only the answer author can delete")
+    # Cascade: comments + votes on this answer
+    await db.comments.delete_many({"answer_id": answer_id})
+    await db.votes.delete_many({"target_id": answer_id, "target_type": "answer"})
+    await db.answers.delete_one({"id": answer_id})
+    # Decrement post answer_count, unset accepted_answer if this was it
+    post = await db.posts.find_one({"id": ans["post_id"]}, {"_id": 0})
+    if post:
+        update = {"$inc": {"answer_count": -1}}
+        if post.get("accepted_answer_id") == answer_id:
+            update["$set"] = {"accepted_answer_id": None, "is_solved": False}
+        await db.posts.update_one({"id": ans["post_id"]}, update)
+    return {"ok": True}
 
 
 @api.post("/posts/{post_id}/accept-answer")

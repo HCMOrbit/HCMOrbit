@@ -1,13 +1,21 @@
 import React, { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Bell, PlusCircle, LogOut, User, Settings, ChevronDown } from "lucide-react";
+import { Bell, PlusCircle, LogOut, User, Settings, ChevronDown, Search } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import GroupBadge from "./GroupBadge";
 
 export default function NavHeader() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchQ, setSearchQ] = useState("");
   const navigate = useNavigate();
+
+  const submitSearch = (e) => {
+    e.preventDefault();
+    if (searchQ.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQ.trim())}`);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-[#E2E8F0]" data-testid="nav-header">
@@ -32,6 +40,19 @@ export default function NavHeader() {
             </NavLink>
           </nav>
         )}
+
+        {/* Search */}
+        <form onSubmit={submitSearch} className="hidden md:flex flex-1 max-w-md mx-2 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+          <input
+            type="text"
+            value={searchQ}
+            onChange={(e) => setSearchQ(e.target.value)}
+            placeholder="Search posts, tags..."
+            data-testid="header-search-input"
+            className="w-full pl-9 pr-3 py-1.5 text-sm bg-[#F1F5F9] border border-transparent rounded-md focus:bg-white focus:border-[#0D9373] focus:ring-2 focus:ring-[#0D9373]/20 outline-none"
+          />
+        </form>
 
         <div className="flex items-center gap-3">
           {user ? (
