@@ -20,8 +20,11 @@ export default function AdminReported() {
 
   const act = async (reportId, status, removeContent = false) => {
     try {
-      await api.patch(`/admin/reports/${reportId}`, { status, remove_content: removeContent });
-      toast.success(`Report ${status}${removeContent ? " and content removed" : ""}.`);
+      const { data } = await api.patch(`/admin/reports/${reportId}`, { status, remove_content: removeContent });
+      const msg = removeContent && data?.reporter_notified
+        ? "Content removed. Reporter notified with a thank-you."
+        : `Report ${status}${removeContent ? " and content removed" : ""}.`;
+      toast.success(msg);
       load();
     } catch (e) { toast.error(formatApiError(e)); }
   };

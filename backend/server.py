@@ -1144,16 +1144,34 @@ async def admin_update_report(report_id: str, payload: ReportPatchIn, admin: dic
     if not r:
         raise HTTPException(404, "Report not found")
     await db.reports.update_one({"id": report_id}, {"$set": {"status": payload.status}})
+    reporter_notified = False
     if payload.remove_content:
+        # Determine link to surface (post link for post/answer, anchor for comment)
+        link = "#"
+        snippet = ""
         if r["target_type"] == "post":
+            tgt = await db.posts.find_one({"id": r["target_id"]}, {"_id": 0, "title": 1})
+            snippet = (tgt or {}).get("title", "a post")[:80]
             await db.posts.update_one({"id": r["target_id"]}, {"$set": {"is_removed": True}})
         elif r["target_type"] == "answer":
+            tgt = await db.answers.find_one({"id": r["target_id"]}, {"_id": 0, "body": 1, "post_id": 1})
+            snippet = ((tgt or {}).get("body", "an answer")[:80])
+            link = f"/community/posts/{(tgt or {}).get('post_id')}" if tgt else "#"
             await db.answers.delete_one({"id": r["target_id"]})
         elif r["target_type"] == "comment":
+            tgt = await db.comments.find_one({"id": r["target_id"]}, {"_id": 0, "body": 1})
+            snippet = ((tgt or {}).get("body", "a comment")[:80])
             await db.comments.delete_one({"id": r["target_id"]})
+        # Thank-you notification to the reporter
+        await create_notification(
+            r["reporter_id"], "report_actioned",
+            f"Thanks — your report on \"{snippet}\" was actioned. The content has been removed.",
+            link,
+        )
+        reporter_notified = True
     await log_admin_action(admin, f"report.{payload.status}", r["target_type"], r["target_id"],
                            note=f"reason={r.get('reason')} remove_content={payload.remove_content}")
-    return {"ok": True}
+    return {"ok": True, "reporter_notified": reporter_notified}
 
 
 # --- Spaces ---

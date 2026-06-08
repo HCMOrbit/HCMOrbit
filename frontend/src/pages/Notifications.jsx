@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Check, MessageSquare, Award, ArrowUp, AtSign } from "lucide-react";
+import { Check, MessageSquare, Award, ArrowUp, AtSign, Shield } from "lucide-react";
 import NavHeader from "../components/NavHeader";
 import { api, timeAgo } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -11,6 +11,7 @@ const ICONS = {
   accepted: Award,
   mention: AtSign,
   comment: MessageSquare,
+  report_actioned: Shield,
 };
 
 export default function Notifications() {
