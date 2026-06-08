@@ -1,0 +1,40 @@
+{
+  "summary": "End-to-end test of HCMOrbit MVP. Backend: 33/33 pytest tests passing (after fixing 4 ObjectId leaks in POST endpoints). Frontend: landing, login, community feed, post detail, voting elements, spaces page, profile page all working. One frontend bug found in NewPost page (redirects to /login on direct nav due to race condition with AuthProvider).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/auth/register, /api/posts, /api/posts/{id}/answers, /api/answers/{id}/comments", "issue": "Returned 500 - Mongo _id ObjectId was included in response because the same dict was reused after insert_one mutated it. FIXED by popping _id after insert (also fixes for create_answer/comment/post/register)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "NewPost.jsx", "issue": "useEffect at line 28-31 redirects to /login when user is null on first render — but AuthProvider loads user async, so direct navigation to /community/new-post always redirects to /login even for logged-in users. Need to wait for AuthProvider 'loading' state before redirecting.", "selector": "[data-testid='new-post-page']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_hcmorbit_backend.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix NewPost.jsx (and similar pages if any) to wait for AuthProvider loading=false before navigating to /login when user is null. Consider adding an `authLoading` flag to useAuth() and gating the redirect on `!authLoading && !user`.",
+    "Audit other pages with same `if (!user) navigate('/login')` pattern in useEffect (Profile, PostDetail, Onboarding etc.) — they may have the same race condition; PostDetail seems to allow anonymous browsing so likely not affected, but Onboarding and Notifications may be."
+  ],
+  "critical_code_review_comments": [
+    "Multiple endpoints (register, create_post, create_answer, add_comment) were inserting a dict via Motor and returning it directly — Motor mutates the dict to add _id (ObjectId), which is not JSON-serializable. This pattern caused 500 errors. Fixed by popping _id post-insert. Recommend a helper `await insert_clean(doc)` to centralize this.",
+    "server.py is 750 lines — consider splitting into routers (auth.py, posts.py, votes.py, community.py).",
+    "CORS allow_origins=['*'] with allow_credentials=False is OK for current bearer-token flow; if cookies/Emergent session ever needs credentials, must switch to explicit origins."
+  ],
+  "updated_files": [
+    "/app/backend/server.py (popped _id after insert_one in register, create_post, create_answer, add_comment)",
+    "/app/backend/tests/test_hcmorbit_backend.py (new comprehensive pytest suite)"
+  ],
+  "success_rate": {"backend": "100% (33/33)", "frontend": "~90% (8/9 flows passing — only New Post page blocked by auth race)"},
+  "test_credentials": "Admin: admin@hcmorbit.com / Admin123! (onboarded=true). Demo practitioner: elena_carter@hcmorbit.demo / Demo123!. Aspirant: priya_hcm@hcmorbit.demo / Demo123!.",
+  "seed_data_creation": "Test created several TEST_-prefixed users and one TEST_-prefixed post in MongoDB during pytest runs (e.g., admin's voting target, elena's test post). These persist but do not affect production flows. They are filtered out of seed checks.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend now stable post-fix; rerun /app/backend/tests/test_hcmorbit_backend.py to confirm. For frontend, after main agent fixes NewPost auth race, test the full create-post flow: login → /community/new-post → select type → fill form → submit → verify redirect to new post detail. Also verify Profile and Notifications pages don't have the same race-condition redirect issue.",
+  "rca of the issue": "NewPost.jsx useEffect [line 28-31]: `if (!user) navigate('/login'); if (user && !user.onboarded) navigate('/onboarding');` — fires synchronously on mount. AuthProvider's `useEffect` to call /api/auth/me with the localStorage token runs asynchronously, so on the first render user is null and the redirect fires immediately, before user is hydrated. Reproduce: log in, then directly navigate to /community/new-post — you land on /login instead. Mitigation: expose `authLoading` from useAuth() (initially true, false after /api/auth/me resolves OR no token in localStorage). Guard: `if (!authLoading && !user) navigate('/login');`."
+}
