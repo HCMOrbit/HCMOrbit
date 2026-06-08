@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
-import { Bell, PlusCircle, LogOut, User, Settings, ChevronDown, Search } from "lucide-react";
+import { Bell, PlusCircle, LogOut, User, Settings, ChevronDown, Search, ShieldCheck } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import GroupBadge from "./GroupBadge";
@@ -74,6 +74,16 @@ export default function NavHeader() {
                 <PlusCircle className="w-4 h-4" />
                 New Post
               </Link>
+              {user.is_admin && (
+                <Link
+                  to="/admin"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#0A1628] hover:bg-[#0F1F36] text-white text-xs font-semibold uppercase tracking-wider"
+                  data-testid="admin-link"
+                  title="Admin dashboard"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" /> Admin
+                </Link>
+              )}
               <Link to="/notifications" className="relative p-2 hover:bg-[#F1F5F9] rounded-md text-[#64748B]" aria-label="Notifications" data-testid="bell-icon">
                 <Bell className="w-5 h-5" />
                 {unread > 0 && (

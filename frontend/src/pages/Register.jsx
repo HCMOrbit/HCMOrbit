@@ -10,6 +10,7 @@ const WORKDAY_MODULES = ["Core HCM","Compensation","Benefits","Absence","Recruit
 
 export default function Register() {
   const [step, setStep] = useState(1);
+  const [registrationsOpen, setRegistrationsOpen] = useState(true);
   const [form, setForm] = useState({
     full_name: "", username: "", email: "", password: "",
     group_type: "", workday_modules: [], years_experience: "", bio: "",
@@ -21,6 +22,13 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const { login, user, refresh } = useAuth();
   const navigate = useNavigate();
+
+  // Check if registrations are open
+  useEffect(() => {
+    api.get("/settings/public")
+      .then((r) => setRegistrationsOpen((r.data?.registrations_open || "true") !== "false"))
+      .catch(() => {});
+  }, []);
 
   // Auto-suggest username from name
   useEffect(() => {
@@ -111,7 +119,15 @@ export default function Register() {
           ))}
         </div>
 
-        {step === 1 && (
+        {step === 1 && !registrationsOpen && (
+          <div className="bg-white border border-[#E2E8F0] rounded-xl p-10 text-center" data-testid="waitlist">
+            <h1 className="font-heading text-2xl font-semibold text-[#0A1628]">We're at capacity right now.</h1>
+            <p className="text-[#64748B] mt-3 max-w-md mx-auto">New registrations are temporarily paused while we onboard our current wave of members. Check back soon — we'll re-open quickly.</p>
+            <Link to="/" className="inline-block mt-6 px-5 py-2.5 rounded-md border border-[#E2E8F0] text-sm font-medium text-[#0A1628] hover:bg-[#F8FAFC]">Back to home</Link>
+          </div>
+        )}
+
+        {step === 1 && registrationsOpen && (
           <div className="bg-white border border-[#E2E8F0] rounded-xl p-8" data-testid="step-1">
             <div className="text-xs uppercase tracking-wider text-[#0D9373] font-semibold mb-2">Step 1 of 4</div>
             <h1 className="font-heading text-2xl font-semibold text-[#0A1628]">Create your account</h1>

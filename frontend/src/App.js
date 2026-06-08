@@ -14,6 +14,12 @@ import Profile from "@/pages/Profile";
 import Notifications from "@/pages/Notifications";
 import Bookmarks from "@/pages/Bookmarks";
 import Search from "@/pages/Search";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminMembers from "@/pages/admin/AdminMembers";
+import AdminPosts from "@/pages/admin/AdminPosts";
+import AdminReported from "@/pages/admin/AdminReported";
+import AdminSpaces from "@/pages/admin/AdminSpaces";
+import AdminSettings from "@/pages/admin/AdminSettings";
 import AuthCallback from "@/components/AuthCallback";
 
 function AppRoutes() {
@@ -36,6 +42,12 @@ function AppRoutes() {
       <Route path="/notifications" element={<Notifications />} />
       <Route path="/bookmarks" element={<Bookmarks />} />
       <Route path="/search" element={<Search />} />
+      <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/admin/members" element={<AdminMembers />} />
+      <Route path="/admin/posts" element={<AdminPosts />} />
+      <Route path="/admin/reported" element={<AdminReported />} />
+      <Route path="/admin/spaces" element={<AdminSpaces />} />
+      <Route path="/admin/settings" element={<AdminSettings />} />
     </Routes>
   );
 }

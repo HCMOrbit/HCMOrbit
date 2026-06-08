@@ -94,6 +94,36 @@ GroupType = Literal["aspirant", "practitioner", "employer"]
 PostType = Literal["question", "discussion", "success_story"]
 
 
+async def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    if not user.get("is_admin"):
+        raise HTTPException(403, "Admin access required")
+    return user
+
+
+async def get_setting(key: str, default: str = "") -> str:
+    doc = await db.settings.find_one({"key": key}, {"_id": 0})
+    return doc["value"] if doc and "value" in doc else default
+
+
+async def log_admin_action(admin: dict, action: str, target_type: Optional[str] = None,
+                           target_id: Optional[str] = None, note: Optional[str] = None):
+    await db.admin_logs.insert_one({
+        "id": str(uuid.uuid4()),
+        "admin_id": admin["user_id"],
+        "admin_username": admin.get("username"),
+        "action": action,
+        "target_type": target_type,
+        "target_id": target_id,
+        "note": note,
+        "created_at": now_iso(),
+    })
+
+
+def _check_active(user: dict):
+    if user.get("is_suspended"):
+        raise HTTPException(403, "Your account is suspended. You can read but not post or vote.")
+
+
 class RegisterIn(BaseModel):
     full_name: str
     username: str
@@ -171,6 +201,8 @@ async def create_notification(user_id: str, type_: str, message: str, link: str)
 # ---------- Auth ----------
 @api.post("/auth/register")
 async def register(payload: RegisterIn):
+    if (await get_setting("registrations_open", "true")).lower() != "true":
+        raise HTTPException(403, "New registrations are temporarily closed. Please check back soon.")
     email = payload.email.lower().strip()
     username = payload.username.strip()
     if await db.users.find_one({"email": email}):
@@ -341,7 +373,7 @@ async def get_user_posts(username: str, type: Optional[str] = None):
 
 @api.get("/spaces")
 async def list_spaces():
-    return await db.spaces.find({}, {"_id": 0}).to_list(100)
+    return await db.spaces.find({"is_hidden": {"$ne": True}}, {"_id": 0}).to_list(100)
 
 
 @api.get("/spaces/{slug}")
@@ -399,7 +431,7 @@ async def list_posts(
     if unanswered:
         query["answer_count"] = 0
     if q:
-        # Case-insensitive search on title, tags, and body (in that priority)
+        # Case-insensitive search on title, tags, and body
         escaped = re.escape(q.strip())
         if escaped:
             query["$or"] = [
@@ -407,6 +439,8 @@ async def list_posts(
                 {"tags": {"$regex": f"^{escaped}", "$options": "i"}},
                 {"body": {"$regex": escaped, "$options": "i"}},
             ]
+    # Hide removed posts from public list
+    query["is_removed"] = {"$ne": True}
     sort_key = "vote_count" if sort in ("top", "hot") else "created_at"
     posts = await db.posts.find(query, {"_id": 0}).sort(sort_key, -1).skip(offset).limit(limit).to_list(limit)
     enriched = await _enrich_posts(posts)
@@ -416,8 +450,12 @@ async def list_posts(
 
 @api.post("/posts")
 async def create_post(payload: PostIn, user: dict = Depends(get_current_user)):
+    _check_active(user)
     if not user.get("onboarded"):
         raise HTTPException(403, "Complete your profile first")
+    min_rep_post = int(await get_setting("min_rep_post", "0") or 0)
+    if user.get("reputation_score", 0) < min_rep_post:
+        raise HTTPException(403, f"You need at least {min_rep_post} reputation to post.")
     sp = await db.spaces.find_one({"slug": payload.space_slug}, {"_id": 0})
     if not sp:
         raise HTTPException(404, "Space not found")
@@ -454,7 +492,7 @@ async def create_post(payload: PostIn, user: dict = Depends(get_current_user)):
 
 @api.get("/posts/{post_id}")
 async def get_post(post_id: str):
-    post = await db.posts.find_one({"id": post_id}, {"_id": 0})
+    post = await db.posts.find_one({"id": post_id, "is_removed": {"$ne": True}}, {"_id": 0})
     if not post:
         raise HTTPException(404, "Post not found")
     await db.posts.update_one({"id": post_id}, {"$inc": {"view_count": 1}})
@@ -516,6 +554,7 @@ async def get_answers(post_id: str):
 
 @api.post("/posts/{post_id}/answers")
 async def create_answer(post_id: str, payload: AnswerIn, user: dict = Depends(get_current_user)):
+    _check_active(user)
     if not user.get("onboarded"):
         raise HTTPException(403, "Complete your profile first")
     post = await db.posts.find_one({"id": post_id}, {"_id": 0})
@@ -621,8 +660,13 @@ async def accept_answer(post_id: str, body: dict, user: dict = Depends(get_curre
 
 @api.post("/votes")
 async def cast_vote(payload: VoteIn, user: dict = Depends(get_current_user)):
+    _check_active(user)
     if payload.value not in (1, -1):
         raise HTTPException(400, "Vote value must be 1 or -1")
+    if payload.value == -1:
+        min_rep_down = int(await get_setting("min_rep_downvote", "0") or 0)
+        if user.get("reputation_score", 0) < min_rep_down:
+            raise HTTPException(403, f"You need at least {min_rep_down} reputation to downvote.")
     target_coll = db.posts if payload.target_type == "post" else db.answers
     target = await target_coll.find_one({"id": payload.target_id}, {"_id": 0})
     if not target:
@@ -795,13 +839,14 @@ async def top_contributors(limit: int = 5):
 
 @api.get("/community/recent-activity")
 async def recent_activity(limit: int = 5):
-    posts = await db.posts.find({}, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    posts = await db.posts.find({"is_removed": {"$ne": True}}, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
     return await _enrich_posts(posts)
 
 
 @api.get("/community/tags")
 async def tag_cloud(limit: int = 20):
     pipeline = [
+        {"$match": {"is_removed": {"$ne": True}}},
         {"$unwind": "$tags"},
         {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
@@ -809,6 +854,382 @@ async def tag_cloud(limit: int = 20):
     ]
     cur = db.posts.aggregate(pipeline)
     return [{"tag": d["_id"], "count": d["count"]} async for d in cur]
+
+
+# ---------- Public settings (community name, registration toggle) ----------
+@api.get("/settings/public")
+async def public_settings():
+    keys = ["community_name", "community_tagline", "registrations_open"]
+    docs = await db.settings.find({"key": {"$in": keys}}, {"_id": 0}).to_list(len(keys))
+    return {d["key"]: d["value"] for d in docs}
+
+
+# ---------- Reports (any logged-in user can report) ----------
+class ReportIn(BaseModel):
+    target_id: str
+    target_type: Literal["post", "answer", "comment"]
+    reason: str
+
+
+@api.post("/reports")
+async def create_report(payload: ReportIn, user: dict = Depends(get_current_user)):
+    valid_reasons = {"Spam", "Misinformation", "Off-topic", "Inappropriate", "Other"}
+    if payload.reason not in valid_reasons:
+        raise HTTPException(400, "Invalid reason")
+    # Verify target exists
+    coll = {"post": db.posts, "answer": db.answers, "comment": db.comments}[payload.target_type]
+    target = await coll.find_one({"id": payload.target_id}, {"_id": 0, "id": 1})
+    if not target:
+        raise HTTPException(404, "Target not found")
+    # Prevent duplicate pending reports from same user
+    existing = await db.reports.find_one({
+        "reporter_id": user["user_id"],
+        "target_id": payload.target_id,
+        "target_type": payload.target_type,
+        "status": "pending",
+    })
+    if existing:
+        return {"ok": True, "duplicate": True}
+    await db.reports.insert_one({
+        "id": str(uuid.uuid4()),
+        "reporter_id": user["user_id"],
+        "target_id": payload.target_id,
+        "target_type": payload.target_type,
+        "reason": payload.reason,
+        "status": "pending",
+        "created_at": now_iso(),
+    })
+    return {"ok": True}
+
+
+# ---------- Admin namespace ----------
+@api.get("/admin/check")
+async def admin_check(admin: dict = Depends(require_admin)):
+    return {"is_admin": True, "username": admin["username"]}
+
+
+@api.get("/admin/stats")
+async def admin_stats(admin: dict = Depends(require_admin)):
+    now = datetime.now(timezone.utc)
+    week_ago = (now - timedelta(days=7)).isoformat()
+    return {
+        "total_members": await db.users.count_documents({}),
+        "new_members_week": await db.users.count_documents({"created_at": {"$gte": week_ago}}),
+        "total_posts": await db.posts.count_documents({"is_removed": {"$ne": True}}),
+        "posts_week": await db.posts.count_documents({
+            "created_at": {"$gte": week_ago},
+            "is_removed": {"$ne": True},
+        }),
+        "pending_reports": await db.reports.count_documents({"status": "pending"}),
+    }
+
+
+@api.get("/admin/signup-chart")
+async def admin_signup_chart(days: int = 30, admin: dict = Depends(require_admin)):
+    now = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    buckets = []
+    for i in range(days - 1, -1, -1):
+        day_start = now - timedelta(days=i)
+        day_end = day_start + timedelta(days=1)
+        count = await db.users.count_documents({
+            "created_at": {"$gte": day_start.isoformat(), "$lt": day_end.isoformat()}
+        })
+        buckets.append({"date": day_start.strftime("%b %d"), "count": count})
+    return buckets
+
+
+@api.get("/admin/recent-members")
+async def admin_recent_members(limit: int = 10, admin: dict = Depends(require_admin)):
+    return await db.users.find(
+        {}, {"_id": 0, "password_hash": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+
+
+@api.get("/admin/recent-posts")
+async def admin_recent_posts(limit: int = 10, admin: dict = Depends(require_admin)):
+    posts = await db.posts.find({}, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    return await _enrich_posts(posts)
+
+
+@api.get("/admin/logs")
+async def admin_logs(limit: int = 50, admin: dict = Depends(require_admin)):
+    return await db.admin_logs.find({}, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+
+
+# --- Members ---
+@api.get("/admin/members")
+async def admin_list_members(
+    q: Optional[str] = None,
+    group: Optional[str] = None,
+    status: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 25,
+    admin: dict = Depends(require_admin),
+):
+    query = {}
+    if q:
+        esc = re.escape(q.strip())
+        query["$or"] = [
+            {"full_name": {"$regex": esc, "$options": "i"}},
+            {"username": {"$regex": esc, "$options": "i"}},
+            {"email": {"$regex": esc, "$options": "i"}},
+        ]
+    if group and group != "all":
+        query["group_type"] = group
+    if status == "active":
+        query["is_suspended"] = {"$ne": True}
+    elif status == "suspended":
+        query["is_suspended"] = True
+    total = await db.users.count_documents(query)
+    offset = (page - 1) * page_size
+    users = await db.users.find(
+        query, {"_id": 0, "password_hash": 0}
+    ).sort("created_at", -1).skip(offset).limit(page_size).to_list(page_size)
+    return {"users": users, "total": total, "page": page, "page_size": page_size}
+
+
+class MemberPatchIn(BaseModel):
+    group_type: Optional[GroupType] = None
+    is_suspended: Optional[bool] = None
+    is_admin: Optional[bool] = None
+
+
+@api.patch("/admin/members/{user_id}")
+async def admin_update_member(user_id: str, payload: MemberPatchIn, admin: dict = Depends(require_admin)):
+    target = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+    if not target:
+        raise HTTPException(404, "User not found")
+    updates = payload.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(400, "No fields to update")
+    await db.users.update_one({"user_id": user_id}, {"$set": updates})
+    for k, v in updates.items():
+        await log_admin_action(admin, f"member.{k}={v}", "user", user_id, note=target.get("username"))
+    return await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+
+
+@api.delete("/admin/members/{user_id}")
+async def admin_delete_member(user_id: str, admin: dict = Depends(require_admin)):
+    if admin["user_id"] == user_id:
+        raise HTTPException(400, "You cannot delete your own account from here.")
+    target = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+    if not target:
+        raise HTTPException(404, "User not found")
+    # Cascade: posts, answers, votes, bookmarks, notifications, sessions
+    await db.posts.delete_many({"author_id": user_id})
+    await db.answers.delete_many({"author_id": user_id})
+    await db.votes.delete_many({"user_id": user_id})
+    await db.bookmarks.delete_many({"user_id": user_id})
+    await db.notifications.delete_many({"user_id": user_id})
+    await db.user_sessions.delete_many({"user_id": user_id})
+    await db.users.delete_one({"user_id": user_id})
+    await log_admin_action(admin, "member.delete", "user", user_id, note=target.get("username"))
+    return {"ok": True}
+
+
+# --- Posts ---
+@api.get("/admin/posts")
+async def admin_list_posts(
+    q: Optional[str] = None,
+    type: Optional[str] = None,
+    space: Optional[str] = None,
+    status: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 25,
+    admin: dict = Depends(require_admin),
+):
+    query = {}
+    if q:
+        query["title"] = {"$regex": re.escape(q.strip()), "$options": "i"}
+    if type and type != "all":
+        query["type"] = type
+    if space and space != "all":
+        sp = await db.spaces.find_one({"slug": space}, {"_id": 0})
+        if sp:
+            query["space_id"] = sp["id"]
+    if status == "pinned":
+        query["is_pinned"] = True
+    elif status == "removed":
+        query["is_removed"] = True
+    elif status == "active":
+        query["is_removed"] = {"$ne": True}
+    total = await db.posts.count_documents(query)
+    offset = (page - 1) * page_size
+    posts = await db.posts.find(query, {"_id": 0}).sort("created_at", -1).skip(offset).limit(page_size).to_list(page_size)
+    enriched = await _enrich_posts(posts)
+    return {"posts": enriched, "total": total, "page": page, "page_size": page_size}
+
+
+class PostPatchIn(BaseModel):
+    is_pinned: Optional[bool] = None
+    is_removed: Optional[bool] = None
+
+
+@api.patch("/admin/posts/{post_id}")
+async def admin_update_post(post_id: str, payload: PostPatchIn, admin: dict = Depends(require_admin)):
+    post = await db.posts.find_one({"id": post_id}, {"_id": 0})
+    if not post:
+        raise HTTPException(404, "Post not found")
+    updates = payload.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(400, "No fields to update")
+    await db.posts.update_one({"id": post_id}, {"$set": updates})
+    for k, v in updates.items():
+        await log_admin_action(admin, f"post.{k}={v}", "post", post_id, note=post.get("title", "")[:80])
+    return await db.posts.find_one({"id": post_id}, {"_id": 0})
+
+
+@api.delete("/admin/posts/{post_id}")
+async def admin_delete_post(post_id: str, admin: dict = Depends(require_admin)):
+    post = await db.posts.find_one({"id": post_id}, {"_id": 0})
+    if not post:
+        raise HTTPException(404, "Post not found")
+    # Cascade: answers + their comments + votes + bookmarks
+    answers = await db.answers.find({"post_id": post_id}, {"_id": 0, "id": 1}).to_list(500)
+    answer_ids = [a["id"] for a in answers]
+    if answer_ids:
+        await db.comments.delete_many({"answer_id": {"$in": answer_ids}})
+        await db.votes.delete_many({"target_id": {"$in": answer_ids}, "target_type": "answer"})
+    await db.answers.delete_many({"post_id": post_id})
+    await db.votes.delete_many({"target_id": post_id, "target_type": "post"})
+    await db.bookmarks.delete_many({"post_id": post_id})
+    await db.posts.delete_one({"id": post_id})
+    await db.spaces.update_one({"id": post.get("space_id")}, {"$inc": {"post_count": -1}})
+    await log_admin_action(admin, "post.delete", "post", post_id, note=post.get("title", "")[:80])
+    return {"ok": True}
+
+
+# --- Reports ---
+@api.get("/admin/reports")
+async def admin_list_reports(status: str = "pending", admin: dict = Depends(require_admin)):
+    if status not in ("pending", "reviewed", "dismissed"):
+        raise HTTPException(400, "Invalid status")
+    reports = await db.reports.find(
+        {"status": status}, {"_id": 0}
+    ).sort("created_at", -1).limit(200).to_list(200)
+    # enrich with reporter + target preview
+    reporter_ids = list({r["reporter_id"] for r in reports})
+    reporters = {u["user_id"]: u for u in await db.users.find(
+        {"user_id": {"$in": reporter_ids}}, {"_id": 0, "password_hash": 0}
+    ).to_list(len(reporter_ids))}
+    for r in reports:
+        rep = reporters.get(r["reporter_id"], {})
+        r["reporter"] = {"username": rep.get("username"), "full_name": rep.get("full_name")}
+        # Fetch target preview
+        if r["target_type"] == "post":
+            t = await db.posts.find_one({"id": r["target_id"]}, {"_id": 0, "title": 1, "id": 1})
+            r["target_preview"] = {"title": t.get("title") if t else "(deleted)", "link": f"/community/posts/{r['target_id']}"}
+        elif r["target_type"] == "answer":
+            a = await db.answers.find_one({"id": r["target_id"]}, {"_id": 0, "body": 1, "post_id": 1})
+            r["target_preview"] = {"title": (a.get("body", "")[:80] + "...") if a else "(deleted)", "link": f"/community/posts/{a.get('post_id')}" if a else "#"}
+        else:
+            c = await db.comments.find_one({"id": r["target_id"]}, {"_id": 0, "body": 1, "answer_id": 1})
+            r["target_preview"] = {"title": (c.get("body", "")[:80] + "...") if c else "(deleted)", "link": "#"}
+    return reports
+
+
+@api.get("/admin/reports/pending-count")
+async def admin_reports_pending_count(admin: dict = Depends(require_admin)):
+    return {"count": await db.reports.count_documents({"status": "pending"})}
+
+
+class ReportPatchIn(BaseModel):
+    status: Literal["reviewed", "dismissed"]
+    remove_content: Optional[bool] = False
+
+
+@api.patch("/admin/reports/{report_id}")
+async def admin_update_report(report_id: str, payload: ReportPatchIn, admin: dict = Depends(require_admin)):
+    r = await db.reports.find_one({"id": report_id}, {"_id": 0})
+    if not r:
+        raise HTTPException(404, "Report not found")
+    await db.reports.update_one({"id": report_id}, {"$set": {"status": payload.status}})
+    if payload.remove_content:
+        if r["target_type"] == "post":
+            await db.posts.update_one({"id": r["target_id"]}, {"$set": {"is_removed": True}})
+        elif r["target_type"] == "answer":
+            await db.answers.delete_one({"id": r["target_id"]})
+        elif r["target_type"] == "comment":
+            await db.comments.delete_one({"id": r["target_id"]})
+    await log_admin_action(admin, f"report.{payload.status}", r["target_type"], r["target_id"],
+                           note=f"reason={r.get('reason')} remove_content={payload.remove_content}")
+    return {"ok": True}
+
+
+# --- Spaces ---
+@api.get("/admin/spaces")
+async def admin_list_spaces(admin: dict = Depends(require_admin)):
+    spaces = await db.spaces.find({}, {"_id": 0}).to_list(100)
+    return spaces
+
+
+class SpaceCreateIn(BaseModel):
+    slug: str
+    name: str
+    description: Optional[str] = ""
+    icon: Optional[str] = "Hash"
+
+
+@api.post("/admin/spaces")
+async def admin_create_space(payload: SpaceCreateIn, admin: dict = Depends(require_admin)):
+    slug = payload.slug.lower().strip().replace(" ", "-")
+    if await db.spaces.find_one({"slug": slug}):
+        raise HTTPException(400, "A space with this slug already exists")
+    doc = {
+        "id": str(uuid.uuid4()),
+        "slug": slug,
+        "name": payload.name,
+        "description": payload.description or "",
+        "icon": payload.icon or "Hash",
+        "post_count": 0,
+        "member_count": 0,
+        "is_hidden": False,
+        "created_at": now_iso(),
+    }
+    await db.spaces.insert_one(doc)
+    await log_admin_action(admin, "space.create", "space", doc["id"], note=slug)
+    return doc
+
+
+class SpacePatchIn(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    icon: Optional[str] = None
+    is_hidden: Optional[bool] = None
+
+
+@api.patch("/admin/spaces/{slug}")
+async def admin_update_space(slug: str, payload: SpacePatchIn, admin: dict = Depends(require_admin)):
+    sp = await db.spaces.find_one({"slug": slug}, {"_id": 0})
+    if not sp:
+        raise HTTPException(404, "Space not found")
+    updates = payload.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(400, "No fields to update")
+    await db.spaces.update_one({"slug": slug}, {"$set": updates})
+    await log_admin_action(admin, "space.update", "space", sp["id"], note=f"{slug}: {list(updates.keys())}")
+    return await db.spaces.find_one({"slug": slug}, {"_id": 0})
+
+
+# --- Settings ---
+@api.get("/admin/settings")
+async def admin_list_settings(admin: dict = Depends(require_admin)):
+    docs = await db.settings.find({}, {"_id": 0}).to_list(50)
+    return {d["key"]: d["value"] for d in docs}
+
+
+@api.patch("/admin/settings")
+async def admin_update_settings(payload: dict, admin: dict = Depends(require_admin)):
+    if not isinstance(payload, dict) or not payload:
+        raise HTTPException(400, "Payload must be a non-empty object of key->value")
+    for key, value in payload.items():
+        await db.settings.update_one(
+            {"key": key},
+            {"$set": {"key": key, "value": str(value), "updated_at": now_iso()}},
+            upsert=True,
+        )
+    await log_admin_action(admin, "settings.update", "settings", None, note=",".join(payload.keys()))
+    return {"ok": True}
 
 
 @api.get("/")
@@ -830,13 +1251,17 @@ async def on_startup():
     )
     await db.bookmarks.create_index([("user_id", 1), ("post_id", 1)], unique=True)
     await db.bookmarks.create_index([("user_id", 1), ("created_at", -1)])
+    await db.reports.create_index([("status", 1), ("created_at", -1)])
+    await db.admin_logs.create_index([("created_at", -1)])
     from seed_data import seed_all
     await seed_all(db, hash_password)
     # Seed admin
-    if not await db.users.find_one({"email": os.environ["ADMIN_EMAIL"].lower()}):
+    admin_email = os.environ["ADMIN_EMAIL"].lower()
+    admin_doc = await db.users.find_one({"email": admin_email})
+    if not admin_doc:
         await db.users.insert_one({
             "user_id": f"user_{uuid.uuid4().hex[:12]}",
-            "email": os.environ["ADMIN_EMAIL"].lower(),
+            "email": admin_email,
             "username": "admin",
             "full_name": "Admin",
             "password_hash": hash_password(os.environ["ADMIN_PASSWORD"]),
@@ -850,10 +1275,30 @@ async def on_startup():
             "linkedin_url": None,
             "reputation_score": 0,
             "is_verified": True,
+            "is_admin": True,
+            "is_suspended": False,
             "onboarded": True,
             "auth_provider": "email",
             "created_at": now_iso(),
         })
+    else:
+        # Ensure existing admin has is_admin=true
+        await db.users.update_one({"email": admin_email}, {"$set": {"is_admin": True}})
+    # Seed default settings
+    DEFAULTS = {
+        "community_name": "HCMOrbit",
+        "community_tagline": "Where HCM professionals connect, learn, and grow",
+        "registrations_open": "true",
+        "require_email_verification": "false",
+        "min_rep_downvote": "0",
+        "min_rep_post": "0",
+    }
+    for k, v in DEFAULTS.items():
+        await db.settings.update_one(
+            {"key": k},
+            {"$setOnInsert": {"key": k, "value": v, "updated_at": now_iso()}},
+            upsert=True,
+        )
     log.info("Startup seeding complete")
 
 

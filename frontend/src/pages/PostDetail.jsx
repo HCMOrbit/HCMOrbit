@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { CheckCircle2, MessageSquare, Eye, Bookmark, Send, Pencil, Trash2, X } from "lucide-react";
+import { CheckCircle2, MessageSquare, Eye, Bookmark, Send, Pencil, Trash2, X, Flag } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import NavHeader from "../components/NavHeader";
@@ -8,6 +8,7 @@ import GroupBadge from "../components/GroupBadge";
 import PostTypeBadge from "../components/PostTypeBadge";
 import VoteComponent from "../components/VoteComponent";
 import SharePopover from "../components/SharePopover";
+import ReportModal from "../components/ReportModal";
 import { api, timeAgo, formatApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ export default function PostDetail() {
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editBody, setEditBody] = useState("");
+  const [reportTarget, setReportTarget] = useState(null);
   const liveTimerRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -205,6 +207,16 @@ export default function PostDetail() {
                   <Bookmark className="w-4 h-4" fill={bookmarked ? "currentColor" : "none"} />
                 </button>
                 <SharePopover url={`/community/posts/${post.id}`} title={post.title} type={post.type} />
+                {user && user.user_id !== post.author_id && (
+                  <button
+                    onClick={() => setReportTarget({ id: post.id, type: "post" })}
+                    className="p-1.5 hover:text-[#D97706]"
+                    aria-label="Report post"
+                    data-testid="report-post-btn"
+                  >
+                    <Flag className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
             <div className="flex-1 min-w-0">
@@ -278,6 +290,16 @@ export default function PostDetail() {
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
+                      )}
+                      {user && user.user_id !== ans.author?.user_id && (
+                        <button
+                          onClick={() => setReportTarget({ id: ans.id, type: "answer" })}
+                          className="ml-auto p-1.5 rounded text-[#94A3B8] hover:text-[#D97706] hover:bg-[#FFFBEB]"
+                          data-testid={`report-answer-${ans.id}`}
+                          aria-label="Report answer"
+                        >
+                          <Flag className="w-3.5 h-3.5" />
+                        </button>
                       )}
                     </div>
                     {editingId === ans.id ? (
@@ -368,6 +390,12 @@ export default function PostDetail() {
           )}
         </div>
       </div>
+      <ReportModal
+        open={!!reportTarget}
+        targetId={reportTarget?.id}
+        targetType={reportTarget?.type}
+        onClose={() => setReportTarget(null)}
+      />
     </div>
   );
 }
