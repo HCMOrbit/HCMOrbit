@@ -84,6 +84,11 @@ async def get_current_user(request: Request) -> dict:
         user_id = payload.get("sub")
         user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
         if user:
+            # Surface impersonation context so frontend can show a banner & audit knows
+            impersonator = payload.get("impersonator")
+            if impersonator:
+                user["impersonator_user_id"] = impersonator
+                user["impersonator_username"] = payload.get("impersonator_username")
             return user
     except jwt.InvalidTokenError:
         pass
@@ -487,6 +492,16 @@ async def create_post(payload: PostIn, user: dict = Depends(get_current_user)):
     posts_count = await db.posts.count_documents({"author_id": user["user_id"], "type": payload.type})
     if posts_count == 1 and payload.type == "question":
         await update_reputation(user["user_id"], 5)
+    if user.get("impersonator_user_id"):
+        await db.admin_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "admin_id": user["impersonator_user_id"],
+            "admin_username": user.get("impersonator_username"),
+            "action": "impersonation.post_created",
+            "target_type": "post", "target_id": post_id,
+            "note": f"as @{user.get('username')}: {payload.title[:80]}",
+            "created_at": now_iso(),
+        })
     return doc
 
 
@@ -579,6 +594,16 @@ async def create_answer(post_id: str, payload: AnswerIn, user: dict = Depends(ge
     ans_count = await db.answers.count_documents({"author_id": user["user_id"]})
     if ans_count == 1:
         await update_reputation(user["user_id"], 5)
+    if user.get("impersonator_user_id"):
+        await db.admin_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "admin_id": user["impersonator_user_id"],
+            "admin_username": user.get("impersonator_username"),
+            "action": "impersonation.answer_created",
+            "target_type": "answer", "target_id": doc["id"],
+            "note": f"as @{user.get('username')} on post {post_id[:8]}",
+            "created_at": now_iso(),
+        })
     if post["author_id"] != user["user_id"]:
         await create_notification(
             post["author_id"], "answer",
@@ -1006,6 +1031,31 @@ async def admin_update_member(user_id: str, payload: MemberPatchIn, admin: dict 
     for k, v in updates.items():
         await log_admin_action(admin, f"member.{k}={v}", "user", user_id, note=target.get("username"))
     return await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+
+
+@api.post("/admin/members/{user_id}/impersonate")
+async def admin_impersonate(user_id: str, admin: dict = Depends(require_admin)):
+    """Issue a short-lived token that lets the admin act as the target user.
+    The token carries an `impersonator` claim so we can surface a banner and audit posts.
+    Cannot impersonate another admin (safety)."""
+    target = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+    if not target:
+        raise HTTPException(404, "User not found")
+    if target.get("is_admin") and target["user_id"] != admin["user_id"]:
+        raise HTTPException(403, "Cannot impersonate another admin")
+    payload = {
+        "sub": user_id,
+        "type": "impersonation",
+        "impersonator": admin["user_id"],
+        "impersonator_username": admin.get("username"),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=2),
+    }
+    token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    await log_admin_action(
+        admin, "member.impersonate_start", "user", user_id,
+        note=f"@{target.get('username')}",
+    )
+    return {"token": token, "user": target, "expires_in_hours": 2}
 
 
 @api.delete("/admin/members/{user_id}")

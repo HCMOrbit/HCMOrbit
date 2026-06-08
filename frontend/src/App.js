@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth";
+import ImpersonationBanner from "@/components/ImpersonationBanner";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -56,6 +57,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ImpersonationBanner />
         <AppRoutes />
         <Toaster position="bottom-right" richColors closeButton />
       </BrowserRouter>

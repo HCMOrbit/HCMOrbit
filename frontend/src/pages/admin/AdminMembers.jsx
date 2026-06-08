@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { MoreVertical, Search as SearchIcon, ExternalLink } from "lucide-react";
+import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
+import { MoreVertical, Search as SearchIcon, ExternalLink, UserCog } from "lucide-react";
 import AdminLayout from "../../components/AdminLayout";
 import GroupBadge from "../../components/GroupBadge";
 import ConfirmModal from "../../components/ConfirmModal";
 import { api, timeAgo, formatApiError } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
 import { toast } from "sonner";
 
 const GROUPS = ["aspirant", "practitioner", "employer"];
@@ -16,8 +19,11 @@ export default function AdminMembers() {
   const [group, setGroup] = useState("all");
   const [status, setStatus] = useState("all");
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const [confirm, setConfirm] = useState(null);
   const [groupModal, setGroupModal] = useState(null);
+  const { refresh } = useAuth();
+  const navigate = useNavigate();
 
   const load = useCallback(() => {
     const params = new URLSearchParams({ page, page_size: 25 });
@@ -48,6 +54,21 @@ export default function AdminMembers() {
       toast.success("Account deleted.");
       load();
     } catch (e) { toast.error(formatApiError(e)); }
+    setConfirm(null);
+  };
+
+  const impersonate = async (u) => {
+    try {
+      const { data } = await api.post(`/admin/members/${u.user_id}/impersonate`);
+      // Save the admin's own token so we can switch back
+      const adminToken = localStorage.getItem("hcm_token");
+      if (adminToken) localStorage.setItem("hcm_admin_token", adminToken);
+      localStorage.setItem("hcm_token", data.token);
+      await refresh();
+      toast.success(`Now posting as @${u.username}. Tap "Stop impersonating" in the banner to return.`);
+      navigate("/community");
+    } catch (e) { toast.error(formatApiError(e)); }
+    setOpenMenuId(null);
     setConfirm(null);
   };
 
@@ -123,28 +144,43 @@ export default function AdminMembers() {
                   )}
                 </td>
                 <td className="px-4 py-3 text-right relative">
-                  <button onClick={() => setOpenMenuId(openMenuId === u.user_id ? null : u.user_id)} className="p-1.5 hover:bg-[#F1F5F9] rounded text-[#64748B]" data-testid={`member-menu-${u.username}`}>
+                  <button onClick={(e) => {
+                    if (openMenuId === u.user_id) { setOpenMenuId(null); return; }
+                    const r = e.currentTarget.getBoundingClientRect();
+                    setMenuPos({ top: r.bottom + 4, right: Math.max(8, window.innerWidth - r.right) });
+                    setOpenMenuId(u.user_id);
+                  }} className="p-1.5 hover:bg-[#F1F5F9] rounded text-[#64748B]" data-testid={`member-menu-${u.username}`}>
                     <MoreVertical className="w-4 h-4" />
                   </button>
-                  {openMenuId === u.user_id && (
+                  {openMenuId === u.user_id && createPortal(
                     <>
-                      <div className="fixed inset-0 z-30" onClick={() => setOpenMenuId(null)} />
-                      <div className="absolute right-4 top-10 z-40 w-52 bg-white border border-[#E2E8F0] rounded-lg shadow-lg py-1 text-left">
+                      <div className="fixed inset-0 z-[60]" onClick={() => setOpenMenuId(null)} />
+                      <div style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 70 }} className="w-52 bg-white border border-[#E2E8F0] rounded-lg shadow-lg py-1 text-left">
                         <a href={`/profile/${u.username}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC]">
                           <ExternalLink className="w-3.5 h-3.5" /> View profile
                         </a>
                         <button onClick={() => { setGroupModal(u); setOpenMenuId(null); }} className="w-full text-left px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC]">Change group</button>
+                        {!u.is_admin && (
+                          <button
+                            onClick={() => { setConfirm({ type: "impersonate", user: u }); setOpenMenuId(null); }}
+                            className="w-full text-left px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC] flex items-center gap-2"
+                            data-testid={`impersonate-${u.username}`}
+                          >
+                            <UserCog className="w-3.5 h-3.5" /> Impersonate
+                          </button>
+                        )}
                         {u.is_suspended ? (
                           <button onClick={() => patchUser(u.user_id, { is_suspended: false }, "Account unsuspended")} className="w-full text-left px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC]">Unsuspend</button>
                         ) : (
-                          <button onClick={() => setConfirm({ type: "suspend", user: u })} className="w-full text-left px-3 py-2 text-sm text-[#D97706] hover:bg-[#FFFBEB]">Suspend account</button>
+                          <button onClick={() => { setConfirm({ type: "suspend", user: u }); setOpenMenuId(null); }} className="w-full text-left px-3 py-2 text-sm text-[#D97706] hover:bg-[#FFFBEB]">Suspend account</button>
                         )}
                         {!u.is_admin && (
                           <button onClick={() => patchUser(u.user_id, { is_admin: true }, "Granted admin")} className="w-full text-left px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC]">Make admin</button>
                         )}
-                        <button onClick={() => setConfirm({ type: "delete", user: u })} className="w-full text-left px-3 py-2 text-sm text-[#DC2626] hover:bg-[#FEF2F2]">Delete account</button>
+                        <button onClick={() => { setConfirm({ type: "delete", user: u }); setOpenMenuId(null); }} className="w-full text-left px-3 py-2 text-sm text-[#DC2626] hover:bg-[#FEF2F2]">Delete account</button>
                       </div>
-                    </>
+                    </>,
+                    document.body
                   )}
                 </td>
               </tr>
@@ -165,6 +201,15 @@ export default function AdminMembers() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirm?.type === "impersonate"}
+        title={`Impersonate @${confirm?.user?.username}?`}
+        message="You'll act as this user — every post, answer, comment, and vote you make will appear under their name. A banner will remind you. The action is logged in admin actions and the token expires in 2 hours."
+        confirmLabel="Start impersonating"
+        onClose={() => setConfirm(null)}
+        onConfirm={() => impersonate(confirm.user)}
+      />
 
       <ConfirmModal
         open={confirm?.type === "suspend"}
