@@ -12,6 +12,7 @@ import NewPost from "@/pages/NewPost";
 import SpacePage from "@/pages/SpacePage";
 import Profile from "@/pages/Profile";
 import Notifications from "@/pages/Notifications";
+import Bookmarks from "@/pages/Bookmarks";
 import AuthCallback from "@/components/AuthCallback";
 
 function AppRoutes() {
@@ -32,6 +33,7 @@ function AppRoutes() {
       <Route path="/community/spaces/:slug" element={<SpacePage />} />
       <Route path="/profile/:username" element={<Profile />} />
       <Route path="/notifications" element={<Notifications />} />
+      <Route path="/bookmarks" element={<Bookmarks />} />
     </Routes>
   );
 }

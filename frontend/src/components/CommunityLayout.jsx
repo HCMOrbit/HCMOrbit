@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Users, Network, Shield, BarChart3, CircleDollarSign, Wallet, Landmark, Coffee, Home, Bookmark, FileQuestion, MessageCircle } from "lucide-react";
-import { api } from "../lib/api";
+import { Users, Network, Shield, BarChart3, CircleDollarSign, Wallet, Landmark, Coffee, Home, Bookmark, FileQuestion, MessageCircle } from "lucide-react";import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import GroupBadge from "./GroupBadge";
 
@@ -47,6 +46,7 @@ export default function CommunityLayout({ children, rightSidebar = true }) {
         <nav className="flex flex-col gap-0.5 text-sm">
           <SideLink to="/community" icon={Home} active={location.pathname === "/community"}>Home feed</SideLink>
           {user && <SideLink to={`/profile/${user.username}`} icon={FileQuestion}>My posts</SideLink>}
+          {user && <SideLink to="/bookmarks" icon={Bookmark} active={location.pathname === "/bookmarks"}>Bookmarks</SideLink>}
           <SideLink to="/notifications" icon={MessageCircle}>Notifications</SideLink>
         </nav>
 

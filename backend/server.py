@@ -659,6 +659,57 @@ async def mark_read(user: dict = Depends(get_current_user)):
     return {"ok": True}
 
 
+# ---------- Bookmarks ----------
+@api.post("/bookmarks/{post_id}")
+async def toggle_bookmark(post_id: str, user: dict = Depends(get_current_user)):
+    """Toggle bookmark on a post. Returns the new bookmarked state."""
+    post = await db.posts.find_one({"id": post_id}, {"_id": 0, "id": 1})
+    if not post:
+        raise HTTPException(404, "Post not found")
+    existing = await db.bookmarks.find_one(
+        {"user_id": user["user_id"], "post_id": post_id}, {"_id": 0}
+    )
+    if existing:
+        await db.bookmarks.delete_one({"user_id": user["user_id"], "post_id": post_id})
+        return {"bookmarked": False}
+    await db.bookmarks.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": user["user_id"],
+        "post_id": post_id,
+        "created_at": now_iso(),
+    })
+    return {"bookmarked": True}
+
+
+@api.get("/bookmarks")
+async def list_bookmarks(user: dict = Depends(get_current_user)):
+    """List the current user's bookmarked posts, enriched."""
+    bms = await db.bookmarks.find(
+        {"user_id": user["user_id"]}, {"_id": 0}
+    ).sort("created_at", -1).limit(100).to_list(100)
+    if not bms:
+        return []
+    post_ids = [b["post_id"] for b in bms]
+    posts = await db.posts.find({"id": {"$in": post_ids}}, {"_id": 0}).to_list(len(post_ids))
+    enriched = await _enrich_posts(posts)
+    # Preserve bookmark-creation order
+    order = {b["post_id"]: idx for idx, b in enumerate(bms)}
+    enriched.sort(key=lambda p: order.get(p["id"], 9999))
+    return enriched
+
+
+@api.get("/bookmarks/me")
+async def my_bookmarks_lookup(post_ids: str = Query(""), user: dict = Depends(get_current_user)):
+    """Return a dict {post_id: true} for the given post_ids that the user has bookmarked."""
+    ids = [p for p in post_ids.split(",") if p]
+    if not ids:
+        return {}
+    bms = await db.bookmarks.find(
+        {"user_id": user["user_id"], "post_id": {"$in": ids}}, {"_id": 0}
+    ).to_list(len(ids))
+    return {b["post_id"]: True for b in bms}
+
+
 @api.get("/community/stats")
 async def community_stats():
     return {
@@ -712,6 +763,8 @@ async def on_startup():
         [("user_id", 1), ("target_id", 1), ("target_type", 1)],
         unique=True
     )
+    await db.bookmarks.create_index([("user_id", 1), ("post_id", 1)], unique=True)
+    await db.bookmarks.create_index([("user_id", 1), ("created_at", -1)])
     from seed_data import seed_all
     await seed_all(db, hash_password)
     # Seed admin

@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { CheckCircle2, MessageSquare, Eye, Bookmark, Share2, Send } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import { CheckCircle2, MessageSquare, Eye, Bookmark, Share2, Send } from "lucide-react";import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import NavHeader from "../components/NavHeader";
 import GroupBadge from "../components/GroupBadge";
@@ -18,6 +17,7 @@ export default function PostDetail() {
   const [post, setPost] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [votes, setVotes] = useState({});
+  const [bookmarked, setBookmarked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [newAnswer, setNewAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -33,8 +33,12 @@ export default function PostDetail() {
       setAnswers(a.data);
       if (user) {
         const ids = [p.data.id, ...a.data.map((x) => x.id)].join(",");
-        const v = await api.get(`/votes/me?target_ids=${ids}`);
+        const [v, bm] = await Promise.all([
+          api.get(`/votes/me?target_ids=${ids}`),
+          api.get(`/bookmarks/me?post_ids=${p.data.id}`),
+        ]);
         setVotes(v.data);
+        setBookmarked(!!bm.data[p.data.id]);
       }
     } catch {
       // ignore
@@ -44,6 +48,20 @@ export default function PostDetail() {
   }, [id, user]);
 
   useEffect(() => { load(); }, [load]);
+
+  const toggleBookmark = async () => {
+    if (!user) { toast.message("Join to bookmark", { description: "Sign in to save posts." }); return; }
+    const prev = bookmarked;
+    setBookmarked(!prev);
+    try {
+      const { data } = await api.post(`/bookmarks/${id}`);
+      setBookmarked(data.bookmarked);
+      toast.success(data.bookmarked ? "Saved to bookmarks." : "Removed from bookmarks.");
+    } catch {
+      setBookmarked(prev);
+      toast.error("Bookmark failed.");
+    }
+  };
 
   const submitAnswer = async (e) => {
     e.preventDefault();
@@ -121,7 +139,14 @@ export default function PostDetail() {
                 initialVote={votes[post.id] || 0}
               />
               <div className="mt-3 flex flex-col gap-2 items-center text-[#94A3B8]">
-                <button className="p-1.5 hover:text-[#0A1628]" aria-label="Bookmark"><Bookmark className="w-4 h-4" /></button>
+                <button
+                  onClick={toggleBookmark}
+                  data-testid="bookmark-btn"
+                  aria-label={bookmarked ? "Remove bookmark" : "Bookmark this post"}
+                  className={`p-1.5 transition-colors ${bookmarked ? "text-[#0D9373]" : "hover:text-[#0A1628]"}`}
+                >
+                  <Bookmark className="w-4 h-4" fill={bookmarked ? "currentColor" : "none"} />
+                </button>
                 <button className="p-1.5 hover:text-[#0A1628]" aria-label="Share"><Share2 className="w-4 h-4" /></button>
               </div>
             </div>
