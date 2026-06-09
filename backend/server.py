@@ -1027,6 +1027,14 @@ async def kb_list_docs(
     return {"docs": await _enrich_docs(docs), "total": total}
 
 
+@api.get("/kb/docs/mine")
+async def kb_my_docs(user: dict = Depends(get_current_user)):
+    docs = await db.kb_docs.find(
+        {"author_id": user["user_id"]}, {"_id": 0}
+    ).sort("updated_at", -1).limit(200).to_list(200)
+    return docs
+
+
 @api.get("/kb/docs/{doc_id}")
 async def kb_get_doc(doc_id: str):
     doc = await db.kb_docs.find_one({"id": doc_id, "is_published": True}, {"_id": 0})
@@ -1089,6 +1097,70 @@ async def kb_toggle_bookmark(doc_id: str, user: dict = Depends(get_current_user)
         "created_at": now_iso(),
     })
     return {"bookmarked": True}
+
+
+# ---------- KB Contribution (authors) ----------
+DocType = Literal["fix_guide", "how_to", "learning_bite", "reference", "checklist"]
+Difficulty = Literal["beginner", "intermediate", "advanced"]
+
+
+class KBDocIn(BaseModel):
+    title: str
+    summary: str
+    body: str
+    category_slug: str
+    doc_type: DocType
+    difficulty: Difficulty
+    target_groups: List[GroupType] = ["aspirant", "practitioner", "employer"]
+    tags: List[str] = []
+    workday_version: Optional[str] = None
+    publish: bool = True
+
+
+@api.post("/kb/docs")
+async def kb_create_doc(payload: KBDocIn, user: dict = Depends(get_current_user)):
+    _check_active(user)
+    if user.get("group_type") not in ("practitioner", "employer"):
+        raise HTTPException(403, "Only Practitioners and Employers can contribute Knowledge Base documents.")
+    title = payload.title.strip()
+    if len(title) < 10:
+        raise HTTPException(400, "Title must be at least 10 characters.")
+    if len(payload.summary.strip()) < 30:
+        raise HTTPException(400, "Summary must be at least 30 characters.")
+    if len(payload.body.strip()) < 100:
+        raise HTTPException(400, "Body must be at least 100 characters.")
+    cat = await db.kb_categories.find_one({"slug": payload.category_slug}, {"_id": 0})
+    if not cat:
+        raise HTTPException(404, "Category not found")
+    tags = [t.strip().lower() for t in payload.tags if t.strip()][:8]
+    doc_id = str(uuid.uuid4())
+    now = now_iso()
+    doc = {
+        "id": doc_id,
+        "category_id": cat["id"],
+        "category_slug": cat["slug"],
+        "author_id": user["user_id"],
+        "title": title,
+        "summary": payload.summary.strip(),
+        "body": payload.body,
+        "doc_type": payload.doc_type,
+        "difficulty": payload.difficulty,
+        "target_groups": payload.target_groups or ["aspirant", "practitioner", "employer"],
+        "tags": tags,
+        "workday_version": payload.workday_version,
+        "view_count": 0,
+        "helpful_count": 0,
+        "not_helpful_count": 0,
+        "is_published": bool(payload.publish),
+        "is_featured": False,
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.kb_docs.insert_one(doc)
+    if payload.publish:
+        await db.kb_categories.update_one({"id": cat["id"]}, {"$inc": {"doc_count": 1}})
+        await update_reputation(user["user_id"], 10)
+    return {"id": doc_id, "is_published": doc["is_published"]}
 
 
 # ---------- Admin namespace ----------
@@ -1419,6 +1491,7 @@ async def admin_create_space(payload: SpaceCreateIn, admin: dict = Depends(requi
         "created_at": now_iso(),
     }
     await db.spaces.insert_one(doc)
+    doc.pop("_id", None)
     await log_admin_action(admin, "space.create", "space", doc["id"], note=slug)
     return doc
 
@@ -1441,6 +1514,179 @@ async def admin_update_space(slug: str, payload: SpacePatchIn, admin: dict = Dep
     await db.spaces.update_one({"slug": slug}, {"$set": updates})
     await log_admin_action(admin, "space.update", "space", sp["id"], note=f"{slug}: {list(updates.keys())}")
     return await db.spaces.find_one({"slug": slug}, {"_id": 0})
+
+
+# --- Knowledge Base (admin) ---
+@api.get("/admin/kb/stats")
+async def admin_kb_stats(admin: dict = Depends(require_admin)):
+    return {
+        "total_docs": await db.kb_docs.count_documents({}),
+        "published_docs": await db.kb_docs.count_documents({"is_published": True}),
+        "drafts": await db.kb_docs.count_documents({"is_published": False}),
+        "featured": await db.kb_docs.count_documents({"is_featured": True}),
+        "total_categories": await db.kb_categories.count_documents({}),
+    }
+
+
+@api.get("/admin/kb/docs")
+async def admin_kb_list_docs(
+    q: Optional[str] = None,
+    status: Optional[str] = None,
+    category: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 25,
+    admin: dict = Depends(require_admin),
+):
+    query: dict = {}
+    if q:
+        esc = re.escape(q.strip())
+        query["$or"] = [
+            {"title": {"$regex": esc, "$options": "i"}},
+            {"summary": {"$regex": esc, "$options": "i"}},
+        ]
+    if status == "published":
+        query["is_published"] = True
+    elif status == "draft":
+        query["is_published"] = False
+    elif status == "featured":
+        query["is_featured"] = True
+    if category and category != "all":
+        cat = await db.kb_categories.find_one({"slug": category}, {"_id": 0})
+        if cat:
+            query["category_id"] = cat["id"]
+    total = await db.kb_docs.count_documents(query)
+    offset = (page - 1) * page_size
+    docs = await db.kb_docs.find(query, {"_id": 0}).sort("updated_at", -1).skip(offset).limit(page_size).to_list(page_size)
+    enriched = await _enrich_docs(docs)
+    cat_ids = list({d["category_id"] for d in enriched})
+    cats = {c["id"]: c for c in await db.kb_categories.find({"id": {"$in": cat_ids}}, {"_id": 0}).to_list(len(cat_ids))}
+    for d in enriched:
+        c = cats.get(d["category_id"], {})
+        d["category"] = {"slug": c.get("slug"), "name": c.get("name"), "icon": c.get("icon")}
+    return {"docs": enriched, "total": total, "page": page, "page_size": page_size}
+
+
+class KBDocPatchIn(BaseModel):
+    is_published: Optional[bool] = None
+    is_featured: Optional[bool] = None
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    body: Optional[str] = None
+    category_slug: Optional[str] = None
+    doc_type: Optional[DocType] = None
+    difficulty: Optional[Difficulty] = None
+    target_groups: Optional[List[GroupType]] = None
+    tags: Optional[List[str]] = None
+    workday_version: Optional[str] = None
+
+
+@api.patch("/admin/kb/docs/{doc_id}")
+async def admin_update_kb_doc(doc_id: str, payload: KBDocPatchIn, admin: dict = Depends(require_admin)):
+    doc = await db.kb_docs.find_one({"id": doc_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    updates: dict = payload.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(400, "No fields to update")
+
+    # Handle category change
+    if "category_slug" in updates:
+        new_cat = await db.kb_categories.find_one({"slug": updates["category_slug"]}, {"_id": 0})
+        if not new_cat:
+            raise HTTPException(404, "Category not found")
+        updates["category_id"] = new_cat["id"]
+        # Re-bucket counts if previously published
+        if doc.get("is_published") and new_cat["id"] != doc.get("category_id"):
+            await db.kb_categories.update_one({"id": doc["category_id"]}, {"$inc": {"doc_count": -1}})
+            await db.kb_categories.update_one({"id": new_cat["id"]}, {"$inc": {"doc_count": 1}})
+
+    # Handle publish toggle (adjusts category counts)
+    if "is_published" in updates and updates["is_published"] != doc.get("is_published"):
+        target_cat_id = updates.get("category_id") or doc["category_id"]
+        delta = 1 if updates["is_published"] else -1
+        await db.kb_categories.update_one({"id": target_cat_id}, {"$inc": {"doc_count": delta}})
+
+    if "tags" in updates:
+        updates["tags"] = [t.strip().lower() for t in updates["tags"] if t.strip()][:8]
+
+    updates["updated_at"] = now_iso()
+    await db.kb_docs.update_one({"id": doc_id}, {"$set": updates})
+    await log_admin_action(admin, "kb.update", "kb_doc", doc_id, note=f"keys={list(updates.keys())}")
+    return await db.kb_docs.find_one({"id": doc_id}, {"_id": 0})
+
+
+@api.delete("/admin/kb/docs/{doc_id}")
+async def admin_delete_kb_doc(doc_id: str, admin: dict = Depends(require_admin)):
+    doc = await db.kb_docs.find_one({"id": doc_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    await db.kb_helpful_votes.delete_many({"doc_id": doc_id})
+    await db.kb_bookmarks.delete_many({"doc_id": doc_id})
+    await db.kb_docs.delete_one({"id": doc_id})
+    if doc.get("is_published"):
+        await db.kb_categories.update_one({"id": doc["category_id"]}, {"$inc": {"doc_count": -1}})
+    await log_admin_action(admin, "kb.delete", "kb_doc", doc_id, note=doc.get("title", "")[:80])
+    return {"ok": True}
+
+
+@api.get("/admin/kb/categories")
+async def admin_kb_list_categories(admin: dict = Depends(require_admin)):
+    return await db.kb_categories.find({}, {"_id": 0}).sort("sort_order", 1).to_list(100)
+
+
+class KBCategoryCreateIn(BaseModel):
+    slug: str
+    name: str
+    description: Optional[str] = ""
+    icon: Optional[str] = "📚"
+    sort_order: Optional[int] = 99
+
+
+@api.post("/admin/kb/categories")
+async def admin_create_kb_category(payload: KBCategoryCreateIn, admin: dict = Depends(require_admin)):
+    slug = payload.slug.lower().strip().replace(" ", "-")
+    if not slug:
+        raise HTTPException(400, "Slug is required")
+    if await db.kb_categories.find_one({"slug": slug}):
+        raise HTTPException(400, "A category with this slug already exists")
+    doc = {
+        "id": str(uuid.uuid4()),
+        "slug": slug,
+        "name": payload.name,
+        "icon": payload.icon or "📚",
+        "description": payload.description or "",
+        "sort_order": payload.sort_order or 99,
+        "doc_count": 0,
+        "total_views": 0,
+        "avg_helpful_pct": 0,
+        "is_hidden": False,
+        "created_at": now_iso(),
+    }
+    await db.kb_categories.insert_one(doc)
+    doc.pop("_id", None)
+    await log_admin_action(admin, "kb.category.create", "kb_category", doc["id"], note=slug)
+    return doc
+
+
+class KBCategoryPatchIn(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    icon: Optional[str] = None
+    sort_order: Optional[int] = None
+    is_hidden: Optional[bool] = None
+
+
+@api.patch("/admin/kb/categories/{slug}")
+async def admin_update_kb_category(slug: str, payload: KBCategoryPatchIn, admin: dict = Depends(require_admin)):
+    cat = await db.kb_categories.find_one({"slug": slug}, {"_id": 0})
+    if not cat:
+        raise HTTPException(404, "Category not found")
+    updates = payload.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(400, "No fields to update")
+    await db.kb_categories.update_one({"slug": slug}, {"$set": updates})
+    await log_admin_action(admin, "kb.category.update", "kb_category", cat["id"], note=f"{slug}: {list(updates.keys())}")
+    return await db.kb_categories.find_one({"slug": slug}, {"_id": 0})
 
 
 # --- Settings ---

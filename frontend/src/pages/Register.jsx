@@ -146,6 +146,9 @@ export default function Register() {
                 <input required type="password" minLength={8} value={form.password} onChange={(e) => update("password", e.target.value)} className="input" data-testid="register-password" />
               </Field>
               {error && <div className="text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] rounded p-2.5" data-testid="register-error">{error}</div>}
+              <p className="text-[11px] text-[#94A3B8] leading-relaxed">
+                By creating an account, you agree to our <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-[#0D9373] hover:underline">Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-[#0D9373] hover:underline">Privacy Policy</a>.
+              </p>
               <button disabled={loading} className="mt-2 w-full py-2.5 rounded-md bg-[#0A1628] hover:bg-[#0F1F36] text-white font-medium text-sm transition-colors disabled:opacity-60" data-testid="step1-continue">
                 {loading ? "Creating..." : "Continue"} <ArrowRight className="inline w-4 h-4 ml-1" />
               </button>

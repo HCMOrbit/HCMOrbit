@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Sparkles, LayoutGrid, ArrowRight } from "lucide-react";
+import { Sparkles, LayoutGrid, ArrowRight, PenSquare } from "lucide-react";
 import NavHeader from "../../components/NavHeader";
 import { DocTypeBadge, DifficultyBadge, CategoryIcon, TYPE_BORDER } from "../../components/kb/KBBadges";
 import { api } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
 
 export default function KBHome() {
   const [stats, setStats] = useState({});
   const [featured, setFeatured] = useState([]);
   const [categories, setCategories] = useState([]);
+  const { user } = useAuth();
+  const canContribute = user && ["practitioner", "employer"].includes(user.group_type);
 
   useEffect(() => {
     api.get("/kb/stats").then((r) => setStats(r.data)).catch(() => {});
@@ -27,10 +30,19 @@ export default function KBHome() {
           <div className="text-xs uppercase tracking-wider text-[#0D9373] font-semibold mb-3">HCMOrbit Knowledge Base</div>
           <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">Find the answer. Share what you know.</h1>
           <p className="mt-5 text-lg text-white/70 max-w-2xl">Technical guides, fix documents, and learning resources — written by Workday practitioners, for Workday practitioners.</p>
-          <div className="mt-10 flex flex-wrap gap-12">
+          <div className="mt-10 flex flex-wrap items-end gap-12">
             <Stat value={stats.total_docs} label="Published documents" />
             <Stat value={stats.total_helpful_votes} label="Practitioners helped" />
             <Stat value={stats.avg_helpful_pct ? `${stats.avg_helpful_pct}%` : "—"} label="Avg helpful rating" />
+            {canContribute && (
+              <Link
+                to="/knowledge-base/new"
+                data-testid="kb-contribute-cta"
+                className="ml-auto inline-flex items-center gap-2 px-5 py-3 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium transition-colors"
+              >
+                <PenSquare className="w-4 h-4" /> Contribute a document
+              </Link>
+            )}
           </div>
         </div>
       </section>

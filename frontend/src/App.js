@@ -21,10 +21,16 @@ import AdminPosts from "@/pages/admin/AdminPosts";
 import AdminReported from "@/pages/admin/AdminReported";
 import AdminSpaces from "@/pages/admin/AdminSpaces";
 import AdminSettings from "@/pages/admin/AdminSettings";
+import AdminKnowledgeBase from "@/pages/admin/AdminKnowledgeBase";
 import KBHome from "@/pages/kb/KBHome";
 import KBCategory from "@/pages/kb/KBCategory";
 import KBSearch from "@/pages/kb/KBSearch";
 import KBDoc from "@/pages/kb/KBDoc";
+import NewKBDoc from "@/pages/kb/NewKBDoc";
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
+import Cookies from "@/pages/Cookies";
+import CookieBanner from "@/components/CookieBanner";
 import AuthCallback from "@/components/AuthCallback";
 
 function AppRoutes() {
@@ -53,10 +59,15 @@ function AppRoutes() {
       <Route path="/admin/reported" element={<AdminReported />} />
       <Route path="/admin/spaces" element={<AdminSpaces />} />
       <Route path="/admin/settings" element={<AdminSettings />} />
+      <Route path="/admin/knowledge-base" element={<AdminKnowledgeBase />} />
       <Route path="/knowledge-base" element={<KBHome />} />
+      <Route path="/knowledge-base/new" element={<NewKBDoc />} />
       <Route path="/knowledge-base/:slug" element={<KBCategory />} />
       <Route path="/knowledge-base/:slug/search" element={<KBSearch />} />
       <Route path="/knowledge-base/:slug/:docId" element={<KBDoc />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/cookies" element={<Cookies />} />
     </Routes>
   );
 }
@@ -67,6 +78,7 @@ export default function App() {
       <BrowserRouter>
         <ImpersonationBanner />
         <AppRoutes />
+        <CookieBanner />
         <Toaster position="bottom-right" richColors closeButton />
       </BrowserRouter>
     </AuthProvider>

@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, FileText, Flag, Layers, Settings as SettingsIcon, ShieldCheck, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Flag, Layers, Settings as SettingsIcon, ShieldCheck, ArrowLeft, BookOpen } from "lucide-react";
 import NavHeader from "./NavHeader";
 import { useAuth } from "../lib/auth";
 
@@ -25,6 +25,7 @@ export default function AdminLayout({ children, pendingReports = 0 }) {
     { to: "/admin/posts", label: "Posts", icon: FileText },
     { to: "/admin/reported", label: "Reported Content", icon: Flag, badge: pendingReports },
     { to: "/admin/spaces", label: "Spaces", icon: Layers },
+    { to: "/admin/knowledge-base", label: "Knowledge Base", icon: BookOpen },
     { to: "/admin/settings", label: "Settings", icon: SettingsIcon },
   ];
 
