@@ -25,23 +25,37 @@ Original spec called for Next.js 14 + Supabase. Adapted to this platform's React
 - Vote/accept-answer mechanics, optimistic UI
 - Guest-readable, registration-gated participation
 
-## What's Been Implemented (2026-02)
-- **Backend** (FastAPI): full auth (register/login/me/logout/check-username/Emergent OAuth), profile setup, spaces, posts (CRUD + filter/sort/unanswered/pagination), answers + comments, votes (toggle + reputation), accept-answer, notifications (list + mark-read), community stats/top-contributors/recent-activity/tags
-- **Seed data**: 8 spaces + 10 demo users (4 aspirants / 4 practitioners / 2 employers) + 16 demo posts spanning all spaces with realistic answers, accepted answers, and vote counts. Idempotent on startup.
-- **Frontend pages**: Landing (hero, 3-group, stats, featured spaces, recent activity, quotes, CTA), Login (email + Google), Register (4-step wizard with live username check), Onboarding (returning OAuth users), Community Home (feed with tabs/sort + sidebars), Post Detail (markdown rendering, voting, accept answer, answer composer), New Post (2-step with conditional guidance), Space page, Profile page (header + stats + tabs), Notifications.
-- **Components**: GroupBadge (3 colors), PostTypeBadge, VoteComponent (vertical arrows + optimistic updates), PostCard, NavHeader (with user dropdown), CommunityLayout (sidebar + right rail), AuthCallback (Emergent OAuth bridge).
-- **Testing**: 33/33 backend pytest tests passing (testing agent). Frontend e2e validated for landing, login, community, post detail, voting, spaces, profile, new-post flow.
+## What's Been Implemented
+**2026-02 (initial MVP)**
+- **Backend** (FastAPI): full auth (register/login/me/logout/check-username/Emergent OAuth), profile setup, spaces, posts (CRUD + filter/sort/unanswered/pagination), answers + comments, votes (toggle + reputation), accept-answer, notifications, community stats/top-contributors/recent-activity/tags
+- **Seed data**: 8 spaces + 10 demo users + 16 demo posts. Idempotent.
+- **Frontend pages**: Landing, Login, Register, Onboarding, Community Home, Post Detail, New Post, Space page, Profile page, Notifications.
+
+**2026-02 (later in session)**
+- Bookmarks (backend + UI), Search (`/search`), live vote polling, edit/delete on answers, Share buttons.
+- **Admin Dashboard** (6 pages): Stats, Members, Posts, Reported Content (with reporter thank-you notifications), Spaces, Settings. Admin impersonation of users via special JWT claim.
+- **Knowledge Base — read flows**: KB Home, Category pages, KB Search, Document detail (with helpful votes + bookmarks). Seeded with 6 categories and 8 documents.
+
+**2026-02 (this session — P0 KB authoring)**
+- **POST /api/kb/docs** — Practitioners/Employers can author KB docs (draft or publish). Aspirants get 403.
+- **GET /api/kb/docs/mine** — list current user's KB docs (drafts + published).
+- **Admin KB endpoints** — `/api/admin/kb/stats`, `/api/admin/kb/docs` (filters: status/category/q + pagination), PATCH (publish/feature/edit + adjusts category counts), DELETE (cascades helpful votes & bookmarks), categories list/create/update.
+- **Frontend `/knowledge-base/new`** — 2-step contribute flow (doc type → form + markdown body with live preview + callout helper). Save draft / Publish.
+- **Frontend `/admin/knowledge-base`** — Stats cards, status tabs (All/Published/Drafts/Featured), search + category filter, action menu per row (view/publish/unpublish/feature/delete), Categories panel with create + edit modal.
+- KB Home shows "Contribute a document" CTA for Practitioners/Employers.
+- Admin sidebar adds "Knowledge Base" entry.
+- **Testing**: 17/17 new pytest tests + full frontend e2e via testing_agent (iteration_2.json). 100% pass.
 
 ## Prioritized Backlog (Phase 2+)
-- P0 Bookmarks (UI present but no backend wiring yet)
-- P0 Sub-badges (Contributor/Trusted/Expert) on reaching reputation milestones
-- P1 Realtime updates via Supabase-equivalent (Mongo change streams)
-- P1 Email notifications
-- P1 Mentions (@username) with notifications
-- P1 Edit/delete answers (by author) with edit history
-- P2 Search across posts
-- P2 Share/report buttons functional
-- P2 Job board, freelance marketplace, mentoring (explicitly out of MVP scope)
+- P1 Full User Profile Page (`/profile/[username]`) — follower logic, paginated Questions/Answers/Reputation tabs.
+- P1 Sub-badges (Contributor/Trusted/Expert) on reputation milestones.
+- P1 Edit existing KB documents (author flow) — currently only admins can edit via PATCH.
+- P2 Realtime updates (Mongo change streams).
+- P2 Email/mention notifications.
+- P2 Refactor `server.py` (1803 lines) into APIRouters: `auth.py`, `posts.py`, `kb.py`, `admin.py`.
+- P2 Add `Field(max_length=...)` bounds to KBDocIn for abuse prevention.
+- P2 DELETE endpoint for kb categories (currently hide-only).
+- P2 Cookie consent banner overlap on /knowledge-base/new bottom action bar — move to corner toast.
 
 ## Test Credentials
 See `/app/memory/test_credentials.md`
