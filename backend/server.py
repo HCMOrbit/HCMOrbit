@@ -927,6 +927,170 @@ async def create_report(payload: ReportIn, user: dict = Depends(get_current_user
     return {"ok": True}
 
 
+# ---------- Knowledge Base ----------
+async def _enrich_docs(docs):
+    if not docs:
+        return docs
+    author_ids = list({d["author_id"] for d in docs})
+    authors = {u["user_id"]: u for u in await db.users.find(
+        {"user_id": {"$in": author_ids}}, {"_id": 0, "password_hash": 0}
+    ).to_list(len(author_ids))}
+    for d in docs:
+        a = authors.get(d["author_id"], {})
+        d["author"] = {
+            "user_id": a.get("user_id"), "username": a.get("username"),
+            "full_name": a.get("full_name"), "group_type": a.get("group_type"),
+            "reputation_score": a.get("reputation_score", 0),
+        }
+        h, nh = d.get("helpful_count", 0), d.get("not_helpful_count", 0)
+        d["helpful_pct"] = int(round(100 * h / max(1, h + nh)))
+    return docs
+
+
+@api.get("/kb/stats")
+async def kb_stats():
+    total_docs = await db.kb_docs.count_documents({"is_published": True})
+    pipeline = [{"$group": {"_id": None, "h": {"$sum": "$helpful_count"}, "nh": {"$sum": "$not_helpful_count"}}}]
+    cur = db.kb_docs.aggregate(pipeline)
+    agg = [d async for d in cur]
+    h = agg[0]["h"] if agg else 0
+    nh = agg[0]["nh"] if agg else 0
+    avg = int(round(100 * h / max(1, h + nh))) if (h + nh) > 0 else 0
+    return {"total_docs": total_docs, "total_helpful_votes": h + nh, "avg_helpful_pct": avg}
+
+
+@api.get("/kb/categories")
+async def kb_categories():
+    cats = await db.kb_categories.find({"is_hidden": {"$ne": True}}, {"_id": 0}).sort("sort_order", 1).to_list(50)
+    # Attach top 3 docs per category
+    for c in cats:
+        top = await db.kb_docs.find(
+            {"category_id": c["id"], "is_published": True}, {"_id": 0, "id": 1, "title": 1}
+        ).sort("view_count", -1).limit(3).to_list(3)
+        c["top_docs"] = top
+    return cats
+
+
+@api.get("/kb/categories/{slug}")
+async def kb_category_detail(slug: str):
+    c = await db.kb_categories.find_one({"slug": slug}, {"_id": 0})
+    if not c:
+        raise HTTPException(404, "Category not found")
+    return c
+
+
+@api.get("/kb/featured")
+async def kb_featured(limit: int = 3):
+    docs = await db.kb_docs.find(
+        {"is_featured": True, "is_published": True}, {"_id": 0}
+    ).sort("view_count", -1).limit(limit).to_list(limit)
+    enriched = await _enrich_docs(docs)
+    # Attach category info
+    cat_ids = list({d["category_id"] for d in enriched})
+    cats = {c["id"]: c for c in await db.kb_categories.find({"id": {"$in": cat_ids}}, {"_id": 0}).to_list(len(cat_ids))}
+    for d in enriched:
+        c = cats.get(d["category_id"], {})
+        d["category"] = {"slug": c.get("slug"), "name": c.get("name"), "icon": c.get("icon")}
+    return enriched
+
+
+@api.get("/kb/docs")
+async def kb_list_docs(
+    category: Optional[str] = None,
+    q: Optional[str] = None,
+    type: Optional[str] = None,
+    difficulty: Optional[str] = None,
+    version: Optional[str] = None,
+    limit: int = 50,
+):
+    query = {"is_published": True}
+    if category:
+        c = await db.kb_categories.find_one({"slug": category}, {"_id": 0})
+        if not c:
+            return {"docs": [], "total": 0}
+        query["category_id"] = c["id"]
+    if type and type != "all":
+        query["doc_type"] = type
+    if difficulty and difficulty != "all":
+        query["difficulty"] = difficulty
+    if version and version != "all":
+        query["workday_version"] = version
+    if q:
+        esc = re.escape(q.strip())
+        query["$or"] = [
+            {"title": {"$regex": esc, "$options": "i"}},
+            {"summary": {"$regex": esc, "$options": "i"}},
+            {"tags": {"$regex": f"^{esc}", "$options": "i"}},
+        ]
+    total = await db.kb_docs.count_documents(query)
+    docs = await db.kb_docs.find(query, {"_id": 0}).sort("view_count", -1).limit(limit).to_list(limit)
+    return {"docs": await _enrich_docs(docs), "total": total}
+
+
+@api.get("/kb/docs/{doc_id}")
+async def kb_get_doc(doc_id: str):
+    doc = await db.kb_docs.find_one({"id": doc_id, "is_published": True}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    await db.kb_docs.update_one({"id": doc_id}, {"$inc": {"view_count": 1}})
+    doc["view_count"] = doc.get("view_count", 0) + 1
+    enriched = (await _enrich_docs([doc]))[0]
+    c = await db.kb_categories.find_one({"id": doc["category_id"]}, {"_id": 0})
+    if c:
+        enriched["category"] = {"slug": c["slug"], "name": c["name"], "icon": c["icon"]}
+    # Related: same category, share at least one tag, exclude self
+    related = await db.kb_docs.find(
+        {"category_id": doc["category_id"], "id": {"$ne": doc_id}, "is_published": True},
+        {"_id": 0, "id": 1, "title": 1, "doc_type": 1}
+    ).limit(4).to_list(4)
+    enriched["related"] = related
+    return enriched
+
+
+class KBHelpfulIn(BaseModel):
+    value: Literal["helpful", "not_helpful"]
+
+
+@api.post("/kb/docs/{doc_id}/helpful")
+async def kb_vote_helpful(doc_id: str, payload: KBHelpfulIn, user: dict = Depends(get_current_user)):
+    doc = await db.kb_docs.find_one({"id": doc_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    existing = await db.kb_helpful_votes.find_one(
+        {"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0}
+    )
+    if existing:
+        raise HTTPException(400, "You've already rated this document.")
+    await db.kb_helpful_votes.insert_one({
+        "id": str(uuid.uuid4()), "doc_id": doc_id, "user_id": user["user_id"],
+        "value": payload.value, "created_at": now_iso(),
+    })
+    field = "helpful_count" if payload.value == "helpful" else "not_helpful_count"
+    await db.kb_docs.update_one({"id": doc_id}, {"$inc": {field: 1}})
+    new_h = doc.get("helpful_count", 0) + (1 if payload.value == "helpful" else 0)
+    new_nh = doc.get("not_helpful_count", 0) + (1 if payload.value == "not_helpful" else 0)
+    return {"helpful_count": new_h, "not_helpful_count": new_nh}
+
+
+@api.get("/kb/docs/{doc_id}/helpful/me")
+async def kb_my_helpful(doc_id: str, user: dict = Depends(get_current_user)):
+    v = await db.kb_helpful_votes.find_one({"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0})
+    return {"value": v["value"] if v else None}
+
+
+@api.post("/kb/bookmarks/{doc_id}")
+async def kb_toggle_bookmark(doc_id: str, user: dict = Depends(get_current_user)):
+    existing = await db.kb_bookmarks.find_one({"user_id": user["user_id"], "doc_id": doc_id})
+    if existing:
+        await db.kb_bookmarks.delete_one({"user_id": user["user_id"], "doc_id": doc_id})
+        return {"bookmarked": False}
+    await db.kb_bookmarks.insert_one({
+        "id": str(uuid.uuid4()), "user_id": user["user_id"], "doc_id": doc_id,
+        "created_at": now_iso(),
+    })
+    return {"bookmarked": True}
+
+
 # ---------- Admin namespace ----------
 @api.get("/admin/check")
 async def admin_check(admin: dict = Depends(require_admin)):
@@ -1321,8 +1485,15 @@ async def on_startup():
     await db.bookmarks.create_index([("user_id", 1), ("created_at", -1)])
     await db.reports.create_index([("status", 1), ("created_at", -1)])
     await db.admin_logs.create_index([("created_at", -1)])
+    await db.kb_categories.create_index("slug", unique=True)
+    await db.kb_docs.create_index("id", unique=True)
+    await db.kb_docs.create_index([("category_id", 1), ("view_count", -1)])
+    await db.kb_helpful_votes.create_index([("doc_id", 1), ("user_id", 1)], unique=True)
+    await db.kb_bookmarks.create_index([("user_id", 1), ("doc_id", 1)], unique=True)
     from seed_data import seed_all
     await seed_all(db, hash_password)
+    from seed_kb import seed_kb
+    await seed_kb(db)
     # Seed admin
     admin_email = os.environ["ADMIN_EMAIL"].lower()
     admin_doc = await db.users.find_one({"email": admin_email})
