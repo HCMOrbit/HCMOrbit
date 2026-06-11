@@ -11,6 +11,7 @@ import logging
 import bcrypt
 import jwt
 import httpx
+import certifi
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Literal
 
@@ -21,7 +22,13 @@ from pydantic import BaseModel, Field, EmailStr
 
 # ---------- DB ----------
 mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
+# Use certifi's CA bundle for TLS verification — required for MongoDB Atlas
+# connections on hosts (e.g. Railway) whose default trust store is missing
+# the LetsEncrypt / ISRG root certificates Atlas presents.
+_mongo_kwargs = {}
+if mongo_url.startswith("mongodb+srv://") or "tls=true" in mongo_url.lower() or "ssl=true" in mongo_url.lower():
+    _mongo_kwargs["tlsCAFile"] = certifi.where()
+client = AsyncIOMotorClient(mongo_url, **_mongo_kwargs)
 db = client[os.environ["DB_NAME"]]
 
 JWT_ALGORITHM = "HS256"
