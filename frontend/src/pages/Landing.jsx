@@ -214,10 +214,8 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="mt-14 lg:mt-20 pt-10 border-t border-white/10 grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6" data-testid="founder-credentials">
+          <div className="mt-14 lg:mt-20 pt-10 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-8 lg:gap-10 max-w-2xl mx-auto" data-testid="founder-credentials">
             <Credential value="17+" label="Years HR Technology Experience" />
-            <Credential value="2022–Now" label="Workday Technical Lead & Architect" />
-            <Credential value="45+" label="Enterprise Integrations Delivered" />
             <Credential value="Multiple Industries" label="Healthcare · Manufacturing · Technology · Services" />
           </div>
         </div>
