@@ -71,6 +71,38 @@ function Counter({ value, suffix = "" }) {
   return <span className="counter">{n.toLocaleString()}{suffix}</span>;
 }
 
+function FounderAvatar() {
+  const [errored, setErrored] = useState(false);
+  if (errored) {
+    return (
+      <div
+        className="w-48 h-48 lg:w-56 lg:h-56 rounded-full bg-gradient-to-br from-[#0D9373] to-[#0b7c61] ring-4 ring-white/10 flex items-center justify-center font-heading text-5xl font-bold text-white"
+        data-testid="founder-avatar-fallback"
+        aria-label="Suchismita Tripathy"
+      >
+        ST
+      </div>
+    );
+  }
+  return (
+    <img
+      src="/suchi_founder_photo.png"
+      alt="Suchismita (Suchi) Tripathy"
+      onError={() => setErrored(true)}
+      className="w-48 h-48 lg:w-56 lg:h-56 rounded-full object-cover ring-4 ring-white/10"
+      data-testid="founder-avatar"
+    />
+  );
+}
+
+function Credential({ value, label }) {
+  return (
+    <div className="text-center lg:text-left">
+      <div className="font-heading text-3xl lg:text-4xl font-bold text-[#0D9373] leading-none">{value}</div>
+      <div className="mt-2 text-xs lg:text-sm text-white/70 leading-snug uppercase tracking-wider">{label}</div>
+    </div>
+  );
+}
 export default function Landing() {
   const [stats, setStats] = useState({});
   const [spaces, setSpaces] = useState([]);
@@ -150,6 +182,43 @@ export default function Landing() {
                 <span className="text-[15px] text-[#0F172A] leading-relaxed">{r}</span>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Founder */}
+      <section className="relative bg-[#0A1628] text-white py-20 lg:py-28 overflow-hidden" data-testid="founder-section">
+        <div className="absolute -left-32 top-1/3 w-[480px] h-[480px] rounded-full bg-[#0D9373]/10 blur-[120px] pointer-events-none" />
+        <div className="relative max-w-[1100px] mx-auto px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <div className="inline-block text-xs uppercase tracking-[0.18em] text-[#0D9373] font-semibold mb-3">Our Story</div>
+            <h2 className="font-heading text-3xl lg:text-5xl font-semibold tracking-tight">Meet the Founder</h2>
+          </div>
+
+          <div className="grid lg:grid-cols-[280px_1fr] gap-10 lg:gap-14 items-start">
+            <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+              <FounderAvatar />
+              <div className="mt-5 font-heading text-xl font-bold text-white">Suchismita (Suchi) Tripathy</div>
+              <div className="mt-1 text-sm font-medium text-[#0D9373]">Founder, HCMOrbit</div>
+            </div>
+
+            <div className="space-y-5 text-[15px] lg:text-base leading-relaxed text-white/85" data-testid="founder-story">
+              <p>Hi, I&apos;m Suchismita — most people call me Suchi.</p>
+              <p>I&apos;ve spent 17+ years working across the full spectrum of HR technology — SAP, UKG, SAP SuccessFactors, Dayforce, Oracle HCM, and ADP — supporting enterprise organizations across Healthcare, Manufacturing, Technology, and Services.</p>
+              <p>Since 2022 I&apos;ve been focused exclusively on Workday, serving as Technical Lead and Architect — most recently designing and building the entire HRIS system from the ground up for an EV startup.</p>
+              <p>Across all of these platforms and years, I kept running into the same problem. There was no dedicated space where HR technology practitioners could openly share real challenges, learn from each other&apos;s implementations, and grow together professionally.</p>
+              <p>LinkedIn is too noisy. Generic HR forums don&apos;t go deep enough. Workday Community is great for product docs — but not for candid practitioner conversations.</p>
+              <p>HCMOrbit was built to fill that gap — a focused community where Workday professionals can ask hard questions without judgment, share what actually works in production, and build meaningful careers together.</p>
+              <p>Whether you&apos;re new to Workday or a seasoned architect — this community was built by a practitioner, for practitioners.</p>
+              <p className="text-white font-medium not-italic pt-2">— Suchi, Founder of HCMOrbit</p>
+            </div>
+          </div>
+
+          <div className="mt-14 lg:mt-20 pt-10 border-t border-white/10 grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6" data-testid="founder-credentials">
+            <Credential value="17+" label="Years HR Technology Experience" />
+            <Credential value="2022–Now" label="Workday Technical Lead & Architect" />
+            <Credential value="45+" label="Enterprise Integrations Delivered" />
+            <Credential value="Multiple Industries" label="Healthcare · Manufacturing · Technology · Services" />
           </div>
         </div>
       </section>
