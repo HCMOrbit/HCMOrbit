@@ -76,7 +76,7 @@ function FounderAvatar() {
   if (errored) {
     return (
       <div
-        className="w-64 h-64 lg:w-72 lg:h-72 rounded-2xl bg-gradient-to-br from-[#0D9373] to-[#0b7c61] ring-1 ring-[#0D9373]/30 shadow-sm flex items-center justify-center font-heading text-6xl font-bold text-white"
+        className="w-64 h-64 lg:w-72 lg:h-72 flex items-center justify-center font-heading text-6xl font-bold text-[#0D9373]"
         data-testid="founder-avatar-fallback"
         aria-label="Suchismita Tripathy"
       >
@@ -89,7 +89,7 @@ function FounderAvatar() {
       src="/suchi_founder_photo.png"
       alt="Suchismita (Suchi) Tripathy"
       onError={() => setErrored(true)}
-      className="w-64 h-64 lg:w-72 lg:h-72 rounded-2xl object-cover ring-1 ring-[#0D9373]/30 shadow-sm"
+      className="w-64 h-64 lg:w-72 lg:h-72 object-contain"
       data-testid="founder-avatar"
     />
   );
