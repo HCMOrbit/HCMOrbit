@@ -52,6 +52,15 @@ const REASONS = [
   "Build your Workday professional network",
 ];
 
+const FOUNDING_BENEFITS = [
+  { icon: "🏅", title: "Founding Member Badge", desc: "Permanent recognition as an early community builder" },
+  { icon: "⚡", title: "Early Feature Access", desc: "Be first to try new tools and features" },
+  { icon: "🎯", title: "Shape the Community", desc: "Direct input on what we build next" },
+  { icon: "🎟️", title: "Priority Event Access", desc: "First access to webinars, AMAs, and live sessions" },
+  { icon: "🏆", title: "Community Wall Recognition", desc: "Your name on the HCMOrbit Founding Members wall" },
+  { icon: "🤝", title: "Exclusive Founder Network", desc: "Private channel with direct access to Suchi" },
+];
+
 function Counter({ value, suffix = "" }) {
   const [n, setN] = useState(0);
   useEffect(() => {
@@ -346,6 +355,50 @@ function Credential({ value, label }) {
                 </figcaption>
               </figure>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Founding Member */}
+      <section className="relative bg-[#0A1628] text-white py-20 lg:py-28 overflow-hidden" data-testid="founding-member-section">
+        <div className="absolute -right-32 top-0 w-[520px] h-[520px] rounded-full bg-[#0D9373]/12 blur-[120px] pointer-events-none" />
+        <div className="absolute -left-32 bottom-0 w-[420px] h-[420px] rounded-full bg-[#0D9373]/10 blur-[120px] pointer-events-none" />
+        <div className="relative max-w-[1100px] mx-auto px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0D9373]/10 border border-[#0D9373]/30 text-xs uppercase tracking-[0.18em] text-[#0D9373] font-semibold mb-5">
+            Limited Spots Available
+          </div>
+          <h2 className="font-heading text-4xl lg:text-5xl font-bold tracking-tight">Become a Founding Member</h2>
+          <p className="mt-5 text-lg text-white/65 max-w-2xl mx-auto leading-relaxed">
+            Join the first wave of Workday professionals shaping the future of HCMOrbit. Founding Members get exclusive benefits — forever.
+          </p>
+
+          <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-left" data-testid="founder-benefits-grid">
+            {FOUNDING_BENEFITS.map((b) => (
+              <div key={b.title} className="bg-white/[0.03] border border-white/10 rounded-xl p-6 hover:border-[#0D9373]/40 hover:bg-white/[0.05] transition-colors">
+                <div className="text-3xl leading-none mb-4" aria-hidden>{b.icon}</div>
+                <div className="font-heading font-semibold text-white">{b.title}</div>
+                <div className="mt-1.5 text-sm text-white/60 leading-relaxed">{b.desc}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-14 pt-10 border-t border-white/10" data-testid="founder-member-counter">
+            <div className="font-heading text-5xl lg:text-6xl font-bold text-[#0D9373] leading-none">
+              <Counter value={stats.members || 0} />
+            </div>
+            <div className="mt-4 text-base lg:text-lg text-white font-medium">Workday professionals have already joined HCMOrbit</div>
+            <div className="mt-1 text-sm text-white/50">Help shape the future of the community.</div>
+          </div>
+
+          <div className="mt-10">
+            <Link
+              to="/register?founder=1"
+              data-testid="founding-member-cta"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white font-semibold text-base transition-colors shadow-lg shadow-[#0D9373]/20"
+            >
+              Join as a Founding Member <ArrowRight className="w-4 h-4" />
+            </Link>
+            <div className="mt-3 text-xs text-white/40">Free to join. No credit card required.</div>
           </div>
         </div>
       </section>
