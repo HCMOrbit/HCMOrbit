@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, CheckCircle2, MessageSquare, Users, Network, Shield, BarChart3, CircleDollarSign, Wallet, Landmark, Coffee, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CheckCircle2, MessageSquare, Users, Network, Shield, BarChart3, CircleDollarSign, Wallet, Landmark, Coffee, Sparkles, Eye } from "lucide-react";
 import NavHeader from "../components/NavHeader";
 import GroupBadge from "../components/GroupBadge";
 import PostTypeBadge from "../components/PostTypeBadge";
@@ -50,6 +50,51 @@ const REASONS = [
   "Share integration and EIB solutions",
   "Stay ahead of Workday releases and AI features",
   "Build your Workday professional network",
+];
+
+const FEATURED_TOPICS = [
+  {
+    tag: "Payroll",
+    title: "How are you handling retro pay calculations when Workday auto-calculates incorrectly?",
+    preview: "We had a period-end issue where retro wasn't catching rate changes mid-period…",
+    replies: 14,
+    views: 312,
+  },
+  {
+    tag: "Security",
+    title: "Best practice for segmented security groups across multiple legal entities?",
+    preview: "Struggling with overlap between domain security policies when orgs share roles…",
+    replies: 9,
+    views: 198,
+  },
+  {
+    tag: "Integrations",
+    title: "Studio integration failing silently — no error logs, just drops records",
+    preview: "Has anyone seen Workday Studio drop records with zero error output on the integration audit…",
+    replies: 22,
+    views: 445,
+  },
+  {
+    tag: "Reporting",
+    title: "Composite report vs custom report — when does it actually matter for performance?",
+    preview: "My BIRT reports are slow but I'm not sure if switching to composite is the answer…",
+    replies: 11,
+    views: 267,
+  },
+  {
+    tag: "HCM",
+    title: "How to manage position restrictions when headcount is frozen mid-year?",
+    preview: "Finance wants positions closed but HR needs them open for backfills — anyone solved this cleanly?",
+    replies: 17,
+    views: 389,
+  },
+  {
+    tag: "Recruiting",
+    title: "Candidate stage progression not triggering offer letter template — Workday bug or config?",
+    preview: "We're on 2024R2 and the offer template isn't attaching after moving candidate to Offer stage…",
+    replies: 8,
+    views: 154,
+  },
 ];
 
 const FOUNDING_BENEFITS = [
@@ -190,6 +235,55 @@ function Credential({ value, label }) {
                 <span className="text-[15px] text-[#0F172A] leading-relaxed">{r}</span>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Workday Topics */}
+      <section className="bg-white py-20 lg:py-24" data-testid="featured-topics-section">
+        <div className="max-w-[1200px] mx-auto px-6 lg:px-8">
+          <div className="max-w-2xl mb-12">
+            <div className="text-xs uppercase tracking-wider text-[#0D9373] font-semibold mb-3">Featured Workday Topics</div>
+            <h2 className="font-heading text-3xl lg:text-4xl font-semibold text-[#0A1628]">What members are discussing.</h2>
+            <p className="text-[#64748B] mt-3">Real conversations from Workday practitioners — no fluff, no sales pitch.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="featured-topics-grid">
+            {FEATURED_TOPICS.map((t) => (
+              <Link
+                key={t.title}
+                to="/community"
+                className="group block bg-[#0A1628] hover:bg-[#0F1F36] border border-[#0A1628] hover:border-[#0D9373]/50 rounded-xl p-6 transition-colors"
+                data-testid={`featured-topic-${t.tag.toLowerCase()}`}
+              >
+                <span className="inline-block px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider bg-[#0D9373]/15 text-[#0D9373] border border-[#0D9373]/30">
+                  {t.tag}
+                </span>
+                <h3 className="mt-4 font-heading font-semibold text-white leading-snug text-[15px] lg:text-base group-hover:text-[#0D9373] transition-colors">
+                  {t.title}
+                </h3>
+                <p className="mt-3 text-sm text-white/55 leading-relaxed line-clamp-2">{t.preview}</p>
+                <div className="mt-5 pt-4 border-t border-white/10 flex items-center gap-4 text-xs text-white/50">
+                  <span className="inline-flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5" /> <span className="counter">{t.replies}</span> replies
+                  </span>
+                  <span className="text-white/20">·</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Eye className="w-3.5 h-3.5" /> <span className="counter">{t.views}</span> views
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <div className="mt-12 text-center">
+            <Link
+              to="/community"
+              data-testid="browse-discussions-cta"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-md bg-[#0A1628] hover:bg-[#0D9373] text-white font-medium text-sm transition-colors"
+            >
+              Browse All Discussions <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </section>
