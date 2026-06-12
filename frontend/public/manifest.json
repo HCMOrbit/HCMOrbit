@@ -4,8 +4,8 @@
   "description": "The independent community where Workday HCM, Payroll, Integrations, Reporting, and Security professionals learn, solve, and grow together.",
   "icons": [
     {
-      "src": "favicon.svg",
-      "type": "image/svg+xml",
+      "src": "favicon.png",
+      "type": "image/png",
       "sizes": "any",
       "purpose": "any"
     }
