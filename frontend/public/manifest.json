@@ -1,0 +1,17 @@
+{
+  "short_name": "HCMOrbit",
+  "name": "HCMOrbit — Community for Workday professionals",
+  "description": "The independent community where Workday HCM, Payroll, Integrations, Reporting, and Security professionals learn, solve, and grow together.",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0A1628",
+  "background_color": "#0A1628"
+}
