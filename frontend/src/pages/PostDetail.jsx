@@ -9,6 +9,7 @@ import PostTypeBadge from "../components/PostTypeBadge";
 import VoteComponent from "../components/VoteComponent";
 import SharePopover from "../components/SharePopover";
 import ReportModal from "../components/ReportModal";
+import AuthPrompt from "../components/AuthPrompt";
 import { api, timeAgo, formatApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { loginHref } from "../lib/redirect";
@@ -361,9 +362,7 @@ export default function PostDetail() {
         <div className="mt-8 bg-white border border-[#E2E8F0] rounded-lg p-6">
           <h3 className="font-heading text-lg font-semibold text-[#0A1628] mb-3">Your answer</h3>
           {!user ? (
-            <div className="text-sm text-[#64748B]">
-              <Link to={loginHref(location)} className="text-[#0D9373] hover:underline font-medium">Sign in</Link> to answer this question.
-            </div>
+            <AuthPrompt compact message="Sign in to join the discussion" />
           ) : (
             <form onSubmit={submitAnswer}>
               <textarea

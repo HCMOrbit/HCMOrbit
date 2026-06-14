@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
 import { CircleHelp, MessagesSquare, Trophy, ChevronRight } from "lucide-react";
 import NavHeader from "../components/NavHeader";
+import AuthPrompt from "../components/AuthPrompt";
 import { api, formatApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { loginHref } from "../lib/redirect";
@@ -29,8 +30,8 @@ export default function NewPost() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) navigate(loginHref(location));
-    else if (!user.onboarded) navigate("/onboarding");
+    // Don't redirect logged-out users — show an inline AuthPrompt below.
+    if (user && !user.onboarded) navigate("/onboarding");
   }, [user, authLoading, navigate, location]);
 
   useEffect(() => {
@@ -55,6 +56,19 @@ export default function NewPost() {
   };
 
   const selectedSpace = spaces.find((s) => s.slug === spaceSlug);
+
+  if (!authLoading && !user) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC]" data-testid="new-post-page">
+        <NavHeader />
+        <div className="max-w-[640px] mx-auto px-4 lg:px-8 py-16">
+          <h1 className="font-heading text-2xl font-semibold text-[#0A1628] mb-2">Start a discussion</h1>
+          <p className="text-sm text-[#64748B] mb-6">HCMOrbit is an open community — but to post you need an account so other practitioners know who they&apos;re talking to.</p>
+          <AuthPrompt message="Sign in to start a discussion" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]" data-testid="new-post-page">
