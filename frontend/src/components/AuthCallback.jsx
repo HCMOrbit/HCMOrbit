@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { popOAuthRedirect } from "../lib/redirect";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -25,7 +26,12 @@ export default function AuthCallback() {
         login(data);
         // remove hash
         window.history.replaceState(null, "", window.location.pathname);
-        navigate(data.user.onboarded ? "/community" : "/onboarding");
+        const stashed = popOAuthRedirect();
+        if (!data.user.onboarded) {
+          navigate(stashed ? `/onboarding?redirect=${encodeURIComponent(stashed)}` : "/onboarding");
+        } else {
+          navigate(stashed || "/community");
+        }
       })
       .catch(() => {
         navigate("/login");

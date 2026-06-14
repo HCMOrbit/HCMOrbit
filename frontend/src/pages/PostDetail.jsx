@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { CheckCircle2, MessageSquare, Eye, Bookmark, Send, Pencil, Trash2, X, Flag } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -11,11 +11,13 @@ import SharePopover from "../components/SharePopover";
 import ReportModal from "../components/ReportModal";
 import { api, timeAgo, formatApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { loginHref } from "../lib/redirect";
 import { toast } from "sonner";
 
 export default function PostDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [post, setPost] = useState(null);
   const [answers, setAnswers] = useState([]);
@@ -94,7 +96,7 @@ export default function PostDetail() {
 
   const submitAnswer = async (e) => {
     e.preventDefault();
-    if (!user) { navigate("/login"); return; }
+    if (!user) { navigate(loginHref(location)); return; }
     if (newAnswer.length < 50) { toast.error("Answer must be at least 50 characters"); return; }
     setSubmitting(true);
     try {
@@ -360,7 +362,7 @@ export default function PostDetail() {
           <h3 className="font-heading text-lg font-semibold text-[#0A1628] mb-3">Your answer</h3>
           {!user ? (
             <div className="text-sm text-[#64748B]">
-              <Link to="/login" className="text-[#0D9373] hover:underline font-medium">Sign in</Link> to answer this question.
+              <Link to={loginHref(location)} className="text-[#0D9373] hover:underline font-medium">Sign in</Link> to answer this question.
             </div>
           ) : (
             <form onSubmit={submitAnswer}>

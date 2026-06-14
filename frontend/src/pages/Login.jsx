@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { api, formatApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { safeRedirectTarget, stashOAuthRedirect } from "../lib/redirect";
 import { toast } from "sonner";
 
 export default function Login() {
@@ -12,6 +13,17 @@ export default function Login() {
   const [error, setError] = useState("");
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo = safeRedirectTarget(location.search);
+
+  const postAuthNavigate = (user) => {
+    if (!user.onboarded) {
+      // Preserve the redirect across onboarding too
+      navigate(redirectTo ? `/onboarding?redirect=${encodeURIComponent(redirectTo)}` : "/onboarding");
+      return;
+    }
+    navigate(redirectTo || "/community");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,7 +33,7 @@ export default function Login() {
       const { data } = await api.post("/auth/login", { email, password });
       login(data);
       toast.success(`Welcome back, ${data.user.full_name?.split(" ")[0]}`);
-      navigate(data.user.onboarded ? "/community" : "/onboarding");
+      postAuthNavigate(data.user);
     } catch (e) {
       setError(formatApiError(e));
     } finally {
@@ -31,6 +43,8 @@ export default function Login() {
 
   const handleGoogle = () => {
     // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+    // Stash the post-auth destination so AuthCallback can restore it after the OAuth round-trip.
+    stashOAuthRedirect(redirectTo);
     const redirectUrl = window.location.origin + "/community";
     window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
   };
@@ -103,7 +117,7 @@ export default function Login() {
               </button>
             </form>
             <div className="text-center text-sm text-[#64748B] mt-5">
-              New here? <Link to="/register" className="text-[#0D9373] hover:underline font-medium" data-testid="register-link">Create an account</Link>
+              New here? <Link to={redirectTo ? `/register?redirect=${encodeURIComponent(redirectTo)}` : "/register"} className="text-[#0D9373] hover:underline font-medium" data-testid="register-link">Create an account</Link>
             </div>
           </div>
         </div>

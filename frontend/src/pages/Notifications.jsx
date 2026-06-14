@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Check, MessageSquare, Award, ArrowUp, AtSign, Shield } from "lucide-react";
 import NavHeader from "../components/NavHeader";
 import { api, timeAgo } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { loginHref } from "../lib/redirect";
 
 const ICONS = {
   answer: MessageSquare,
@@ -19,6 +20,7 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const load = () => {
     api.get("/notifications")
@@ -29,9 +31,9 @@ export default function Notifications() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { navigate("/login"); return; }
+    if (!user) { navigate(loginHref(location)); return; }
     load();
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, location]);
 
   const markRead = async () => {
     try {

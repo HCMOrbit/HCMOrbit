@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Users, FileText, Flag, Layers, Settings as SettingsIcon, ShieldCheck, ArrowLeft, BookOpen } from "lucide-react";
 import NavHeader from "./NavHeader";
 import { useAuth } from "../lib/auth";
+import { loginHref } from "../lib/redirect";
 
 export default function AdminLayout({ children, pendingReports = 0 }) {
   const { user, loading: authLoading } = useAuth();
@@ -11,9 +12,9 @@ export default function AdminLayout({ children, pendingReports = 0 }) {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { navigate("/login"); return; }
+    if (!user) { navigate(loginHref(location)); return; }
     if (!user.is_admin) navigate("/community");
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, location]);
 
   if (authLoading || !user || !user.is_admin) {
     return <div className="min-h-screen bg-[#F8FAFC]" />;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useLocation } from "react-router-dom";
 import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Users, Share2, MessageSquare } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -8,11 +8,13 @@ import { DocTypeBadge, DifficultyBadge, VersionPill } from "../../components/kb/
 import GroupBadge from "../../components/GroupBadge";
 import { api, timeAgo, formatApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { loginHref } from "../../lib/redirect";
 import { toast } from "sonner";
 
 export default function KBDoc() {
   const { slug, docId } = useParams();
   const { user } = useAuth();
+  const location = useLocation();
   const [doc, setDoc] = useState(null);
   const [myVote, setMyVote] = useState(null);
   const [bookmarked, setBookmarked] = useState(false);
@@ -214,7 +216,7 @@ export default function KBDoc() {
             <div className="font-heading font-semibold text-[#0A1628]">Was this document helpful?</div>
             <div className="text-xs text-[#64748B] mt-1">{totalVotes} {totalVotes === 1 ? "person has" : "people have"} rated this document · {helpfulPct}% found it helpful</div>
             {!user ? (
-              <Link to="/login" className="inline-block mt-4 text-sm text-[#0D9373] hover:underline">Join HCMOrbit to rate this document →</Link>
+              <Link to={loginHref(location)} className="inline-block mt-4 text-sm text-[#0D9373] hover:underline">Join HCMOrbit to rate this document →</Link>
             ) : myVote ? (
               <div className={`mt-4 text-sm ${myVote === "helpful" ? "text-[#16A34A]" : "text-[#64748B]"}`} data-testid="kb-helpful-confirmation">
                 {myVote === "helpful" ? `Thanks — glad it helped. ${doc.helpful_count} people have now rated this helpful.` : "Thanks for the feedback. We'll work on improving this."}

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
 import { CircleHelp, MessagesSquare, Trophy, ChevronRight } from "lucide-react";
 import NavHeader from "../components/NavHeader";
 import { api, formatApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { loginHref } from "../lib/redirect";
 import { toast } from "sonner";
 
 const TYPES = [
@@ -23,13 +24,14 @@ export default function NewPost() {
   const [spaces, setSpaces] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) navigate("/login");
+    if (!user) navigate(loginHref(location));
     else if (!user.onboarded) navigate("/onboarding");
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, location]);
 
   useEffect(() => {
     api.get("/spaces").then((r) => setSpaces(r.data));

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Check, ArrowRight } from "lucide-react";
 import NavHeader from "../components/NavHeader";
 import GroupBadge from "../components/GroupBadge";
 import { api, formatApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { safeRedirectTarget, loginHref } from "../lib/redirect";
 import { toast } from "sonner";
 
 const WORKDAY_MODULES = ["Core HCM","Compensation","Benefits","Absence","Recruiting","Talent","Payroll","Security","Integrations","Reporting","Financials"];
@@ -12,6 +13,8 @@ const WORKDAY_MODULES = ["Core HCM","Compensation","Benefits","Absence","Recruit
 export default function Onboarding() {
   const { user, refresh, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo = safeRedirectTarget(location.search);
   const [groupType, setGroupType] = useState("");
   const [modules, setModules] = useState([]);
   const [years, setYears] = useState("");
@@ -21,9 +24,9 @@ export default function Onboarding() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) navigate("/login");
-    else if (user.onboarded) navigate("/community");
-  }, [user, authLoading, navigate]);
+    if (!user) navigate(loginHref(location));
+    else if (user.onboarded) navigate(redirectTo || "/community");
+  }, [user, authLoading, navigate, location, redirectTo]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -39,7 +42,7 @@ export default function Onboarding() {
       });
       await refresh();
       toast.success("Profile set up. Welcome to HCMOrbit.");
-      navigate("/community");
+      navigate(redirectTo || "/community");
     } catch (e) {
       toast.error(formatApiError(e));
     } finally { setLoading(false); }
