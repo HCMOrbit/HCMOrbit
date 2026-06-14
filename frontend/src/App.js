@@ -32,6 +32,7 @@ import Terms from "@/pages/Terms";
 import Cookies from "@/pages/Cookies";
 import WhyHCMOrbit from "@/pages/WhyHCMOrbit";
 import CookieBanner from "@/components/CookieBanner";
+import SiteFooter from "@/components/SiteFooter";
 import AuthCallback from "@/components/AuthCallback";
 
 function AppRoutes() {
@@ -75,12 +76,21 @@ function AppRoutes() {
   );
 }
 
+function GlobalFooter() {
+  const location = useLocation();
+  // Hide footer on auth flows and OAuth callback for a focused experience
+  const hidden = ["/login", "/register", "/onboarding"].includes(location.pathname);
+  if (hidden) return null;
+  return <SiteFooter />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <ImpersonationBanner />
         <AppRoutes />
+        <GlobalFooter />
         <CookieBanner />
         <Toaster position="bottom-right" richColors closeButton />
       </BrowserRouter>
