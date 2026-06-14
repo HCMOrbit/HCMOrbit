@@ -288,6 +288,24 @@ function Credential({ value, label }) {
         </div>
       </section>
 
+      {/* Why HCMOrbit teaser */}
+      <section className="bg-[#F8FAFC] border-y border-[#E2E8F0]" data-testid="why-teaser">
+        <div className="max-w-[900px] mx-auto px-6 lg:px-8 py-14 lg:py-16 text-center">
+          <div className="text-xs uppercase tracking-wider text-[#0D9373] font-semibold mb-3">About HCMOrbit</div>
+          <h2 className="font-heading text-2xl lg:text-3xl font-semibold text-[#0A1628]">Why HCMOrbit Exists</h2>
+          <p className="mt-4 text-[15px] lg:text-base text-[#475569] max-w-2xl mx-auto leading-relaxed">
+            Most Workday professionals learn through trial and error. HCMOrbit was created to change that.
+          </p>
+          <Link
+            to="/why-hcmorbit"
+            data-testid="why-teaser-link"
+            className="inline-flex items-center gap-1.5 mt-5 text-sm font-semibold text-[#0D9373] hover:text-[#0b7c61] transition-colors"
+          >
+            Read Our Story <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </section>
+
       {/* Founder */}
       <section className="bg-white py-20 lg:py-28" data-testid="founder-section">
         <div className="max-w-[1100px] mx-auto px-6 lg:px-8">
