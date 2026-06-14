@@ -78,8 +78,12 @@ function AppRoutes() {
 
 function GlobalFooter() {
   const location = useLocation();
-  // Hide footer on auth flows and OAuth callback for a focused experience
-  const hidden = ["/login", "/register", "/onboarding"].includes(location.pathname);
+  const path = location.pathname;
+  // Hide footer on auth flows, OAuth callback, and the entire admin area
+  const hidden =
+    ["/login", "/register", "/onboarding"].includes(path) ||
+    path === "/admin" ||
+    path.startsWith("/admin/");
   if (hidden) return null;
   return <SiteFooter />;
 }
