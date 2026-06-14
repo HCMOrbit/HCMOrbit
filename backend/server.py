@@ -15,10 +15,12 @@ import certifi
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Literal
 
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query, UploadFile, File
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
+
+from kb_docx import parse_kb_docx
 
 # ---------- DB ----------
 mongo_url = os.environ["MONGO_URL"]
@@ -1182,6 +1184,11 @@ class KBDocIn(BaseModel):
     tags: List[str] = []
     workday_version: Optional[str] = None
     publish: bool = True
+    # Extended metadata captured from .docx uploads
+    reference_id: Optional[str] = None
+    sub_module: Optional[str] = None
+    read_time: Optional[str] = None
+    platform: Optional[str] = None
 
 
 @api.post("/kb/docs")
@@ -1215,6 +1222,10 @@ async def kb_create_doc(payload: KBDocIn, user: dict = Depends(get_current_user)
         "target_groups": payload.target_groups or ["aspirant", "practitioner", "employer"],
         "tags": tags,
         "workday_version": payload.workday_version,
+        "reference_id": payload.reference_id,
+        "sub_module": payload.sub_module,
+        "read_time": payload.read_time,
+        "platform": payload.platform or "Workday",
         "view_count": 0,
         "helpful_count": 0,
         "not_helpful_count": 0,
@@ -1584,6 +1595,43 @@ async def admin_update_space(slug: str, payload: SpacePatchIn, admin: dict = Dep
 
 
 # --- Knowledge Base (admin) ---
+@api.post("/admin/kb/docs/upload")
+async def admin_upload_kb_docx(
+    file: UploadFile = File(...),
+    admin: dict = Depends(require_admin),
+):
+    """Parse an uploaded .docx file and return the parsed payload for the
+    admin review screen. Nothing is persisted at this stage — the admin
+    edits any flagged fields, then calls POST /api/kb/docs to save as draft.
+    """
+    if not (file.filename or "").lower().endswith(".docx"):
+        raise HTTPException(400, "Please upload a .docx file.")
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(400, "Uploaded file is empty.")
+    if len(raw) > 10 * 1024 * 1024:
+        raise HTTPException(400, "File is larger than 10 MB.")
+    try:
+        parsed = parse_kb_docx(raw)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception:  # noqa: BLE001
+        raise HTTPException(400, "Could not parse this .docx file.")
+
+    # Decorate with the categories admin can pick from in the review UI
+    categories = await db.kb_categories.find({}, {"_id": 0, "slug": 1, "name": 1, "icon": 1}).sort("sort_order", 1).to_list(50)
+    parsed["available_categories"] = categories
+    parsed["available_doc_types"] = [
+        {"id": "fix_guide", "label": "Fix guide"},
+        {"id": "how_to", "label": "How-to"},
+        {"id": "learning_bite", "label": "Learning bite"},
+        {"id": "reference", "label": "Reference"},
+        {"id": "checklist", "label": "Checklist"},
+    ]
+    parsed["filename"] = file.filename
+    return parsed
+
+
 @api.get("/admin/kb/stats")
 async def admin_kb_stats(admin: dict = Depends(require_admin)):
     return {

@@ -145,6 +145,13 @@ export default function KBDoc() {
               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20">{doc.category?.name}</span>
             </div>
             <h1 className="font-heading text-2xl lg:text-3xl font-bold tracking-tight" data-testid="doc-title">{doc.title}</h1>
+            {(doc.reference_id || doc.read_time) && (
+              <div className="mt-2 text-xs text-white/55 font-mono flex items-center gap-2 flex-wrap" data-testid="doc-ref-strip">
+                {doc.reference_id && <span>{doc.reference_id}</span>}
+                {doc.reference_id && doc.read_time && <span className="text-white/30">·</span>}
+                {doc.read_time && <span>{doc.read_time} read</span>}
+              </div>
+            )}
             <p className="mt-3 text-white/70 leading-relaxed">{doc.summary}</p>
             <div className="mt-5 pt-5 border-t border-white/10 flex flex-wrap items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-medium">{(doc.author?.full_name || "U")[0].toUpperCase()}</div>
