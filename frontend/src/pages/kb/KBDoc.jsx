@@ -17,14 +17,16 @@ export default function KBDoc() {
   const { user } = useAuth();
   const location = useLocation();
   const [doc, setDoc] = useState(null);
+  // myVote: true=helpful, false=not_helpful, null=hasn't voted
   const [myVote, setMyVote] = useState(null);
+  const [voteJustSaved, setVoteJustSaved] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [activeAnchor, setActiveAnchor] = useState("");
 
   const load = useCallback(() => {
     api.get(`/kb/docs/${docId}`).then((r) => setDoc(r.data)).catch(() => {});
     if (user) {
-      api.get(`/kb/docs/${docId}/helpful/me`).then((r) => setMyVote(r.data.value)).catch(() => {});
+      api.get(`/kb/docs/${docId}/feedback`).then((r) => setMyVote(r.data.helpful)).catch(() => {});
     }
   }, [docId, user]);
   useEffect(load, [load]);
@@ -54,13 +56,20 @@ export default function KBDoc() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [headings]);
 
-  const vote = async (value) => {
-    if (!user) { toast.message("Join HCMOrbit to rate this document"); return; }
+  const vote = async (helpful) => {
+    if (!user) return;
+    if (myVote === helpful) return;
+    const prev = myVote;
+    setMyVote(helpful); // optimistic
     try {
-      const { data } = await api.post(`/kb/docs/${docId}/helpful`, { value });
+      const { data } = await api.post(`/kb/docs/${docId}/feedback`, { helpful });
       setDoc((p) => ({ ...p, helpful_count: data.helpful_count, not_helpful_count: data.not_helpful_count }));
-      setMyVote(value);
-    } catch (e) { toast.error(formatApiError(e)); }
+      setVoteJustSaved(true);
+      setTimeout(() => setVoteJustSaved(false), 3500);
+    } catch (e) {
+      setMyVote(prev);
+      toast.error(formatApiError(e));
+    }
   };
 
   const toggleBookmark = async () => {
@@ -220,18 +229,48 @@ export default function KBDoc() {
               <div className="mt-4" data-testid="kb-helpful-auth-prompt">
                 <AuthPrompt compact message="Sign in to rate this article" />
               </div>
-            ) : myVote ? (
-              <div className={`mt-4 text-sm ${myVote === "helpful" ? "text-[#16A34A]" : "text-[#64748B]"}`} data-testid="kb-helpful-confirmation">
-                {myVote === "helpful" ? `Thanks — glad it helped. ${doc.helpful_count} people have now rated this helpful.` : "Thanks for the feedback. We'll work on improving this."}
-              </div>
             ) : (
-              <div className="mt-4 flex gap-2">
-                <button onClick={() => vote("helpful")} className="inline-flex items-center gap-1.5 px-4 py-2 rounded bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium" data-testid="kb-helpful-yes">
-                  <ThumbsUp className="w-4 h-4" /> Yes, it helped
-                </button>
-                <button onClick={() => vote("not_helpful")} className="inline-flex items-center gap-1.5 px-4 py-2 rounded border border-[#E2E8F0] hover:border-[#94A3B8] text-sm font-medium text-[#475569]" data-testid="kb-helpful-no">
-                  <ThumbsDown className="w-4 h-4" /> Needs improvement
-                </button>
+              <div className="mt-4">
+                <div className="flex flex-wrap gap-2" data-testid="kb-helpful-buttons">
+                  <button
+                    type="button"
+                    onClick={() => vote(true)}
+                    aria-pressed={myVote === true}
+                    data-testid="kb-helpful-yes"
+                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
+                      myVote === true
+                        ? "bg-[#0D9373] text-white border-[#0D9373]"
+                        : "bg-white text-[#475569] border-[#E2E8F0] hover:border-[#0D9373] hover:text-[#0D9373]"
+                    }`}
+                  >
+                    <ThumbsUp className={`w-4 h-4 ${myVote === true ? "fill-current" : ""}`} /> Yes, it helped
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => vote(false)}
+                    aria-pressed={myVote === false}
+                    data-testid="kb-helpful-no"
+                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
+                      myVote === false
+                        ? "bg-[#0A1628] text-white border-[#0A1628]"
+                        : "bg-white text-[#475569] border-[#E2E8F0] hover:border-[#0A1628] hover:text-[#0A1628]"
+                    }`}
+                  >
+                    <ThumbsDown className={`w-4 h-4 ${myVote === false ? "fill-current" : ""}`} /> Needs improvement
+                  </button>
+                </div>
+                {(voteJustSaved || myVote !== null) && (
+                  <div
+                    className={`mt-3 text-sm transition-opacity ${voteJustSaved ? "text-[#0D9373]" : "text-[#64748B]"}`}
+                    data-testid="kb-helpful-confirmation"
+                  >
+                    {voteJustSaved
+                      ? "Thanks for your feedback!"
+                      : myVote === true
+                      ? "You marked this helpful. Click the other option to change your vote."
+                      : "You said this needs improvement. Click the other option to change your vote."}
+                  </div>
+                )}
               </div>
             )}
           </div>

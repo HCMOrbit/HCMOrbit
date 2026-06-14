@@ -1093,6 +1093,66 @@ async def kb_my_helpful(doc_id: str, user: dict = Depends(get_current_user)):
     return {"value": v["value"] if v else None}
 
 
+# --- KB feedback (thumbs up/down) — new spec, supports change-vote ---
+class KBFeedbackIn(BaseModel):
+    helpful: bool
+
+
+@api.post("/kb/docs/{doc_id}/feedback")
+async def kb_submit_feedback(doc_id: str, payload: KBFeedbackIn, user: dict = Depends(get_current_user)):
+    doc = await db.kb_docs.find_one({"id": doc_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    new_value = "helpful" if payload.helpful else "not_helpful"
+    existing = await db.kb_helpful_votes.find_one(
+        {"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0}
+    )
+    inc = {}
+    if existing:
+        if existing["value"] == new_value:
+            # Idempotent no-op
+            return {
+                "helpful": payload.helpful,
+                "helpful_count": doc.get("helpful_count", 0),
+                "not_helpful_count": doc.get("not_helpful_count", 0),
+            }
+        # Flip the vote: decrement old, increment new
+        inc[("helpful_count" if existing["value"] == "helpful" else "not_helpful_count")] = -1
+        inc[("helpful_count" if new_value == "helpful" else "not_helpful_count")] = 1
+        await db.kb_helpful_votes.update_one(
+            {"doc_id": doc_id, "user_id": user["user_id"]},
+            {"$set": {"value": new_value, "updated_at": now_iso()}},
+        )
+    else:
+        inc[("helpful_count" if new_value == "helpful" else "not_helpful_count")] = 1
+        await db.kb_helpful_votes.insert_one({
+            "id": str(uuid.uuid4()),
+            "doc_id": doc_id,
+            "user_id": user["user_id"],
+            "value": new_value,
+            "created_at": now_iso(),
+        })
+    if inc:
+        await db.kb_docs.update_one({"id": doc_id}, {"$inc": inc})
+    new_helpful = doc.get("helpful_count", 0) + inc.get("helpful_count", 0)
+    new_not = doc.get("not_helpful_count", 0) + inc.get("not_helpful_count", 0)
+    return {
+        "helpful": payload.helpful,
+        "helpful_count": new_helpful,
+        "not_helpful_count": new_not,
+    }
+
+
+@api.get("/kb/docs/{doc_id}/feedback")
+async def kb_get_my_feedback(doc_id: str, user: dict = Depends(get_current_user)):
+    v = await db.kb_helpful_votes.find_one(
+        {"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0}
+    )
+    if not v:
+        return {"helpful": None}
+    return {"helpful": v["value"] == "helpful"}
+
+
 @api.post("/kb/bookmarks/{doc_id}")
 async def kb_toggle_bookmark(doc_id: str, user: dict = Depends(get_current_user)):
     existing = await db.kb_bookmarks.find_one({"user_id": user["user_id"], "doc_id": doc_id})
