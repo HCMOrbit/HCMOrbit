@@ -7,6 +7,20 @@ Convention (per HCMOrbit KB upload spec):
 - Every body element AFTER that first table is the article body and is
   converted to Markdown.
 
+Authoring guideline for callouts (notes / tips / warnings):
+- Use Word's built-in `Quote` (or `Intense Quote`) paragraph style and
+  start the text with one of these labels followed by a colon:
+      Note:      → teal info box
+      Tip:       → green lightbulb box
+      Warning:   → amber warning box
+      Important: → amber warning box
+- These paragraphs become Markdown blockquotes (`> ...`) on upload and
+  the frontend renders them as styled callout boxes — the icon + colour
+  conveys the type, so the literal "Note:" word is stripped from the
+  displayed text on the article page.
+- Do NOT use coloured text, highlighting, or bordered single-cell tables
+  for callouts — they won't be detected.
+
 Returns a dict ready for the review screen — nothing is persisted here.
 """
 from __future__ import annotations

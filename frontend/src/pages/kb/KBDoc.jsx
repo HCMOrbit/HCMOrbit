@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Link, useParams, useLocation } from "react-router-dom";
-import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Users, Share2, MessageSquare } from "lucide-react";
+import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Users, Share2, MessageSquare, Info, Lightbulb, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import NavHeader from "../../components/NavHeader";
@@ -202,7 +202,7 @@ export default function KBDoc() {
               pre: ({ children }) => <pre className="bg-[#0F172A] text-[#E2E8F0] p-4 rounded-lg overflow-x-auto my-4 text-sm">{children}</pre>,
               ul: ({ children }) => <ul className="list-disc pl-6 mb-4 space-y-1.5">{children}</ul>,
               ol: ({ children }) => <ol className="list-decimal pl-6 mb-4 space-y-1.5">{children}</ol>,
-              blockquote: ({ children }) => <blockquote className="border-l-3 border-[#0D9373] pl-4 text-[#475569] italic my-4">{children}</blockquote>,
+              blockquote: ({ children }) => <BlockquoteCallout>{children}</BlockquoteCallout>,
               table: ({ children }) => <div className="overflow-x-auto my-4"><table className="w-full text-sm border-collapse">{children}</table></div>,
               th: ({ children }) => <th className="bg-[#F8FAFC] text-left px-3 py-2 font-semibold text-xs uppercase tracking-wider border border-[#E2E8F0]">{children}</th>,
               td: ({ children }) => <td className="px-3 py-2 border border-[#E2E8F0]">{children}</td>,
@@ -291,6 +291,55 @@ function preprocessCallouts(body) {
   if (!body) return "";
   // Convert :::tip ... ::: blocks into single-paragraph markers that the p renderer detects
   return body.replace(/:::(mistake|tip|warning|info)\n([\s\S]*?)\n:::/g, (_m, type, content) => `:::${type}\n${content.replace(/\n/g, " ")}\n:::`);
+}
+
+
+function BlockquoteCallout({ children }) {
+  const CALLOUT_VARIANTS = {
+    note:      { bg: "#F0FDFA", border: "#0D9373", icon: Info,           label: "Note" },
+    tip:       { bg: "#F0FDF4", border: "#22C55E", icon: Lightbulb,      label: "Tip" },
+    warning:   { bg: "#FFFBEB", border: "#F59E0B", icon: AlertTriangle,  label: "Warning" },
+    important: { bg: "#FFFBEB", border: "#F59E0B", icon: AlertTriangle,  label: "Important" },
+  };
+
+  // Detect a "Note:", "Tip:", "Warning:", "Important:" label on the first
+  // child node and strip it from the visible text. The first child is
+  // typically a <p> built by react-markdown from the blockquote's first
+  // paragraph.
+  const arr = React.Children.toArray(children);
+  let kind = "note";
+  for (let i = 0; i < arr.length; i++) {
+    const node = arr[i];
+    if (!React.isValidElement(node)) continue;
+    const inner = React.Children.toArray(node.props.children);
+    if (inner.length === 0) continue;
+    const firstInner = inner[0];
+    if (typeof firstInner !== "string") continue;
+    const m = firstInner.match(/^\s*(Note|Tip|Warning|Important)\s*:\s*/i);
+    if (!m) break;
+    kind = m[1].toLowerCase();
+    const rest = firstInner.slice(m[0].length);
+    const newInner = rest ? [rest, ...inner.slice(1)] : inner.slice(1);
+    arr[i] = React.cloneElement(node, {}, ...newInner);
+    break;
+  }
+
+  const v = CALLOUT_VARIANTS[kind] || CALLOUT_VARIANTS.note;
+  const Icon = v.icon;
+  return (
+    <aside
+      className="my-5 px-5 py-4 rounded-lg flex gap-3 not-italic"
+      style={{ background: v.bg, borderLeft: `4px solid ${v.border}` }}
+      data-callout={kind}
+      data-testid={`kb-callout-${kind}`}
+    >
+      <Icon className="w-5 h-5 mt-0.5 shrink-0" style={{ color: v.border }} />
+      <div className="flex-1 min-w-0 text-[#0F172A] leading-relaxed">
+        <span className="font-semibold" style={{ color: v.border }}>{v.label}: </span>
+        {arr}
+      </div>
+    </aside>
+  );
 }
 
 function buildAskDiscussionHref(doc, slug, docId) {
