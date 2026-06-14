@@ -23,7 +23,6 @@ export default function Footer() {
             <li><Link to="/community" className="text-white/80 hover:text-white">Community</Link></li>
             <li><Link to="/knowledge-base" className="text-white/80 hover:text-white">Knowledge Base</Link></li>
             <li><Link to="/knowledge-base" className="text-white/80 hover:text-white">Browse by Module</Link></li>
-            <li><Link to="/knowledge-base/new" className="text-white/80 hover:text-white">Contribute a Document</Link></li>
             <li><Link to="/register" className="text-white/80 hover:text-white">Join HCMOrbit</Link></li>
           </ul>
         </div>

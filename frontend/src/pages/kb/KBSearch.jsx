@@ -5,6 +5,7 @@ import NavHeader from "../../components/NavHeader";
 import { CategoryIcon } from "../../components/kb/KBBadges";
 import { DocRow } from "./KBCategory";
 import { api } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
 
 const TYPES = [
   { id: "all", label: "All types" },
@@ -23,6 +24,7 @@ const LEVELS = [
 
 export default function KBSearch() {
   const { slug } = useParams();
+  const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const q = params.get("q") || "";
@@ -116,7 +118,9 @@ export default function KBSearch() {
             {filtered.length === 0 ? (
               <div className="bg-white border border-[#E2E8F0] rounded-lg p-10 text-center">
                 <div className="font-heading font-semibold text-[#0A1628]">No documents match your search.</div>
-                <button onClick={() => navigate("/knowledge-base/new")} className="mt-3 text-sm text-[#0D9373] hover:underline">Contribute a document →</button>
+                {user?.is_admin && (
+                  <button onClick={() => navigate("/knowledge-base/new")} className="mt-3 text-sm text-[#0D9373] hover:underline">Add a document →</button>
+                )}
               </div>
             ) : filtered.map((d) => <DocRow key={d.id} doc={d} categorySlug={slug} highlightQuery={q} />)}
           </div>

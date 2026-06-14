@@ -88,8 +88,8 @@ export default function NewKBDoc() {
     if (authLoading) return;
     if (!user) { navigate("/login"); return; }
     if (!user.onboarded) { navigate("/onboarding"); return; }
-    if (user.group_type === "aspirant") {
-      toast.error("Only Practitioners and Employers can contribute to the Knowledge Base.");
+    if (!user.is_admin) {
+      toast.error("Only admins can add Knowledge Base documents.");
       navigate("/knowledge-base");
     }
   }, [user, authLoading, navigate]);
@@ -155,7 +155,7 @@ export default function NewKBDoc() {
             <ArrowLeft className="w-3 h-3" /> Knowledge Base
           </button>
           <ChevronRight className="w-3 h-3" />
-          <span>Contribute a document</span>
+          <span>Add a document</span>
         </nav>
 
         {step === 1 && (

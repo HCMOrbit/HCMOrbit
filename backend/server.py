@@ -1127,8 +1127,8 @@ class KBDocIn(BaseModel):
 @api.post("/kb/docs")
 async def kb_create_doc(payload: KBDocIn, user: dict = Depends(get_current_user)):
     _check_active(user)
-    if user.get("group_type") not in ("practitioner", "employer"):
-        raise HTTPException(403, "Only Practitioners and Employers can contribute Knowledge Base documents.")
+    if not user.get("is_admin"):
+        raise HTTPException(403, "Only admins can create Knowledge Base documents.")
     title = payload.title.strip()
     if len(title) < 10:
         raise HTTPException(400, "Title must be at least 10 characters.")
