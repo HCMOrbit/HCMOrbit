@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Users, Share2 } from "lucide-react";
+import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Users, Share2, MessageSquare } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import NavHeader from "../../components/NavHeader";
@@ -190,6 +190,26 @@ export default function KBDoc() {
             }}>{preprocessCallouts(doc.body)}</ReactMarkdown>
           </article>
 
+          <div className="bg-white border border-[#E2E8F0] rounded-lg p-6 mt-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6" data-testid="kb-ask-discussion">
+            <div className="w-12 h-12 rounded-md bg-[#0D9373]/10 text-[#0D9373] flex items-center justify-center shrink-0">
+              <MessageSquare className="w-6 h-6" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-heading font-semibold text-[#0A1628]">Have a question about this topic?</div>
+              <div className="text-sm text-[#64748B] mt-1 leading-relaxed">
+                Ask the community. Practitioners who&apos;ve worked through this exact scenario will see it.
+              </div>
+            </div>
+            <Link
+              to={buildAskDiscussionHref(doc, slug, docId)}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-semibold transition-colors shrink-0"
+              data-testid="kb-ask-discussion-cta"
+            >
+              <MessageSquare className="w-4 h-4" /> Ask in Discussions
+            </Link>
+          </div>
+
+
           <div className="bg-white border border-[#E2E8F0] rounded-lg p-6 mt-5" data-testid="kb-helpful-widget">
             <div className="font-heading font-semibold text-[#0A1628]">Was this document helpful?</div>
             <div className="text-xs text-[#64748B] mt-1">{totalVotes} {totalVotes === 1 ? "person has" : "people have"} rated this document · {helpfulPct}% found it helpful</div>
@@ -220,6 +240,16 @@ function preprocessCallouts(body) {
   if (!body) return "";
   // Convert :::tip ... ::: blocks into single-paragraph markers that the p renderer detects
   return body.replace(/:::(mistake|tip|warning|info)\n([\s\S]*?)\n:::/g, (_m, type, content) => `:::${type}\n${content.replace(/\n/g, " ")}\n:::`);
+}
+
+function buildAskDiscussionHref(doc, slug, docId) {
+  const title = `Re: ${doc?.title || "Knowledge Base topic"}`;
+  const link = `${window.location.origin}/knowledge-base/${slug}/${docId}`;
+  const body = `Referencing the Knowledge Base article: ${doc?.title || ""}\n${link}\n\n---\n\nMy question:\n\n`;
+  const tags = (doc?.tags || []).slice(0, 3).join(",");
+  const params = new URLSearchParams({ type: "question", title, body });
+  if (tags) params.set("tags", tags);
+  return `/community/new-post?${params.toString()}`;
 }
 
 function Callout({ type, content }) {

@@ -14,12 +14,12 @@ const TYPES = [
 
 export default function NewPost() {
   const [params] = useSearchParams();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(params.get("title") || params.get("body") ? 2 : 1);
   const [type, setType] = useState(params.get("type") || "");
   const [spaceSlug, setSpaceSlug] = useState(params.get("space") || "");
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [tagsInput, setTagsInput] = useState("");
+  const [title, setTitle] = useState(params.get("title") || "");
+  const [body, setBody] = useState(params.get("body") || "");
+  const [tagsInput, setTagsInput] = useState(params.get("tags") || "");
   const [spaces, setSpaces] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
