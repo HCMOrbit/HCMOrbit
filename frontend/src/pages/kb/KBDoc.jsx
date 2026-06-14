@@ -9,6 +9,7 @@ import GroupBadge from "../../components/GroupBadge";
 import { api, timeAgo, formatApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { loginHref } from "../../lib/redirect";
+import AuthPrompt from "../../components/AuthPrompt";
 import { toast } from "sonner";
 
 export default function KBDoc() {
@@ -216,7 +217,9 @@ export default function KBDoc() {
             <div className="font-heading font-semibold text-[#0A1628]">Was this document helpful?</div>
             <div className="text-xs text-[#64748B] mt-1">{totalVotes} {totalVotes === 1 ? "person has" : "people have"} rated this document · {helpfulPct}% found it helpful</div>
             {!user ? (
-              <Link to={loginHref(location)} className="inline-block mt-4 text-sm text-[#0D9373] hover:underline">Join HCMOrbit to rate this document →</Link>
+              <div className="mt-4" data-testid="kb-helpful-auth-prompt">
+                <AuthPrompt compact message="Sign in to rate this article" />
+              </div>
             ) : myVote ? (
               <div className={`mt-4 text-sm ${myVote === "helpful" ? "text-[#16A34A]" : "text-[#64748B]"}`} data-testid="kb-helpful-confirmation">
                 {myVote === "helpful" ? `Thanks — glad it helped. ${doc.helpful_count} people have now rated this helpful.` : "Thanks for the feedback. We'll work on improving this."}
