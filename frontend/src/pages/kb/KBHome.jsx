@@ -123,11 +123,7 @@ function CategoryBox({ cat, isMostActive }) {
     <Link
       to={`/knowledge-base/${cat.slug}`}
       data-testid={`category-${cat.slug}`}
-      className={`p-4 rounded-lg flex items-start gap-3 transition-all ${
-        isEmpty
-          ? "border border-dashed border-[#E2E8F0] hover:border-[#0D9373]/40 hover:bg-white"
-          : "bg-white border border-[#E2E8F0] hover:border-[#0D9373]/40 hover:shadow-sm"
-      }`}
+      className="p-4 rounded-lg flex items-start gap-3 bg-white border border-[#E2E8F0] hover:border-[#0D9373]/40 hover:shadow-sm transition-all"
     >
       <div
         className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 text-base"
@@ -136,7 +132,7 @@ function CategoryBox({ cat, isMostActive }) {
         <span className={isEmpty ? "opacity-60" : ""}>{cat.icon}</span>
       </div>
       <div className="flex-1 min-w-0">
-        <div className={`font-heading font-semibold leading-tight ${isEmpty ? "text-[#64748B]" : "text-[#0A1628]"}`}>
+        <div className="font-heading font-semibold leading-tight text-[#0A1628]">
           {cat.name}
         </div>
         <div className={`text-xs mt-1 ${isEmpty ? "text-[#94A3B8]" : "text-[#64748B]"}`}>
