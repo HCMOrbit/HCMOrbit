@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
-import { Plus, Search as SearchIcon, MoreVertical, ExternalLink, Star, StarOff, Eye, EyeOff, BookOpen, FileText, FileEdit, Layers } from "lucide-react";
+import { Plus, Search as SearchIcon, MoreVertical, ExternalLink, Star, StarOff, Eye, EyeOff, BookOpen, FileText, FileEdit, Layers, Upload } from "lucide-react";
 import AdminLayout from "../../components/AdminLayout";
 import ConfirmModal from "../../components/ConfirmModal";
 import { DocTypeBadge, DifficultyBadge } from "../../components/kb/KBBadges";
+import KBDocxUploadModal from "./KBDocxUploadModal";
 import { api, timeAgo, formatApiError } from "../../lib/api";
 import { toast } from "sonner";
 
@@ -30,6 +31,7 @@ export default function AdminKnowledgeBase() {
   const [showCategoryPanel, setShowCategoryPanel] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [creatingCategory, setCreatingCategory] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const loadStats = useCallback(() => {
     api.get("/admin/kb/stats").then((r) => setStats(r.data)).catch(() => {});
@@ -86,6 +88,13 @@ export default function AdminKnowledgeBase() {
           </h1>
           <p className="text-sm text-[#64748B]">Manage documents and categories</p>
         </div>
+        <button
+          onClick={() => setShowUploadModal(true)}
+          data-testid="open-kb-upload-btn"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded bg-[#0D9373] hover:bg-[#0b7c61] text-sm font-medium text-white"
+        >
+          <Upload className="w-4 h-4" /> Upload .docx
+        </button>
         <button
           onClick={() => setShowCategoryPanel((v) => !v)}
           data-testid="toggle-categories-panel"
@@ -292,6 +301,13 @@ export default function AdminKnowledgeBase() {
           category={editingCategory}
           onClose={() => { setEditingCategory(null); setCreatingCategory(false); }}
           onSaved={() => { setEditingCategory(null); setCreatingCategory(false); loadCategories(); loadStats(); }}
+        />
+      )}
+
+      {showUploadModal && (
+        <KBDocxUploadModal
+          onClose={() => setShowUploadModal(false)}
+          onSaved={() => { setShowUploadModal(false); loadDocs(); loadStats(); }}
         />
       )}
     </AdminLayout>

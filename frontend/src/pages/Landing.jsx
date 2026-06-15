@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, CheckCircle2, MessageSquare, Users, Network, Shield, BarChart3, CircleDollarSign, Wallet, Landmark, Coffee, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CheckCircle2, MessageSquare, Users, Network, Shield, BarChart3, CircleDollarSign, Wallet, Landmark, Coffee, Sparkles, Eye } from "lucide-react";
 import NavHeader from "../components/NavHeader";
 import GroupBadge from "../components/GroupBadge";
 import PostTypeBadge from "../components/PostTypeBadge";
@@ -52,6 +52,60 @@ const REASONS = [
   "Build your Workday professional network",
 ];
 
+const FEATURED_TOPICS = [
+  {
+    tag: "Payroll",
+    title: "How are you handling retro pay calculations when Workday auto-calculates incorrectly?",
+    preview: "We had a period-end issue where retro wasn't catching rate changes mid-period…",
+    replies: 14,
+    views: 312,
+  },
+  {
+    tag: "Security",
+    title: "Best practice for segmented security groups across multiple legal entities?",
+    preview: "Struggling with overlap between domain security policies when orgs share roles…",
+    replies: 9,
+    views: 198,
+  },
+  {
+    tag: "Integrations",
+    title: "Studio integration failing silently — no error logs, just drops records",
+    preview: "Has anyone seen Workday Studio drop records with zero error output on the integration audit…",
+    replies: 22,
+    views: 445,
+  },
+  {
+    tag: "Reporting",
+    title: "Composite report vs custom report — when does it actually matter for performance?",
+    preview: "My BIRT reports are slow but I'm not sure if switching to composite is the answer…",
+    replies: 11,
+    views: 267,
+  },
+  {
+    tag: "HCM",
+    title: "How to manage position restrictions when headcount is frozen mid-year?",
+    preview: "Finance wants positions closed but HR needs them open for backfills — anyone solved this cleanly?",
+    replies: 17,
+    views: 389,
+  },
+  {
+    tag: "Recruiting",
+    title: "Candidate stage progression not triggering offer letter template — Workday bug or config?",
+    preview: "We're on 2024R2 and the offer template isn't attaching after moving candidate to Offer stage…",
+    replies: 8,
+    views: 154,
+  },
+];
+
+const FOUNDING_BENEFITS = [
+  { icon: "🏅", title: "Founding Member Badge", desc: "Permanent recognition as an early community builder" },
+  { icon: "⚡", title: "Early Feature Access", desc: "Be first to try new tools and features" },
+  { icon: "🎯", title: "Shape the Community", desc: "Direct input on what we build next" },
+  { icon: "🎟️", title: "Priority Event Access", desc: "First access to webinars, AMAs, and live sessions" },
+  { icon: "🏆", title: "Community Wall Recognition", desc: "Your name on the HCMOrbit Founding Members wall" },
+  { icon: "🤝", title: "Exclusive Founder Network", desc: "Private channel with direct access to Suchi" },
+];
+
 function Counter({ value, suffix = "" }) {
   const [n, setN] = useState(0);
   useEffect(() => {
@@ -71,7 +125,38 @@ function Counter({ value, suffix = "" }) {
   return <span className="counter">{n.toLocaleString()}{suffix}</span>;
 }
 
-export default function Landing() {
+function FounderAvatar() {
+  const [errored, setErrored] = useState(false);
+  if (errored) {
+    return (
+      <div
+        className="w-64 h-64 lg:w-72 lg:h-72 flex items-center justify-center font-heading text-6xl font-bold text-[#0D9373]"
+        data-testid="founder-avatar-fallback"
+        aria-label="Suchismita Tripathy"
+      >
+        ST
+      </div>
+    );
+  }
+  return (
+    <img
+      src="/suchi_founder_photo.png"
+      alt="Suchismita (Suchi) Tripathy"
+      onError={() => setErrored(true)}
+      className="w-64 h-64 lg:w-72 lg:h-72 object-contain"
+      data-testid="founder-avatar"
+    />
+  );
+}
+
+function Credential({ value, label }) {
+  return (
+    <div className="text-center lg:text-left">
+      <div className="font-heading text-3xl lg:text-4xl font-bold text-[#0D9373] leading-none">{value}</div>
+      <div className="mt-2 text-xs lg:text-sm text-white/70 leading-snug uppercase tracking-wider">{label}</div>
+    </div>
+  );
+}export default function Landing() {
   const [stats, setStats] = useState({});
   const [spaces, setSpaces] = useState([]);
   const [recent, setRecent] = useState([]);
@@ -150,6 +235,101 @@ export default function Landing() {
                 <span className="text-[15px] text-[#0F172A] leading-relaxed">{r}</span>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Workday Topics */}
+      <section className="bg-white py-20 lg:py-24" data-testid="featured-topics-section">
+        <div className="max-w-[1200px] mx-auto px-6 lg:px-8">
+          <div className="max-w-2xl mb-12">
+            <div className="text-xs uppercase tracking-wider text-[#0D9373] font-semibold mb-3">Featured Workday Topics</div>
+            <h2 className="font-heading text-3xl lg:text-4xl font-semibold text-[#0A1628]">What members are discussing.</h2>
+            <p className="text-[#64748B] mt-3">Real conversations from Workday practitioners — no fluff, no sales pitch.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="featured-topics-grid">
+            {FEATURED_TOPICS.map((t) => (
+              <Link
+                key={t.title}
+                to="/community"
+                className="group block bg-[#0A1628] hover:bg-[#0F1F36] border border-[#0A1628] hover:border-[#0D9373]/50 rounded-xl p-6 transition-colors"
+                data-testid={`featured-topic-${t.tag.toLowerCase()}`}
+              >
+                <span className="inline-block px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider bg-[#0D9373]/15 text-[#0D9373] border border-[#0D9373]/30">
+                  {t.tag}
+                </span>
+                <h3 className="mt-4 font-heading font-semibold text-white leading-snug text-[15px] lg:text-base group-hover:text-[#0D9373] transition-colors">
+                  {t.title}
+                </h3>
+                <p className="mt-3 text-sm text-white/55 leading-relaxed line-clamp-2">{t.preview}</p>
+                <div className="mt-5 pt-4 border-t border-white/10 flex items-center gap-4 text-xs text-white/50">
+                  <span className="inline-flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5" /> <span className="counter">{t.replies}</span> replies
+                  </span>
+                  <span className="text-white/20">·</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Eye className="w-3.5 h-3.5" /> <span className="counter">{t.views}</span> views
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <div className="mt-12 text-center">
+            <Link
+              to="/community"
+              data-testid="browse-discussions-cta"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-md bg-[#0A1628] hover:bg-[#0D9373] text-white font-medium text-sm transition-colors"
+            >
+              Browse All Discussions <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Why HCMOrbit teaser */}
+      <section className="bg-[#F8FAFC] border-y border-[#E2E8F0]" data-testid="why-teaser">
+        <div className="max-w-[900px] mx-auto px-6 lg:px-8 py-14 lg:py-16 text-center">
+          <div className="text-xs uppercase tracking-wider text-[#0D9373] font-semibold mb-3">About HCMOrbit</div>
+          <h2 className="font-heading text-2xl lg:text-3xl font-semibold text-[#0A1628]">Why HCMOrbit Exists</h2>
+          <p className="mt-4 text-[15px] lg:text-base text-[#475569] max-w-2xl mx-auto leading-relaxed">
+            Most Workday professionals learn through trial and error. HCMOrbit was created to change that.
+          </p>
+          <Link
+            to="/why-hcmorbit"
+            data-testid="why-teaser-link"
+            className="inline-flex items-center gap-1.5 mt-5 text-sm font-semibold text-[#0D9373] hover:text-[#0b7c61] transition-colors"
+          >
+            Read Our Story <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </section>
+
+      {/* Founder */}
+      <section className="bg-white py-20 lg:py-28" data-testid="founder-section">
+        <div className="max-w-[1100px] mx-auto px-6 lg:px-8">
+          <h2 className="font-heading text-3xl lg:text-5xl font-bold tracking-tight text-[#0A1628] mb-12">
+            Meet the Founder
+          </h2>
+
+          <div className="grid lg:grid-cols-[320px_1fr] gap-10 lg:gap-14 items-start">
+            <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+              <FounderAvatar />
+              <div className="mt-5 font-heading text-xl font-bold text-[#0A1628]">Suchismita (Suchi) Tripathy</div>
+              <div className="mt-1 text-sm font-medium text-[#0D9373]">Founder, HCMOrbit</div>
+            </div>
+
+            <div className="space-y-5 text-[15px] lg:text-base leading-relaxed text-[#334155]" data-testid="founder-story">
+              <p>Hi, I&apos;m Suchismita — most people call me <strong className="text-[#0A1628] font-semibold">Suchi</strong>!</p>
+              <p>I&apos;ve spent <strong className="text-[#0A1628] font-semibold">17+ years working across the full spectrum of HR technology</strong> — SAP, UKG, SAP SuccessFactors, Dayforce, Oracle HCM, and ADP — supporting enterprise organizations across <strong className="text-[#0A1628] font-semibold">Healthcare, Manufacturing, Technology, and Services</strong>.</p>
+              <p>Since 2022 I&apos;ve been <strong className="text-[#0A1628] font-semibold">focused on Workday, serving as Technical Lead and Architect</strong> — most recently designing and building the entire HRIS system from the ground up for an EV startup.</p>
+              <p>I kept running into the same problem throughout my career. <strong className="text-[#0A1628] font-semibold">There was no dedicated space where HR technology practitioners could openly share real challenges</strong>, learn from each other&apos;s implementations, and grow together professionally.</p>
+              <p>LinkedIn is too noisy. Generic HR forums don&apos;t go deep enough. Workday Community is great for product docs — <strong className="text-[#0A1628] font-semibold">but not for candid practitioner conversations</strong>.</p>
+              <p><strong className="text-[#0A1628] font-semibold">HCMOrbit was built to fill that gap</strong> — a focused community where Workday professionals can ask hard questions without judgment, share what actually works in production, and build meaningful careers together.</p>
+              <p>Whether you&apos;re new to Workday or a seasoned architect — <strong className="text-[#0A1628] font-semibold">this community was built by a practitioner, for practitioners</strong>.</p>
+              <p className="text-[#0A1628] font-semibold pt-2">— Suchi, Founder of HCMOrbit</p>
+            </div>
           </div>
         </div>
       </section>
@@ -291,6 +471,50 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Founding Member */}
+      <section className="relative bg-[#0A1628] text-white py-20 lg:py-28 overflow-hidden" data-testid="founding-member-section">
+        <div className="absolute -right-32 top-0 w-[520px] h-[520px] rounded-full bg-[#0D9373]/12 blur-[120px] pointer-events-none" />
+        <div className="absolute -left-32 bottom-0 w-[420px] h-[420px] rounded-full bg-[#0D9373]/10 blur-[120px] pointer-events-none" />
+        <div className="relative max-w-[1100px] mx-auto px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0D9373]/10 border border-[#0D9373]/30 text-xs uppercase tracking-[0.18em] text-[#0D9373] font-semibold mb-5">
+            Limited Spots Available
+          </div>
+          <h2 className="font-heading text-4xl lg:text-5xl font-bold tracking-tight">Become a Founding Member</h2>
+          <p className="mt-5 text-lg text-white/65 max-w-2xl mx-auto leading-relaxed">
+            Join the first wave of Workday professionals shaping the future of HCMOrbit. Founding Members get exclusive benefits — forever.
+          </p>
+
+          <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-left" data-testid="founder-benefits-grid">
+            {FOUNDING_BENEFITS.map((b) => (
+              <div key={b.title} className="bg-white/[0.03] border border-white/10 rounded-xl p-6 hover:border-[#0D9373]/40 hover:bg-white/[0.05] transition-colors">
+                <div className="text-3xl leading-none mb-4" aria-hidden>{b.icon}</div>
+                <div className="font-heading font-semibold text-white">{b.title}</div>
+                <div className="mt-1.5 text-sm text-white/60 leading-relaxed">{b.desc}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-14 pt-10 border-t border-white/10" data-testid="founder-member-counter">
+            <div className="font-heading text-5xl lg:text-6xl font-bold text-[#0D9373] leading-none">
+              <Counter value={stats.members || 0} />
+            </div>
+            <div className="mt-4 text-base lg:text-lg text-white font-medium">Workday professionals have already joined HCMOrbit</div>
+            <div className="mt-1 text-sm text-white/50">Help shape the future of the community.</div>
+          </div>
+
+          <div className="mt-10">
+            <Link
+              to="/register?founder=1"
+              data-testid="founding-member-cta"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white font-semibold text-base transition-colors shadow-lg shadow-[#0D9373]/20"
+            >
+              Join as a Founding Member <ArrowRight className="w-4 h-4" />
+            </Link>
+            <div className="mt-3 text-xs text-white/40">Free to join. No credit card required.</div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-20 lg:py-24 bg-[#0A1628] text-white" data-testid="cta-section">
         <div className="max-w-[900px] mx-auto px-6 lg:px-8 text-center">
@@ -308,10 +532,6 @@ export default function Landing() {
           </div>
         </div>
       </section>
-
-      <footer className="bg-[#0A1628] border-t border-white/10 py-8 text-center text-xs text-white/40">
-        © 2026 HCMOrbit · Independent community for the HCM ecosystem
-      </footer>
     </div>
   );
 }

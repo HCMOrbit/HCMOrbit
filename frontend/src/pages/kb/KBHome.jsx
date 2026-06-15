@@ -11,7 +11,7 @@ export default function KBHome() {
   const [featured, setFeatured] = useState([]);
   const [categories, setCategories] = useState([]);
   const { user } = useAuth();
-  const canContribute = user && ["practitioner", "employer"].includes(user.group_type);
+  const canContribute = !!user?.is_admin;
 
   useEffect(() => {
     api.get("/kb/stats").then((r) => setStats(r.data)).catch(() => {});
@@ -40,7 +40,7 @@ export default function KBHome() {
                 data-testid="kb-contribute-cta"
                 className="ml-auto inline-flex items-center gap-2 px-5 py-3 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium transition-colors"
               >
-                <PenSquare className="w-4 h-4" /> Contribute a document
+                <PenSquare className="w-4 h-4" /> Add a document
               </Link>
             )}
           </div>

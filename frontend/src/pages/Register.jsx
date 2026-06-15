@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { api, formatApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { safeRedirectTarget } from "../lib/redirect";
 import GroupBadge from "../components/GroupBadge";
 import { toast } from "sonner";
 
@@ -22,6 +23,9 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const { login, user, refresh } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo = safeRedirectTarget(location.search);
+  const loginHrefWithRedirect = redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login";
 
   // Check if registrations are open
   useEffect(() => {
@@ -152,7 +156,7 @@ export default function Register() {
               <button disabled={loading} className="mt-2 w-full py-2.5 rounded-md bg-[#0A1628] hover:bg-[#0F1F36] text-white font-medium text-sm transition-colors disabled:opacity-60" data-testid="step1-continue">
                 {loading ? "Creating..." : "Continue"} <ArrowRight className="inline w-4 h-4 ml-1" />
               </button>
-              <p className="text-center text-sm text-[#64748B]">Already have an account? <Link to="/login" className="text-[#0D9373] hover:underline font-medium">Sign in</Link></p>
+              <p className="text-center text-sm text-[#64748B]">Already have an account? <Link to={loginHrefWithRedirect} className="text-[#0D9373] hover:underline font-medium">Sign in</Link></p>
             </form>
           </div>
         )}
@@ -297,8 +301,8 @@ export default function Register() {
                 </Link>
               ))}
             </div>
-            <button onClick={() => navigate("/community")} className="mt-8 px-6 py-2.5 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white font-medium text-sm" data-testid="step4-go-community">
-              Go to community <ArrowRight className="inline w-4 h-4 ml-1" />
+            <button onClick={() => navigate(redirectTo || "/community")} className="mt-8 px-6 py-2.5 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white font-medium text-sm" data-testid="step4-go-community">
+              {redirectTo ? "Continue where you left off" : "Go to community"} <ArrowRight className="inline w-4 h-4 ml-1" />
             </button>
           </div>
         )}

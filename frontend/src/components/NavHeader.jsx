@@ -1,9 +1,53 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
-import { Bell, PlusCircle, LogOut, User, Settings, ChevronDown, Search, ShieldCheck } from "lucide-react";
+import { Bell, PlusCircle, LogOut, User, Settings, ChevronDown, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import GroupBadge from "./GroupBadge";
+
+function AboutMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref} data-testid="nav-about">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 text-[#64748B] hover:text-[#0A1628] transition-colors"
+        data-testid="nav-about-trigger"
+        aria-expanded={open}
+      >
+        About <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 mt-2 w-72 bg-white border border-[#E2E8F0] rounded-lg shadow-lg z-40 overflow-hidden" data-testid="nav-about-menu">
+          <Link
+            to="/why-hcmorbit"
+            onClick={() => setOpen(false)}
+            className="flex items-start gap-3 px-4 py-3 hover:bg-[#F8FAFC]"
+            data-testid="nav-about-why"
+          >
+            <div className="w-8 h-8 rounded-md bg-[#0D9373]/10 text-[#0D9373] flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-[#0A1628]">Why HCMOrbit Exists</div>
+              <div className="text-xs text-[#64748B] mt-0.5 leading-snug">Our story and why we built this community.</div>
+            </div>
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function NavHeader() {
   const { user, logout } = useAuth();
@@ -40,7 +84,7 @@ export default function NavHeader() {
           <span className="font-heading font-bold text-lg text-[#0A1628] tracking-tight">HCMOrbit</span>
         </Link>
 
-        {user && (
+        {user ? (
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium" data-testid="nav-main">
             <NavLink to="/community" className={({isActive}) => isActive ? "text-[#0A1628]" : "text-[#64748B] hover:text-[#0A1628]"} data-testid="nav-home">
               Home
@@ -51,6 +95,14 @@ export default function NavHeader() {
             <NavLink to="/notifications" className={({isActive}) => isActive ? "text-[#0A1628]" : "text-[#64748B] hover:text-[#0A1628]"} data-testid="nav-notifications">
               Notifications
             </NavLink>
+            <AboutMenu />
+          </nav>
+        ) : (
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium" data-testid="nav-main-guest">
+            <NavLink to="/knowledge-base" className="text-[#64748B] hover:text-[#0A1628]" data-testid="nav-kb-guest">
+              Knowledge Base
+            </NavLink>
+            <AboutMenu />
           </nav>
         )}
 

@@ -15,10 +15,12 @@ import certifi
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Literal
 
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query, UploadFile, File
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
+
+from kb_docx import parse_kb_docx
 
 # ---------- DB ----------
 mongo_url = os.environ["MONGO_URL"]
@@ -1093,6 +1095,66 @@ async def kb_my_helpful(doc_id: str, user: dict = Depends(get_current_user)):
     return {"value": v["value"] if v else None}
 
 
+# --- KB feedback (thumbs up/down) — new spec, supports change-vote ---
+class KBFeedbackIn(BaseModel):
+    helpful: bool
+
+
+@api.post("/kb/docs/{doc_id}/feedback")
+async def kb_submit_feedback(doc_id: str, payload: KBFeedbackIn, user: dict = Depends(get_current_user)):
+    doc = await db.kb_docs.find_one({"id": doc_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    new_value = "helpful" if payload.helpful else "not_helpful"
+    existing = await db.kb_helpful_votes.find_one(
+        {"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0}
+    )
+    inc = {}
+    if existing:
+        if existing["value"] == new_value:
+            # Idempotent no-op
+            return {
+                "helpful": payload.helpful,
+                "helpful_count": doc.get("helpful_count", 0),
+                "not_helpful_count": doc.get("not_helpful_count", 0),
+            }
+        # Flip the vote: decrement old, increment new
+        inc[("helpful_count" if existing["value"] == "helpful" else "not_helpful_count")] = -1
+        inc[("helpful_count" if new_value == "helpful" else "not_helpful_count")] = 1
+        await db.kb_helpful_votes.update_one(
+            {"doc_id": doc_id, "user_id": user["user_id"]},
+            {"$set": {"value": new_value, "updated_at": now_iso()}},
+        )
+    else:
+        inc[("helpful_count" if new_value == "helpful" else "not_helpful_count")] = 1
+        await db.kb_helpful_votes.insert_one({
+            "id": str(uuid.uuid4()),
+            "doc_id": doc_id,
+            "user_id": user["user_id"],
+            "value": new_value,
+            "created_at": now_iso(),
+        })
+    if inc:
+        await db.kb_docs.update_one({"id": doc_id}, {"$inc": inc})
+    new_helpful = doc.get("helpful_count", 0) + inc.get("helpful_count", 0)
+    new_not = doc.get("not_helpful_count", 0) + inc.get("not_helpful_count", 0)
+    return {
+        "helpful": payload.helpful,
+        "helpful_count": new_helpful,
+        "not_helpful_count": new_not,
+    }
+
+
+@api.get("/kb/docs/{doc_id}/feedback")
+async def kb_get_my_feedback(doc_id: str, user: dict = Depends(get_current_user)):
+    v = await db.kb_helpful_votes.find_one(
+        {"doc_id": doc_id, "user_id": user["user_id"]}, {"_id": 0}
+    )
+    if not v:
+        return {"helpful": None}
+    return {"helpful": v["value"] == "helpful"}
+
+
 @api.post("/kb/bookmarks/{doc_id}")
 async def kb_toggle_bookmark(doc_id: str, user: dict = Depends(get_current_user)):
     existing = await db.kb_bookmarks.find_one({"user_id": user["user_id"], "doc_id": doc_id})
@@ -1122,13 +1184,18 @@ class KBDocIn(BaseModel):
     tags: List[str] = []
     workday_version: Optional[str] = None
     publish: bool = True
+    # Extended metadata captured from .docx uploads
+    reference_id: Optional[str] = None
+    sub_module: Optional[str] = None
+    read_time: Optional[str] = None
+    platform: Optional[str] = None
 
 
 @api.post("/kb/docs")
 async def kb_create_doc(payload: KBDocIn, user: dict = Depends(get_current_user)):
     _check_active(user)
-    if user.get("group_type") not in ("practitioner", "employer"):
-        raise HTTPException(403, "Only Practitioners and Employers can contribute Knowledge Base documents.")
+    if not user.get("is_admin"):
+        raise HTTPException(403, "Only admins can create Knowledge Base documents.")
     title = payload.title.strip()
     if len(title) < 10:
         raise HTTPException(400, "Title must be at least 10 characters.")
@@ -1155,6 +1222,10 @@ async def kb_create_doc(payload: KBDocIn, user: dict = Depends(get_current_user)
         "target_groups": payload.target_groups or ["aspirant", "practitioner", "employer"],
         "tags": tags,
         "workday_version": payload.workday_version,
+        "reference_id": payload.reference_id,
+        "sub_module": payload.sub_module,
+        "read_time": payload.read_time,
+        "platform": payload.platform or "Workday",
         "view_count": 0,
         "helpful_count": 0,
         "not_helpful_count": 0,
@@ -1524,6 +1595,58 @@ async def admin_update_space(slug: str, payload: SpacePatchIn, admin: dict = Dep
 
 
 # --- Knowledge Base (admin) ---
+@api.post("/admin/kb/docs/upload")
+async def admin_upload_kb_docx(
+    file: UploadFile = File(...),
+    admin: dict = Depends(require_admin),
+):
+    """Parse an uploaded .docx file and return the parsed payload for the
+    admin review screen. Nothing is persisted at this stage — the admin
+    edits any flagged fields, then calls POST /api/kb/docs to save as draft.
+    """
+    if not (file.filename or "").lower().endswith(".docx"):
+        raise HTTPException(400, "Please upload a .docx file.")
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(400, "Uploaded file is empty.")
+    if len(raw) > 10 * 1024 * 1024:
+        raise HTTPException(400, "File is larger than 10 MB.")
+    try:
+        parsed = parse_kb_docx(raw)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception:  # noqa: BLE001
+        raise HTTPException(400, "Could not parse this .docx file.")
+
+    # Decorate with the categories admin can pick from in the review UI
+    categories = await db.kb_categories.find({}, {"_id": 0, "slug": 1, "name": 1, "icon": 1}).sort("sort_order", 1).to_list(50)
+    parsed["available_categories"] = categories
+    parsed["available_doc_types"] = [
+        {"id": "fix_guide", "label": "Fix guide"},
+        {"id": "how_to", "label": "How-to"},
+        {"id": "learning_bite", "label": "Learning bite"},
+        {"id": "reference", "label": "Reference"},
+        {"id": "checklist", "label": "Checklist"},
+    ]
+    parsed["filename"] = file.filename
+
+    # Duplicate detection on reference_id (case-insensitive exact match)
+    parsed["duplicate"] = None
+    ref_id = (parsed.get("reference_id") or "").strip()
+    if ref_id:
+        existing = await db.kb_docs.find_one(
+            {"reference_id": {"$regex": f"^{re.escape(ref_id)}$", "$options": "i"}},
+            {"_id": 0, "id": 1, "title": 1, "is_published": 1},
+        )
+        if existing:
+            parsed["duplicate"] = {
+                "existing_id": existing["id"],
+                "title": existing.get("title", ""),
+                "is_published": bool(existing.get("is_published")),
+            }
+    return parsed
+
+
 @api.get("/admin/kb/stats")
 async def admin_kb_stats(admin: dict = Depends(require_admin)):
     return {
@@ -1585,6 +1708,10 @@ class KBDocPatchIn(BaseModel):
     target_groups: Optional[List[GroupType]] = None
     tags: Optional[List[str]] = None
     workday_version: Optional[str] = None
+    reference_id: Optional[str] = None
+    sub_module: Optional[str] = None
+    read_time: Optional[str] = None
+    platform: Optional[str] = None
 
 
 @api.patch("/admin/kb/docs/{doc_id}")

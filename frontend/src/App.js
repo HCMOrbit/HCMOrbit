@@ -30,7 +30,9 @@ import NewKBDoc from "@/pages/kb/NewKBDoc";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
 import Cookies from "@/pages/Cookies";
+import WhyHCMOrbit from "@/pages/WhyHCMOrbit";
 import CookieBanner from "@/components/CookieBanner";
+import SiteFooter from "@/components/SiteFooter";
 import AuthCallback from "@/components/AuthCallback";
 
 function AppRoutes() {
@@ -68,8 +70,22 @@ function AppRoutes() {
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/cookies" element={<Cookies />} />
+      <Route path="/why-hcmorbit" element={<WhyHCMOrbit />} />
+      <Route path="/about/why-hcmorbit" element={<WhyHCMOrbit />} />
     </Routes>
   );
+}
+
+function GlobalFooter() {
+  const location = useLocation();
+  const path = location.pathname;
+  // Hide footer on auth flows, OAuth callback, and the entire admin area
+  const hidden =
+    ["/login", "/register", "/onboarding"].includes(path) ||
+    path === "/admin" ||
+    path.startsWith("/admin/");
+  if (hidden) return null;
+  return <SiteFooter />;
 }
 
 export default function App() {
@@ -78,6 +94,7 @@ export default function App() {
       <BrowserRouter>
         <ImpersonationBanner />
         <AppRoutes />
+        <GlobalFooter />
         <CookieBanner />
         <Toaster position="bottom-right" richColors closeButton />
       </BrowserRouter>

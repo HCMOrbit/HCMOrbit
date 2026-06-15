@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import AuthPrompt from "./AuthPrompt";
 import { toast } from "sonner";
 
 export default function VoteComponent({ targetId, targetType, initialCount = 0, initialVote = 0, orientation = "vertical" }) {
@@ -9,10 +10,20 @@ export default function VoteComponent({ targetId, targetType, initialCount = 0, 
   const [count, setCount] = useState(initialCount);
   const [vote, setVote] = useState(initialVote);
   const [loading, setLoading] = useState(false);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    if (!showPrompt) return;
+    const onClick = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setShowPrompt(false); };
+    document.addEventListener("mousedown", onClick);
+    const t = setTimeout(() => setShowPrompt(false), 6000);
+    return () => { document.removeEventListener("mousedown", onClick); clearTimeout(t); };
+  }, [showPrompt]);
 
   const cast = async (value) => {
     if (!user) {
-      toast.message("Join to vote", { description: "Sign in to participate in the community." });
+      setShowPrompt(true);
       return;
     }
     if (loading) return;
@@ -44,7 +55,7 @@ export default function VoteComponent({ targetId, targetType, initialCount = 0, 
     : "inline-flex items-center gap-2";
 
   return (
-    <div className={containerClass} data-testid={`vote-${targetType}-${targetId}`}>
+    <div ref={wrapperRef} className={`relative ${containerClass}`} data-testid={`vote-${targetType}-${targetId}`}>
       <button
         type="button"
         aria-label="Upvote"
@@ -66,6 +77,16 @@ export default function VoteComponent({ targetId, targetType, initialCount = 0, 
       >
         <ChevronDown className="w-5 h-5" strokeWidth={2.5} />
       </button>
+      {showPrompt && (
+        <div
+          className={`absolute z-30 w-[320px] p-3 bg-white border border-[#E2E8F0] rounded-lg shadow-lg ${
+            orientation === "vertical" ? "left-full ml-2 top-0" : "top-full mt-2 left-1/2 -translate-x-1/2"
+          }`}
+          data-testid="vote-auth-prompt"
+        >
+          <AuthPrompt compact message="Sign in to react to this post" />
+        </div>
+      )}
     </div>
   );
 }

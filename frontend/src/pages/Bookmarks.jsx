@@ -5,22 +5,24 @@ import CommunityLayout from "../components/CommunityLayout";
 import PostCard from "../components/PostCard";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import { useNavigate } from "react-router-dom";
+import { loginHref } from "../lib/redirect";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Bookmarks() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { navigate("/login"); return; }
+    if (!user) { navigate(loginHref(location)); return; }
     api.get("/bookmarks")
       .then((r) => setPosts(r.data))
       .catch(() => setPosts([]))
       .finally(() => setLoading(false));
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, location]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]" data-testid="bookmarks-page">

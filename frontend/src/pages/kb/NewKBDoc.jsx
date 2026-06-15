@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronRight, Eye, FileText, ArrowLeft, Save, Send } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -7,6 +7,7 @@ import NavHeader from "../../components/NavHeader";
 import { DocTypeBadge, DifficultyBadge } from "../../components/kb/KBBadges";
 import { api, formatApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { loginHref } from "../../lib/redirect";
 import { toast } from "sonner";
 
 const DOC_TYPES = [
@@ -69,6 +70,7 @@ const MD_PREVIEW = {
 export default function NewKBDoc() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [step, setStep] = useState(1);
   const [categories, setCategories] = useState([]);
   const [previewMode, setPreviewMode] = useState(false);
@@ -86,13 +88,13 @@ export default function NewKBDoc() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { navigate("/login"); return; }
+    if (!user) { navigate(loginHref(location)); return; }
     if (!user.onboarded) { navigate("/onboarding"); return; }
-    if (user.group_type === "aspirant") {
-      toast.error("Only Practitioners and Employers can contribute to the Knowledge Base.");
+    if (!user.is_admin) {
+      toast.error("Only admins can add Knowledge Base documents.");
       navigate("/knowledge-base");
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, location]);
 
   useEffect(() => {
     api.get("/kb/categories").then((r) => setCategories(r.data)).catch(() => {});
@@ -155,7 +157,7 @@ export default function NewKBDoc() {
             <ArrowLeft className="w-3 h-3" /> Knowledge Base
           </button>
           <ChevronRight className="w-3 h-3" />
-          <span>Contribute a document</span>
+          <span>Add a document</span>
         </nav>
 
         {step === 1 && (

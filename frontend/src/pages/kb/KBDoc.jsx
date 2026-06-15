@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Users, Share2 } from "lucide-react";
+import { Link, useParams, useLocation } from "react-router-dom";
+import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Users, Share2, MessageSquare, Info, Lightbulb, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import NavHeader from "../../components/NavHeader";
@@ -8,20 +8,25 @@ import { DocTypeBadge, DifficultyBadge, VersionPill } from "../../components/kb/
 import GroupBadge from "../../components/GroupBadge";
 import { api, timeAgo, formatApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+import { loginHref } from "../../lib/redirect";
+import AuthPrompt from "../../components/AuthPrompt";
 import { toast } from "sonner";
 
 export default function KBDoc() {
   const { slug, docId } = useParams();
   const { user } = useAuth();
+  const location = useLocation();
   const [doc, setDoc] = useState(null);
+  // myVote: true=helpful, false=not_helpful, null=hasn't voted
   const [myVote, setMyVote] = useState(null);
+  const [voteJustSaved, setVoteJustSaved] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [activeAnchor, setActiveAnchor] = useState("");
 
   const load = useCallback(() => {
     api.get(`/kb/docs/${docId}`).then((r) => setDoc(r.data)).catch(() => {});
     if (user) {
-      api.get(`/kb/docs/${docId}/helpful/me`).then((r) => setMyVote(r.data.value)).catch(() => {});
+      api.get(`/kb/docs/${docId}/feedback`).then((r) => setMyVote(r.data.helpful)).catch(() => {});
     }
   }, [docId, user]);
   useEffect(load, [load]);
@@ -51,13 +56,20 @@ export default function KBDoc() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [headings]);
 
-  const vote = async (value) => {
-    if (!user) { toast.message("Join HCMOrbit to rate this document"); return; }
+  const vote = async (helpful) => {
+    if (!user) return;
+    if (myVote === helpful) return;
+    const prev = myVote;
+    setMyVote(helpful); // optimistic
     try {
-      const { data } = await api.post(`/kb/docs/${docId}/helpful`, { value });
+      const { data } = await api.post(`/kb/docs/${docId}/feedback`, { helpful });
       setDoc((p) => ({ ...p, helpful_count: data.helpful_count, not_helpful_count: data.not_helpful_count }));
-      setMyVote(value);
-    } catch (e) { toast.error(formatApiError(e)); }
+      setVoteJustSaved(true);
+      setTimeout(() => setVoteJustSaved(false), 3500);
+    } catch (e) {
+      setMyVote(prev);
+      toast.error(formatApiError(e));
+    }
   };
 
   const toggleBookmark = async () => {
@@ -133,6 +145,13 @@ export default function KBDoc() {
               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20">{doc.category?.name}</span>
             </div>
             <h1 className="font-heading text-2xl lg:text-3xl font-bold tracking-tight" data-testid="doc-title">{doc.title}</h1>
+            {(doc.reference_id || doc.read_time) && (
+              <div className="mt-2 text-xs text-white/55 font-mono flex items-center gap-2 flex-wrap" data-testid="doc-ref-strip">
+                {doc.reference_id && <span>{doc.reference_id}</span>}
+                {doc.reference_id && doc.read_time && <span className="text-white/30">·</span>}
+                {doc.read_time && <span>{doc.read_time} read</span>}
+              </div>
+            )}
             <p className="mt-3 text-white/70 leading-relaxed">{doc.summary}</p>
             <div className="mt-5 pt-5 border-t border-white/10 flex flex-wrap items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-medium">{(doc.author?.full_name || "U")[0].toUpperCase()}</div>
@@ -183,30 +202,82 @@ export default function KBDoc() {
               pre: ({ children }) => <pre className="bg-[#0F172A] text-[#E2E8F0] p-4 rounded-lg overflow-x-auto my-4 text-sm">{children}</pre>,
               ul: ({ children }) => <ul className="list-disc pl-6 mb-4 space-y-1.5">{children}</ul>,
               ol: ({ children }) => <ol className="list-decimal pl-6 mb-4 space-y-1.5">{children}</ol>,
-              blockquote: ({ children }) => <blockquote className="border-l-3 border-[#0D9373] pl-4 text-[#475569] italic my-4">{children}</blockquote>,
+              blockquote: ({ children }) => <BlockquoteCallout>{children}</BlockquoteCallout>,
               table: ({ children }) => <div className="overflow-x-auto my-4"><table className="w-full text-sm border-collapse">{children}</table></div>,
               th: ({ children }) => <th className="bg-[#F8FAFC] text-left px-3 py-2 font-semibold text-xs uppercase tracking-wider border border-[#E2E8F0]">{children}</th>,
               td: ({ children }) => <td className="px-3 py-2 border border-[#E2E8F0]">{children}</td>,
             }}>{preprocessCallouts(doc.body)}</ReactMarkdown>
           </article>
 
+          <div className="bg-white border border-[#E2E8F0] rounded-lg p-6 mt-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6" data-testid="kb-ask-discussion">
+            <div className="w-12 h-12 rounded-md bg-[#0D9373]/10 text-[#0D9373] flex items-center justify-center shrink-0">
+              <MessageSquare className="w-6 h-6" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-heading font-semibold text-[#0A1628]">Have a question about this topic?</div>
+              <div className="text-sm text-[#64748B] mt-1 leading-relaxed">
+                Ask the community. Practitioners who&apos;ve worked through this exact scenario will see it.
+              </div>
+            </div>
+            <Link
+              to={buildAskDiscussionHref(doc, slug, docId)}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-semibold transition-colors shrink-0"
+              data-testid="kb-ask-discussion-cta"
+            >
+              <MessageSquare className="w-4 h-4" /> Ask in Discussions
+            </Link>
+          </div>
+
+
           <div className="bg-white border border-[#E2E8F0] rounded-lg p-6 mt-5" data-testid="kb-helpful-widget">
             <div className="font-heading font-semibold text-[#0A1628]">Was this document helpful?</div>
             <div className="text-xs text-[#64748B] mt-1">{totalVotes} {totalVotes === 1 ? "person has" : "people have"} rated this document · {helpfulPct}% found it helpful</div>
             {!user ? (
-              <Link to="/login" className="inline-block mt-4 text-sm text-[#0D9373] hover:underline">Join HCMOrbit to rate this document →</Link>
-            ) : myVote ? (
-              <div className={`mt-4 text-sm ${myVote === "helpful" ? "text-[#16A34A]" : "text-[#64748B]"}`} data-testid="kb-helpful-confirmation">
-                {myVote === "helpful" ? `Thanks — glad it helped. ${doc.helpful_count} people have now rated this helpful.` : "Thanks for the feedback. We'll work on improving this."}
+              <div className="mt-4" data-testid="kb-helpful-auth-prompt">
+                <AuthPrompt compact message="Sign in to rate this article" />
               </div>
             ) : (
-              <div className="mt-4 flex gap-2">
-                <button onClick={() => vote("helpful")} className="inline-flex items-center gap-1.5 px-4 py-2 rounded bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium" data-testid="kb-helpful-yes">
-                  <ThumbsUp className="w-4 h-4" /> Yes, it helped
-                </button>
-                <button onClick={() => vote("not_helpful")} className="inline-flex items-center gap-1.5 px-4 py-2 rounded border border-[#E2E8F0] hover:border-[#94A3B8] text-sm font-medium text-[#475569]" data-testid="kb-helpful-no">
-                  <ThumbsDown className="w-4 h-4" /> Needs improvement
-                </button>
+              <div className="mt-4">
+                <div className="flex flex-wrap gap-2" data-testid="kb-helpful-buttons">
+                  <button
+                    type="button"
+                    onClick={() => vote(true)}
+                    aria-pressed={myVote === true}
+                    data-testid="kb-helpful-yes"
+                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
+                      myVote === true
+                        ? "bg-[#0D9373] text-white border-[#0D9373]"
+                        : "bg-white text-[#475569] border-[#E2E8F0] hover:border-[#0D9373] hover:text-[#0D9373]"
+                    }`}
+                  >
+                    <ThumbsUp className={`w-4 h-4 ${myVote === true ? "fill-current" : ""}`} /> Yes, it helped
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => vote(false)}
+                    aria-pressed={myVote === false}
+                    data-testid="kb-helpful-no"
+                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
+                      myVote === false
+                        ? "bg-[#0A1628] text-white border-[#0A1628]"
+                        : "bg-white text-[#475569] border-[#E2E8F0] hover:border-[#0A1628] hover:text-[#0A1628]"
+                    }`}
+                  >
+                    <ThumbsDown className={`w-4 h-4 ${myVote === false ? "fill-current" : ""}`} /> Needs improvement
+                  </button>
+                </div>
+                {(voteJustSaved || myVote !== null) && (
+                  <div
+                    className={`mt-3 text-sm transition-opacity ${voteJustSaved ? "text-[#0D9373]" : "text-[#64748B]"}`}
+                    data-testid="kb-helpful-confirmation"
+                  >
+                    {voteJustSaved
+                      ? "Thanks for your feedback!"
+                      : myVote === true
+                      ? "You marked this helpful. Click the other option to change your vote."
+                      : "You said this needs improvement. Click the other option to change your vote."}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -220,6 +291,65 @@ function preprocessCallouts(body) {
   if (!body) return "";
   // Convert :::tip ... ::: blocks into single-paragraph markers that the p renderer detects
   return body.replace(/:::(mistake|tip|warning|info)\n([\s\S]*?)\n:::/g, (_m, type, content) => `:::${type}\n${content.replace(/\n/g, " ")}\n:::`);
+}
+
+
+function BlockquoteCallout({ children }) {
+  const CALLOUT_VARIANTS = {
+    note:      { bg: "#F0FDFA", border: "#0D9373", icon: Info,           label: "Note" },
+    tip:       { bg: "#F0FDF4", border: "#22C55E", icon: Lightbulb,      label: "Tip" },
+    warning:   { bg: "#FFFBEB", border: "#F59E0B", icon: AlertTriangle,  label: "Warning" },
+    important: { bg: "#FFFBEB", border: "#F59E0B", icon: AlertTriangle,  label: "Important" },
+  };
+
+  // Detect a "Note:", "Tip:", "Warning:", "Important:" label on the first
+  // child node and strip it from the visible text. The first child is
+  // typically a <p> built by react-markdown from the blockquote's first
+  // paragraph.
+  const arr = React.Children.toArray(children);
+  let kind = "note";
+  for (let i = 0; i < arr.length; i++) {
+    const node = arr[i];
+    if (!React.isValidElement(node)) continue;
+    const inner = React.Children.toArray(node.props.children);
+    if (inner.length === 0) continue;
+    const firstInner = inner[0];
+    if (typeof firstInner !== "string") continue;
+    const m = firstInner.match(/^\s*(Note|Tip|Warning|Important)\s*:\s*/i);
+    if (!m) break;
+    kind = m[1].toLowerCase();
+    const rest = firstInner.slice(m[0].length);
+    const newInner = rest ? [rest, ...inner.slice(1)] : inner.slice(1);
+    arr[i] = React.cloneElement(node, {}, ...newInner);
+    break;
+  }
+
+  const v = CALLOUT_VARIANTS[kind] || CALLOUT_VARIANTS.note;
+  const Icon = v.icon;
+  return (
+    <aside
+      className="my-5 px-5 py-4 rounded-lg flex gap-3 not-italic"
+      style={{ background: v.bg, borderLeft: `4px solid ${v.border}` }}
+      data-callout={kind}
+      data-testid={`kb-callout-${kind}`}
+    >
+      <Icon className="w-5 h-5 mt-0.5 shrink-0" style={{ color: v.border }} />
+      <div className="flex-1 min-w-0 text-[#0F172A] leading-relaxed">
+        <span className="font-semibold" style={{ color: v.border }}>{v.label}: </span>
+        {arr}
+      </div>
+    </aside>
+  );
+}
+
+function buildAskDiscussionHref(doc, slug, docId) {
+  const title = `Re: ${doc?.title || "Knowledge Base topic"}`;
+  const link = `${window.location.origin}/knowledge-base/${slug}/${docId}`;
+  const body = `Referencing the Knowledge Base article: ${doc?.title || ""}\n${link}\n\n---\n\nMy question:\n\n`;
+  const tags = (doc?.tags || []).slice(0, 3).join(",");
+  const params = new URLSearchParams({ type: "question", title, body });
+  if (tags) params.set("tags", tags);
+  return `/community/new-post?${params.toString()}`;
 }
 
 function Callout({ type, content }) {

@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
 import { CircleHelp, MessagesSquare, Trophy, ChevronRight } from "lucide-react";
 import NavHeader from "../components/NavHeader";
+import AuthPrompt from "../components/AuthPrompt";
 import { api, formatApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { loginHref } from "../lib/redirect";
 import { toast } from "sonner";
 
 const TYPES = [
@@ -14,22 +16,22 @@ const TYPES = [
 
 export default function NewPost() {
   const [params] = useSearchParams();
-  const [step, setStep] = useState(1);
-  const [type, setType] = useState(params.get("type") || "");
+  const [type, setType] = useState(params.get("type") || "discussion");
   const [spaceSlug, setSpaceSlug] = useState(params.get("space") || "");
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [tagsInput, setTagsInput] = useState("");
+  const [title, setTitle] = useState(params.get("title") || "");
+  const [body, setBody] = useState(params.get("body") || "");
+  const [tagsInput, setTagsInput] = useState(params.get("tags") || "");
   const [spaces, setSpaces] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) navigate("/login");
-    else if (!user.onboarded) navigate("/onboarding");
-  }, [user, authLoading, navigate]);
+    // Don't redirect logged-out users — show an inline AuthPrompt below.
+    if (user && !user.onboarded) navigate("/onboarding");
+  }, [user, authLoading, navigate, location]);
 
   useEffect(() => {
     api.get("/spaces").then((r) => setSpaces(r.data));
@@ -54,56 +56,25 @@ export default function NewPost() {
 
   const selectedSpace = spaces.find((s) => s.slug === spaceSlug);
 
+  if (!authLoading && !user) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC]" data-testid="new-post-page">
+        <NavHeader />
+        <div className="max-w-[640px] mx-auto px-4 lg:px-8 py-16">
+          <h1 className="font-heading text-2xl font-semibold text-[#0A1628] mb-2">Start a discussion</h1>
+          <p className="text-sm text-[#64748B] mb-6">HCMOrbit is an open community — but to post you need an account so other practitioners know who they&apos;re talking to.</p>
+          <AuthPrompt message="Sign in to start a discussion" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC]" data-testid="new-post-page">
       <NavHeader />
       <div className="max-w-[1100px] mx-auto px-4 lg:px-8 py-8">
-        {step === 1 && (
-          <div data-testid="new-post-step1">
-            <div className="mb-8">
-              <h1 className="font-heading text-2xl font-semibold text-[#0A1628]">What kind of post is this?</h1>
-              <p className="text-sm text-[#64748B] mt-1">Pick the format that matches your intent.</p>
-            </div>
-            <div className="grid md:grid-cols-3 gap-4">
-              {TYPES.map((t) => {
-                const Icon = t.icon;
-                const selected = type === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setType(t.id)}
-                    data-testid={`select-type-${t.id}`}
-                    className={`text-left p-6 rounded-xl border-2 transition-all bg-white ${selected ? "shadow-md" : "border-[#E2E8F0] hover:border-[#94A3B8]"}`}
-                    style={selected ? { borderColor: t.color } : {}}
-                  >
-                    <div className="w-10 h-10 rounded-md flex items-center justify-center" style={{ background: `${t.color}15` }}>
-                      <Icon className="w-5 h-5" style={{ color: t.color }} />
-                    </div>
-                    <h3 className="font-heading text-lg font-semibold text-[#0A1628] mt-4">{t.title}</h3>
-                    <p className="text-sm text-[#64748B] mt-1.5 leading-relaxed">{t.desc}</p>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-6">
-              <button
-                onClick={() => setStep(2)}
-                disabled={!type}
-                data-testid="new-post-next-btn"
-                className="px-6 py-2.5 rounded-md bg-[#0A1628] hover:bg-[#0F1F36] text-white font-medium text-sm disabled:opacity-50"
-              >
-                Continue <ChevronRight className="inline w-4 h-4 ml-1" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <form onSubmit={submit} className="grid lg:grid-cols-3 gap-6" data-testid="new-post-step2">
+        <form onSubmit={submit} className="grid lg:grid-cols-3 gap-6" data-testid="new-post-step2">
             <div className="lg:col-span-2 bg-white border border-[#E2E8F0] rounded-lg p-6 lg:p-8">
-              <div className="mb-5">
-                <button type="button" onClick={() => setStep(1)} className="text-xs text-[#64748B] hover:text-[#0A1628]">← Change post type</button>
-              </div>
               <h1 className="font-heading text-2xl font-semibold text-[#0A1628]">Compose your {TYPES.find((t) => t.id === type)?.title.toLowerCase()}</h1>
 
               <div className="mt-6 flex flex-col gap-5">
@@ -208,7 +179,6 @@ export default function NewPost() {
               )}
             </aside>
           </form>
-        )}
       </div>
     </div>
   );
