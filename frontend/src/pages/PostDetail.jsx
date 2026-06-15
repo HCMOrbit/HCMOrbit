@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
-import { CheckCircle2, MessageSquare, Eye, Bookmark, Send, Pencil, Trash2, X, Flag } from "lucide-react";
+import { CheckCircle2, MessageSquare, Eye, Bookmark, Send, Pencil, Trash2, X, Flag, BookOpen } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import NavHeader from "../components/NavHeader";
@@ -10,6 +10,7 @@ import VoteComponent from "../components/VoteComponent";
 import SharePopover from "../components/SharePopover";
 import ReportModal from "../components/ReportModal";
 import AuthPrompt from "../components/AuthPrompt";
+import { DocTypeBadge } from "../components/kb/KBBadges";
 import { api, timeAgo, formatApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { loginHref } from "../lib/redirect";
@@ -30,6 +31,7 @@ export default function PostDetail() {
   const [editingId, setEditingId] = useState(null);
   const [editBody, setEditBody] = useState("");
   const [reportTarget, setReportTarget] = useState(null);
+  const [relatedKB, setRelatedKB] = useState([]);
   const liveTimerRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -58,6 +60,19 @@ export default function PostDetail() {
   }, [id, user]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Fetch related KB articles when the post's space is known. Because Spaces
+  // and KB categories share the same 17-area slugs, the space slug doubles
+  // as the KB category filter. Silent on errors / no matches.
+  useEffect(() => {
+    const slug = post?.space?.slug;
+    if (!slug) return;
+    let cancelled = false;
+    api.get(`/kb/docs?category=${slug}&limit=3`)
+      .then((r) => { if (!cancelled) setRelatedKB(r.data?.docs || []); })
+      .catch(() => { if (!cancelled) setRelatedKB([]); });
+    return () => { cancelled = true; };
+  }, [post?.space?.slug]);
 
   useEffect(() => {
     if (!post) return;
@@ -236,6 +251,41 @@ export default function PostDetail() {
             </div>
           </div>
         </div>
+
+        {/* Related KB articles — Community → KB cross-link. Silent when no matches. */}
+        {relatedKB.length > 0 && post.space?.slug && (
+          <div className="mt-6 bg-white border border-[#E2E8F0] rounded-lg p-5" data-testid="related-kb">
+            <div className="flex items-center gap-2 mb-3">
+              <BookOpen className="w-4 h-4 text-[#0D9373]" />
+              <h3 className="font-heading font-semibold text-sm text-[#0A1628]">
+                Related knowledge base articles
+              </h3>
+              <span className="text-xs text-[#94A3B8]">from {post.space.name}</span>
+            </div>
+            <ul className="flex flex-col gap-2">
+              {relatedKB.map((d) => (
+                <li key={d.id}>
+                  <Link
+                    to={`/knowledge-base/${post.space.slug}/${d.id}`}
+                    className="flex items-start gap-3 group p-2 -m-2 rounded hover:bg-[#F8FAFC] transition-colors"
+                    data-testid={`related-kb-${d.id}`}
+                  >
+                    <DocTypeBadge type={d.doc_type} />
+                    <span className="flex-1 text-sm text-[#1D6FE8] group-hover:underline leading-snug">
+                      {d.title}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <Link
+              to={`/knowledge-base/${post.space.slug}`}
+              className="mt-3 inline-block text-xs font-medium text-[#0D9373] hover:underline"
+            >
+              View all in {post.space.name} →
+            </Link>
+          </div>
+        )}
 
         {/* Answers */}
         <div className="mt-8">
