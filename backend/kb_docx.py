@@ -69,24 +69,38 @@ DIFFICULTY_MAP = {
 # --- helpers ---------------------------------------------------------------
 
 def _runs_to_markdown(paragraph) -> str:
-    """Walk the runs of a paragraph and inline-format bold/italic/code."""
+    """Walk the runs of a paragraph and inline-format bold/italic/code.
+
+    Any leading/trailing whitespace on a styled run is moved OUTSIDE the
+    delimiter pair so the result is valid CommonMark: e.g. a bold run
+    "Top-level org: " (trailing space) becomes "**Top-level org:** ",
+    not "**Top-level org: **" which CommonMark renders as literal asterisks.
+    """
     out = []
     for run in paragraph.runs:
         text = run.text or ""
         if not text:
             continue
-        # Escape markdown specials minimally — most KB content is plain prose
         text = text.replace("\\", "\\\\")
         bold = bool(run.bold)
         italic = bool(run.italic)
-        if bold and italic:
-            out.append(f"***{text}***")
-        elif bold:
-            out.append(f"**{text}**")
-        elif italic:
-            out.append(f"*{text}*")
-        else:
+        if not (bold or italic):
             out.append(text)
+            continue
+        # Split into [leading_ws, core, trailing_ws]
+        m = re.match(r"^(\s*)(.*?)(\s*)$", text, re.DOTALL)
+        leading, core, trailing = m.group(1), m.group(2), m.group(3)
+        if not core:
+            # Pure whitespace run — keep as-is, don't wrap
+            out.append(text)
+            continue
+        if bold and italic:
+            wrapped = f"***{core}***"
+        elif bold:
+            wrapped = f"**{core}**"
+        else:
+            wrapped = f"*{core}*"
+        out.append(f"{leading}{wrapped}{trailing}")
     return "".join(out)
 
 
