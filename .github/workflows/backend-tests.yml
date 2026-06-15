@@ -71,3 +71,36 @@ jobs:
       - name: Dump backend log on failure
         if: failure()
         run: tail -200 /tmp/backend.log || true
+
+  frontend-build:
+    name: yarn build frontend/
+    runs-on: ubuntu-latest
+
+    env:
+      # CRA inlines REACT_APP_* at build time — set a placeholder so the build
+      # succeeds. The real value is configured per-environment on Railway.
+      REACT_APP_BACKEND_URL: https://ci-placeholder.invalid
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        working-directory: frontend
+        env:
+          # GitHub Actions sets CI=true automatically, which makes CRA treat
+          # ESLint warnings as build errors. Disable that so the workflow fails
+          # only on actual compile errors, not lint-style nits.
+          CI: "false"
+        run: yarn build
