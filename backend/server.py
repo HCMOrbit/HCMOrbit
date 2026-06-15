@@ -1629,6 +1629,21 @@ async def admin_upload_kb_docx(
         {"id": "checklist", "label": "Checklist"},
     ]
     parsed["filename"] = file.filename
+
+    # Duplicate detection on reference_id (case-insensitive exact match)
+    parsed["duplicate"] = None
+    ref_id = (parsed.get("reference_id") or "").strip()
+    if ref_id:
+        existing = await db.kb_docs.find_one(
+            {"reference_id": {"$regex": f"^{re.escape(ref_id)}$", "$options": "i"}},
+            {"_id": 0, "id": 1, "title": 1, "is_published": 1},
+        )
+        if existing:
+            parsed["duplicate"] = {
+                "existing_id": existing["id"],
+                "title": existing.get("title", ""),
+                "is_published": bool(existing.get("is_published")),
+            }
     return parsed
 
 
@@ -1693,6 +1708,10 @@ class KBDocPatchIn(BaseModel):
     target_groups: Optional[List[GroupType]] = None
     tags: Optional[List[str]] = None
     workday_version: Optional[str] = None
+    reference_id: Optional[str] = None
+    sub_module: Optional[str] = None
+    read_time: Optional[str] = None
+    platform: Optional[str] = None
 
 
 @api.patch("/admin/kb/docs/{doc_id}")

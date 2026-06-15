@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { Upload, X, AlertTriangle, FileText, Loader2 } from "lucide-react";
+import { Upload, X, AlertTriangle, FileText, Loader2, RefreshCw } from "lucide-react";
 import { api, formatApiError } from "../../lib/api";
 import { toast } from "sonner";
 
@@ -44,7 +44,7 @@ export default function KBDocxUploadModal({ onClose, onSaved }) {
 
   const update = (key, value) => setParsed((p) => ({ ...p, [key]: value }));
 
-  const saveAsDraft = async () => {
+  const saveAsDraft = async (mode = "create") => {
     if (!parsed) return;
     if (!parsed.title || parsed.title.length < 10) { toast.error("Title must be at least 10 characters."); return; }
     if (!parsed.summary || parsed.summary.length < 30) { toast.error("Summary must be at least 30 characters."); return; }
@@ -64,10 +64,14 @@ export default function KBDocxUploadModal({ onClose, onSaved }) {
         sub_module: parsed.sub_module || null,
         read_time: parsed.read_time || null,
         platform: parsed.platform || "Workday",
-        publish: false,
       };
-      await api.post("/kb/docs", payload);
-      toast.success("Saved as draft. Open the row to publish when ready.");
+      if (mode === "replace" && parsed.duplicate?.existing_id) {
+        await api.patch(`/admin/kb/docs/${parsed.duplicate.existing_id}`, payload);
+        toast.success(`Replaced existing document "${parsed.duplicate.title.slice(0, 60)}".`);
+      } else {
+        await api.post("/kb/docs", { ...payload, publish: false });
+        toast.success("Saved as draft. Open the row to publish when ready.");
+      }
       onSaved();
     } catch (e) {
       toast.error(formatApiError(e));
@@ -115,6 +119,23 @@ export default function KBDocxUploadModal({ onClose, onSaved }) {
           </div>
         ) : (
           <div className="p-6 flex flex-col gap-4" data-testid="kb-upload-review">
+            {parsed.duplicate && (
+              <div className="rounded-md border border-[#DC2626]/40 bg-[#FEF2F2] p-4" data-testid="kb-upload-duplicate-banner">
+                <div className="flex items-center gap-2 text-[#991B1B] font-semibold text-sm">
+                  <RefreshCw className="w-4 h-4" /> Duplicate Reference ID detected
+                </div>
+                <p className="mt-2 text-sm text-[#7F1D1D] leading-relaxed">
+                  A document with Reference ID{" "}
+                  <span className="font-mono font-semibold">{parsed.reference_id}</span>{" "}
+                  already exists: <span className="font-semibold">&ldquo;{parsed.duplicate.title}&rdquo;</span>{" "}
+                  ({parsed.duplicate.is_published ? "Published" : "Draft"}).
+                </p>
+                <p className="mt-2 text-xs text-[#7F1D1D]/80">
+                  Use <span className="font-semibold">Replace existing document</span> to overwrite that record with the parsed values below, or <span className="font-semibold">Cancel</span> to back out.
+                </p>
+              </div>
+            )}
+
             {parsed.flags && parsed.flags.length > 0 && (
               <div className="rounded-md border border-[#F59E0B]/40 bg-[#FFFBEB] p-4" data-testid="kb-upload-flags">
                 <div className="flex items-center gap-2 text-[#92400E] font-semibold text-sm">
@@ -193,17 +214,36 @@ export default function KBDocxUploadModal({ onClose, onSaved }) {
               />
             </Field>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-[#F1F5F9]">
+            <div className="flex flex-wrap justify-end gap-2 pt-2 border-t border-[#F1F5F9]">
               <button onClick={() => setParsed(null)} className="px-4 py-2 rounded text-sm text-[#475569] hover:bg-[#F1F5F9]" data-testid="kb-upload-back">
                 Choose a different file
               </button>
-              <button
-                onClick={saveAsDraft} disabled={saving}
-                data-testid="kb-upload-save-draft"
-                className="px-5 py-2 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center gap-2"
-              >
-                {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : "Save as draft"}
-              </button>
+              {parsed.duplicate ? (
+                <>
+                  <button
+                    onClick={onClose}
+                    className="px-4 py-2 rounded text-sm border border-[#E2E8F0] hover:border-[#94A3B8] text-[#475569]"
+                    data-testid="kb-upload-cancel"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => saveAsDraft("replace")} disabled={saving}
+                    data-testid="kb-upload-replace-existing"
+                    className="px-5 py-2 rounded-md bg-[#DC2626] hover:bg-[#B91C1C] text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center gap-2"
+                  >
+                    {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Replacing…</> : <><RefreshCw className="w-4 h-4" /> Replace existing document</>}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => saveAsDraft("create")} disabled={saving}
+                  data-testid="kb-upload-save-draft"
+                  className="px-5 py-2 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center gap-2"
+                >
+                  {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : "Save as draft"}
+                </button>
+              )}
             </div>
           </div>
         )}
