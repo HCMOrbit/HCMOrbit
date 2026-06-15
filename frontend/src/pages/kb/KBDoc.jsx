@@ -36,9 +36,8 @@ export default function KBDoc() {
     const lines = doc.body.split("\n");
     return lines.filter((l) => /^##\s+|^###\s+/.test(l)).map((l) => {
       const level = l.startsWith("### ") ? 3 : 2;
-      const text = l.replace(/^#+\s+/, "").trim();
-      const id = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-      return { id, text, level };
+      const text = cleanHeadingText(l.replace(/^#+\s+/, ""));
+      return { id: slugify(text), text, level };
     });
   }, [doc?.body]);
 
@@ -181,14 +180,12 @@ export default function KBDoc() {
           <article className="bg-white border border-[#E2E8F0] rounded-lg p-6 lg:p-8 kb-prose" data-testid="doc-body">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
               h2: ({ children }) => {
-                const text = String(children);
-                const id = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-                return <h2 id={id} className="font-heading text-xl font-semibold mt-8 mb-4 pb-2 border-b border-[#E2E8F0] text-[#0A1628] scroll-mt-20">{children}</h2>;
+                const text = cleanHeadingText(extractText(children));
+                return <h2 id={slugify(text)} className="font-heading text-xl font-semibold mt-8 mb-4 pb-2 border-b border-[#E2E8F0] text-[#0A1628] scroll-mt-20">{children}</h2>;
               },
               h3: ({ children }) => {
-                const text = String(children);
-                const id = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-                return <h3 id={id} className="font-heading text-base font-semibold mt-6 mb-3 text-[#0A1628] scroll-mt-20">{children}</h3>;
+                const text = cleanHeadingText(extractText(children));
+                return <h3 id={slugify(text)} className="font-heading text-base font-semibold mt-6 mb-3 text-[#0A1628] scroll-mt-20">{children}</h3>;
               },
               p: ({ children }) => {
                 const text = Array.isArray(children) ? children.join("") : String(children);
@@ -291,6 +288,30 @@ function preprocessCallouts(body) {
   if (!body) return "";
   // Convert :::tip ... ::: blocks into single-paragraph markers that the p renderer detects
   return body.replace(/:::(mistake|tip|warning|info)\n([\s\S]*?)\n:::/g, (_m, type, content) => `:::${type}\n${content.replace(/\n/g, " ")}\n:::`);
+}
+
+function slugify(text) {
+  return (text || "").toString().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function cleanHeadingText(raw) {
+  if (!raw) return "";
+  return raw
+    .replace(/`+/g, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    .replace(/\\([\\`*_])/g, "$1")
+    .trim();
+}
+
+function extractText(children) {
+  if (children == null || children === false) return "";
+  if (typeof children === "string" || typeof children === "number") return String(children);
+  if (Array.isArray(children)) return children.map(extractText).join("");
+  if (children.props && children.props.children !== undefined) return extractText(children.props.children);
+  return "";
 }
 
 
