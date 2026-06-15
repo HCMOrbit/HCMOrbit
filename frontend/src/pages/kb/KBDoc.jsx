@@ -55,6 +55,12 @@ export default function KBDoc() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [headings]);
 
+  useEffect(() => {
+    if (!activeAnchor) return;
+    const link = document.querySelector(`[data-testid="toc-${activeAnchor}"]`);
+    if (link) link.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeAnchor]);
+
   const vote = async (helpful) => {
     if (!user) return;
     if (myVote === helpful) return;
