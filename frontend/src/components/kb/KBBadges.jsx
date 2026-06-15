@@ -16,8 +16,23 @@ const DIFF_MAP = {
 };
 
 const CAT_BG = {
-  integrations: "#EFF6FF", reporting: "#EEEDFE", security: "#FEF2F2",
-  "core-hcm": "#E1F5EE", payroll: "#FFFBEB", "career-dev": "#EAF3DE",
+  "core-hcm": "#E1F5EE",
+  "talent-acquisition": "#FEF3E2",
+  "talent-management": "#EAF3DE",
+  "compensation-benefits": "#FFFBEB",
+  "workforce-management": "#FDF2F8",
+  payroll: "#FFFBEB",
+  "learning-employee-experience": "#EEF6FF",
+  "workforce-planning-analytics": "#F0F9FF",
+  "finance-accounting": "#F3F4F6",
+  "procurement-spend-management": "#FAF5FF",
+  "projects-professional-services": "#FFF7ED",
+  planning: "#ECFEFF",
+  "analytics-reporting": "#EEEDFE",
+  "integration-platform": "#EFF6FF",
+  "security-compliance": "#FEF2F2",
+  "ai-automation": "#F5F3FF",
+  "industry-solutions": "#F0FDF4",
 };
 
 export function DocTypeBadge({ type }) {

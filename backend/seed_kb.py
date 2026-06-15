@@ -8,24 +8,60 @@ def iso(dt):
 
 
 CATEGORIES = [
-    {"slug": "integrations", "name": "Integrations", "icon": "🔌",
-     "description": "EIB, Studio, Core Connectors, REST/SOAP APIs, XSLT, OAuth, monitoring", "sort_order": 1},
-    {"slug": "reporting", "name": "Reporting & Analytics", "icon": "📊",
-     "description": "BIRT, composite reports, calculated fields, dashboards, Prism", "sort_order": 2},
-    {"slug": "security", "name": "Security & Roles", "icon": "🔒",
-     "description": "Role design, SoD, domain security, access governance, audit readiness", "sort_order": 3},
     {"slug": "core-hcm", "name": "Core HCM", "icon": "👤",
-     "description": "Business process framework, staffing models, org structures, worker profiles", "sort_order": 4},
+     "description": "Business process framework, staffing models, org structures, worker profiles", "sort_order": 1},
+    {"slug": "talent-acquisition", "name": "Talent Acquisition", "icon": "🎯",
+     "description": "Recruiting, candidate experience, sourcing, hiring workflows, offer management", "sort_order": 2},
+    {"slug": "talent-management", "name": "Talent Management", "icon": "🌱",
+     "description": "Performance, goals, succession, careers, calibration, talent reviews", "sort_order": 3},
+    {"slug": "compensation-benefits", "name": "Compensation & Benefits", "icon": "💼",
+     "description": "Compensation plans, merit cycles, benefits eligibility, total rewards", "sort_order": 4},
+    {"slug": "workforce-management", "name": "Workforce Management", "icon": "⏱️",
+     "description": "Time tracking, absence, scheduling, accruals, work schedules", "sort_order": 5},
     {"slug": "payroll", "name": "Payroll", "icon": "🧾",
-     "description": "US/UK payroll, payroll control center, ECP, PECI, pay calculations", "sort_order": 5},
-    {"slug": "career-dev", "name": "Career Development", "icon": "🚀",
-     "description": "Interview prep, certification guides, architect roadmaps, salary data", "sort_order": 6},
+     "description": "US/UK payroll, Payroll Control Center, ECP, PECI, pay calculations, tax", "sort_order": 6},
+    {"slug": "learning-employee-experience", "name": "Learning & Employee Experience", "icon": "🎓",
+     "description": "Workday Learning, employee voice, journeys, help, onboarding experiences", "sort_order": 7},
+    {"slug": "workforce-planning-analytics", "name": "Workforce Planning & Analytics", "icon": "📈",
+     "description": "Workforce planning, headcount, people analytics, skills cloud", "sort_order": 8},
+    {"slug": "finance-accounting", "name": "Finance & Accounting", "icon": "🏦",
+     "description": "General ledger, accounting center, intercompany, banking, close, consolidation", "sort_order": 9},
+    {"slug": "procurement-spend-management", "name": "Procurement & Spend Management", "icon": "🛒",
+     "description": "Procurement, supplier management, expenses, spend, sourcing", "sort_order": 10},
+    {"slug": "projects-professional-services", "name": "Projects & Professional Services", "icon": "📐",
+     "description": "Projects, professional services automation (PSA), resource management, billing", "sort_order": 11},
+    {"slug": "planning", "name": "Planning", "icon": "🗺️",
+     "description": "Adaptive Planning — financial, workforce, sales, operational planning models", "sort_order": 12},
+    {"slug": "analytics-reporting", "name": "Analytics & Reporting", "icon": "📊",
+     "description": "BIRT, composite reports, calculated fields, dashboards, Prism Analytics", "sort_order": 13},
+    {"slug": "integration-platform", "name": "Integration & Platform", "icon": "🔌",
+     "description": "EIB, Studio, Core Connectors, REST/SOAP APIs, XSLT, OAuth, monitoring, Extend", "sort_order": 14},
+    {"slug": "security-compliance", "name": "Security & Compliance", "icon": "🔒",
+     "description": "Role design, SoD, domain security, access governance, audit readiness, controls", "sort_order": 15},
+    {"slug": "ai-automation", "name": "AI & Automation", "icon": "🤖",
+     "description": "Workday Illuminate, ML-driven recommendations, agents, intelligent automation", "sort_order": 16},
+    {"slug": "industry-solutions", "name": "Industry Solutions", "icon": "🏭",
+     "description": "Healthcare, higher education, government, financial services, retail, manufacturing", "sort_order": 17},
 ]
+
+
+# Existing slugs in DB that map cleanly to a new slug. Run at every startup
+# so DB taxonomies converge to the canonical 17 above.
+LEGACY_SLUG_MIGRATION = {
+    "integrations": "integration-platform",
+    "security": "security-compliance",
+    "reporting": "analytics-reporting",
+    # core-hcm and payroll keep their slugs in the new taxonomy
+}
+
+# Old categories with no clean mapping — keep them visible-but-hidden so admins
+# can manually re-bucket their docs from the Admin UI.
+UNMAPPED_LEGACY_SLUGS = ["career-dev"]
 
 
 DOCS = [
     {
-        "slug": "integrations", "author": "elena_carter", "is_featured": True,
+        "slug": "integration-platform", "author": "elena_carter", "is_featured": True,
         "title": "EIB shows \"Success\" but file never reached the vendor — diagnosing silent delivery failures",
         "doc_type": "fix_guide", "difficulty": "intermediate", "workday_version": "2026 R1",
         "summary": "A green EIB completion status does not confirm downstream delivery. Three patterns to catch silent failures before your vendor calls you first.",
@@ -84,7 +120,7 @@ Look for these three things after every EIB run:
 Until all three are green, the EIB is not done — no matter what the status says.""",
     },
     {
-        "slug": "integrations", "author": "ana_lopez", "is_featured": False,
+        "slug": "integration-platform", "author": "ana_lopez", "is_featured": False,
         "title": "XSLT encoding errors in Workday EIB — the complete diagnostic guide",
         "doc_type": "fix_guide", "difficulty": "beginner", "workday_version": "2025 R2",
         "summary": "Encoding mismatches between ISO-8859-1 and UTF-8 cause garbled characters and failed transformations. Where to look, what to change, how to test the fix.",
@@ -146,7 +182,7 @@ Setting `encoding="UTF-8"` in XSLT but then writing the file via SFTP without se
 If problems persist, the issue is usually upstream in the source data — check whether the calculated field producing the name has its own encoding behaviour.""",
     },
     {
-        "slug": "integrations", "author": "raj_n", "is_featured": False,
+        "slug": "integration-platform", "author": "raj_n", "is_featured": False,
         "title": "PECI payroll integration — the 150K worker limit and how to design around it",
         "doc_type": "reference", "difficulty": "advanced", "workday_version": "2026 R1",
         "summary": "PECI has hard limits most architects discover mid-implementation. Design patterns for large global payrolls before you hit the wall.",
@@ -207,7 +243,7 @@ Pattern 3 is a 6–12 month engineering effort. Do not start it until both shard
 If you cannot stay under 150K per shard and Pattern 3 is not viable, Workday's solution architects can in some cases configure increased session limits for your tenant. This is rare and requires a business case.""",
     },
     {
-        "slug": "reporting", "author": "tomek_v", "is_featured": True,
+        "slug": "analytics-reporting", "author": "tomek_v", "is_featured": True,
         "title": "Calculated fields returning null when used as LTV type — causes and step-by-step fix",
         "doc_type": "fix_guide", "difficulty": "intermediate", "workday_version": "2026 R1",
         "summary": "LTV calculated fields fail silently in specific conditions. Three most common causes and exact configuration steps to resolve each one.",
@@ -257,7 +293,7 @@ Always set a non-null default like `"(Unmapped)"`. This way unmapped source valu
 After fixing, test with three workers known to have produced nulls. If all three return the expected value, the fix is solid. Schedule a one-time audit report 7 days later to catch any new unmapped values.""",
     },
     {
-        "slug": "security", "author": "raj_n", "is_featured": True,
+        "slug": "security-compliance", "author": "raj_n", "is_featured": True,
         "title": "Pre go-live security audit — 47 things to verify before you hand over the keys",
         "doc_type": "checklist", "difficulty": "intermediate", "workday_version": "2026 R1",
         "summary": "A complete security validation checklist covering role assignments, SoD conflicts, integration system user permissions, domain security, and business process security.",
@@ -489,7 +525,7 @@ Framework: STAR format. Acknowledge what *you* missed — not blame distribution
 After the interview, send a thank-you within 24 hours referencing one specific technical point discussed. This signals you were listening and you care.""",
     },
     {
-        "slug": "security", "author": "raj_n", "is_featured": False,
+        "slug": "security-compliance", "author": "raj_n", "is_featured": False,
         "title": "Designing intersection security groups for a shared services model across multiple business units",
         "doc_type": "how_to", "difficulty": "advanced", "workday_version": "2025 R2",
         "summary": "Step-by-step guide to structuring Workday security roles when a shared services centre supports 3 or more business units with different access requirements.",
@@ -608,7 +644,7 @@ Clean numbers means the pattern is healthy.""",
 
 
 async def seed_kb(db):
-    # Categories
+    # Categories — upsert canonical taxonomy
     for c in CATEGORIES:
         existing = await db.kb_categories.find_one({"slug": c["slug"]})
         if not existing:
@@ -620,6 +656,52 @@ async def seed_kb(db):
                 "is_hidden": False,
                 "created_at": iso(datetime.now(timezone.utc)),
             })
+        else:
+            # Keep canonical name/icon/description/sort_order in sync with code
+            await db.kb_categories.update_one(
+                {"slug": c["slug"]},
+                {"$set": {
+                    "name": c["name"], "icon": c["icon"],
+                    "description": c["description"], "sort_order": c["sort_order"],
+                    "is_hidden": False,
+                }},
+            )
+
+    # --- Migration: re-bucket docs from legacy slugs to canonical ones ---
+    for old_slug, new_slug in LEGACY_SLUG_MIGRATION.items():
+        old_cat = await db.kb_categories.find_one({"slug": old_slug})
+        new_cat = await db.kb_categories.find_one({"slug": new_slug})
+        if not old_cat or not new_cat:
+            continue
+        moved = await db.kb_docs.update_many(
+            {"category_id": old_cat["id"]},
+            {"$set": {"category_id": new_cat["id"], "category_slug": new_slug}},
+        )
+        if moved.modified_count:
+            print(f"[seed_kb] Migrated {moved.modified_count} docs: {old_slug} -> {new_slug}")
+        # Hide the old category so it disappears from the public taxonomy
+        await db.kb_categories.update_one(
+            {"slug": old_slug}, {"$set": {"is_hidden": True, "doc_count": 0}}
+        )
+
+    # Surface any old categories that still hold docs and have no mapping
+    for orphan_slug in UNMAPPED_LEGACY_SLUGS:
+        cat = await db.kb_categories.find_one({"slug": orphan_slug})
+        if not cat:
+            continue
+        doc_count = await db.kb_docs.count_documents({"category_id": cat["id"]})
+        if doc_count > 0:
+            print(f"[seed_kb] MANUAL REVIEW: legacy category '{orphan_slug}' "
+                  f"still has {doc_count} doc(s) with no clean mapping to the new taxonomy.")
+        # Hide from public taxonomy but keep docs intact for admin re-bucketing
+        await db.kb_categories.update_one(
+            {"slug": orphan_slug}, {"$set": {"is_hidden": True}}
+        )
+
+    # Recompute doc_count per category (covers both fresh seeds and migrations)
+    async for cat in db.kb_categories.find({}, {"_id": 0, "id": 1}):
+        count = await db.kb_docs.count_documents({"category_id": cat["id"], "is_published": True})
+        await db.kb_categories.update_one({"id": cat["id"]}, {"$set": {"doc_count": count}})
 
     # Docs — only seed if empty
     if await db.kb_docs.count_documents({}) > 0:

@@ -35,16 +35,182 @@ from docx.oxml.ns import qn
 
 # --- canonical maps used to flag unknown values ----------------------------
 
-# Module label -> existing category slug
+# Module label -> canonical category slug. Keys are case-insensitive
+# (normalised to lowercase before lookup). Includes common aliases so admins
+# can drop in their existing .docx headers without manual remapping.
 KNOWN_MODULE_TO_CATEGORY = {
+    # Core HCM
     "core hcm": "core-hcm",
-    "integrations": "integrations",
-    "security & roles": "security-roles",
-    "security and roles": "security-roles",
-    "security": "security-roles",
-    "reporting & analytics": "reporting-analytics",
-    "reporting and analytics": "reporting-analytics",
-    "reporting": "reporting-analytics",
+    "core-hcm": "core-hcm",
+    "hcm": "core-hcm",
+    "human capital management": "core-hcm",
+
+    # Talent Acquisition
+    "talent acquisition": "talent-acquisition",
+    "recruiting": "talent-acquisition",
+    "recruitment": "talent-acquisition",
+    "hiring": "talent-acquisition",
+    "candidate experience": "talent-acquisition",
+
+    # Talent Management
+    "talent management": "talent-management",
+    "talent": "talent-management",
+    "performance": "talent-management",
+    "performance management": "talent-management",
+    "succession": "talent-management",
+    "succession planning": "talent-management",
+    "goals": "talent-management",
+    "careers": "talent-management",
+    "calibration": "talent-management",
+
+    # Compensation & Benefits
+    "compensation & benefits": "compensation-benefits",
+    "compensation and benefits": "compensation-benefits",
+    "comp & benefits": "compensation-benefits",
+    "compensation": "compensation-benefits",
+    "comp": "compensation-benefits",
+    "benefits": "compensation-benefits",
+    "total rewards": "compensation-benefits",
+    "advanced compensation": "compensation-benefits",
+
+    # Workforce Management
+    "workforce management": "workforce-management",
+    "wfm": "workforce-management",
+    "time tracking": "workforce-management",
+    "time & absence": "workforce-management",
+    "time and absence": "workforce-management",
+    "absence": "workforce-management",
+    "absence management": "workforce-management",
+    "scheduling": "workforce-management",
+
+    # Payroll
+    "payroll": "payroll",
+    "us payroll": "payroll",
+    "uk payroll": "payroll",
+    "global payroll": "payroll",
+    "payroll control center": "payroll",
+    "pcc": "payroll",
+    "ecp": "payroll",
+    "peci": "payroll",
+
+    # Learning & Employee Experience
+    "learning & employee experience": "learning-employee-experience",
+    "learning and employee experience": "learning-employee-experience",
+    "learning": "learning-employee-experience",
+    "workday learning": "learning-employee-experience",
+    "lms": "learning-employee-experience",
+    "employee experience": "learning-employee-experience",
+    "employee voice": "learning-employee-experience",
+    "journeys": "learning-employee-experience",
+    "onboarding": "learning-employee-experience",
+
+    # Workforce Planning & Analytics
+    "workforce planning & analytics": "workforce-planning-analytics",
+    "workforce planning and analytics": "workforce-planning-analytics",
+    "workforce planning": "workforce-planning-analytics",
+    "headcount planning": "workforce-planning-analytics",
+    "people analytics": "workforce-planning-analytics",
+    "workforce analytics": "workforce-planning-analytics",
+    "skills cloud": "workforce-planning-analytics",
+
+    # Finance & Accounting
+    "finance & accounting": "finance-accounting",
+    "finance and accounting": "finance-accounting",
+    "finance": "finance-accounting",
+    "financials": "finance-accounting",
+    "accounting": "finance-accounting",
+    "accounting center": "finance-accounting",
+    "general ledger": "finance-accounting",
+    "intercompany": "finance-accounting",
+    "banking": "finance-accounting",
+
+    # Procurement & Spend Management
+    "procurement & spend management": "procurement-spend-management",
+    "procurement and spend management": "procurement-spend-management",
+    "procurement": "procurement-spend-management",
+    "spend management": "procurement-spend-management",
+    "supplier accounts": "procurement-spend-management",
+    "supplier management": "procurement-spend-management",
+    "expenses": "procurement-spend-management",
+    "sourcing": "procurement-spend-management",
+    "strategic sourcing": "procurement-spend-management",
+
+    # Projects & Professional Services
+    "projects & professional services": "projects-professional-services",
+    "projects and professional services": "projects-professional-services",
+    "projects": "projects-professional-services",
+    "professional services": "projects-professional-services",
+    "psa": "projects-professional-services",
+    "resource management": "projects-professional-services",
+    "project billing": "projects-professional-services",
+
+    # Planning
+    "planning": "planning",
+    "adaptive planning": "planning",
+    "adaptive": "planning",
+    "financial planning": "planning",
+    "sales planning": "planning",
+    "operational planning": "planning",
+
+    # Analytics & Reporting
+    "analytics & reporting": "analytics-reporting",
+    "analytics and reporting": "analytics-reporting",
+    "reporting & analytics": "analytics-reporting",
+    "reporting and analytics": "analytics-reporting",
+    "reporting": "analytics-reporting",
+    "analytics": "analytics-reporting",
+    "birt": "analytics-reporting",
+    "prism": "analytics-reporting",
+    "prism analytics": "analytics-reporting",
+    "dashboards": "analytics-reporting",
+
+    # Integration & Platform
+    "integration & platform": "integration-platform",
+    "integration and platform": "integration-platform",
+    "integration": "integration-platform",
+    "integrations": "integration-platform",
+    "platform": "integration-platform",
+    "studio": "integration-platform",
+    "workday studio": "integration-platform",
+    "eib": "integration-platform",
+    "core connectors": "integration-platform",
+    "extend": "integration-platform",
+    "workday extend": "integration-platform",
+    "rest api": "integration-platform",
+    "soap api": "integration-platform",
+
+    # Security & Compliance
+    "security & compliance": "security-compliance",
+    "security and compliance": "security-compliance",
+    "security & roles": "security-compliance",
+    "security and roles": "security-compliance",
+    "security": "security-compliance",
+    "roles": "security-compliance",
+    "compliance": "security-compliance",
+    "audit": "security-compliance",
+    "controls": "security-compliance",
+    "sox": "security-compliance",
+
+    # AI & Automation
+    "ai & automation": "ai-automation",
+    "ai and automation": "ai-automation",
+    "ai": "ai-automation",
+    "automation": "ai-automation",
+    "illuminate": "ai-automation",
+    "workday illuminate": "ai-automation",
+    "machine learning": "ai-automation",
+    "ml": "ai-automation",
+    "agents": "ai-automation",
+
+    # Industry Solutions
+    "industry solutions": "industry-solutions",
+    "industries": "industry-solutions",
+    "healthcare": "industry-solutions",
+    "higher education": "industry-solutions",
+    "government": "industry-solutions",
+    "financial services": "industry-solutions",
+    "retail": "industry-solutions",
+    "manufacturing": "industry-solutions",
 }
 
 # Category-cell label -> existing doc_type enum
