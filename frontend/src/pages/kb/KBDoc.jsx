@@ -199,7 +199,7 @@ export default function KBDoc() {
               code: ({ inline, children }) => inline
                 ? <code className="font-mono text-[0.85em] bg-[#F1F5F9] text-[#0F172A] px-1.5 py-0.5 rounded">{children}</code>
                 : <code className="block font-mono text-sm leading-relaxed">{children}</code>,
-              pre: ({ children }) => <pre className="bg-[#0F172A] text-[#E2E8F0] p-4 rounded-lg overflow-x-auto my-4 text-sm">{children}</pre>,
+              pre: ({ children }) => <KBPre>{children}</KBPre>,
               ul: ({ children }) => <ul className="list-disc pl-6 mb-4 space-y-1.5">{children}</ul>,
               ol: ({ children }) => <ol className="list-decimal pl-6 mb-4 space-y-1.5">{children}</ol>,
               blockquote: ({ children }) => <BlockquoteCallout>{children}</BlockquoteCallout>,
@@ -318,13 +318,13 @@ function extractText(children) {
 }
 
 
-function KBTable({ children }) {
-  const wrapRef = React.useRef(null);
+function useScrollOverflowAffordance() {
+  const ref = React.useRef(null);
   const [overflowing, setOverflowing] = React.useState(false);
   const [hintHidden, setHintHidden] = React.useState(false);
 
   React.useEffect(() => {
-    const el = wrapRef.current;
+    const el = ref.current;
     if (!el) return;
     const check = () => {
       setOverflowing(el.scrollWidth - el.clientWidth > 1);
@@ -344,29 +344,55 @@ function KBTable({ children }) {
     };
   }, []);
 
+  return { ref, overflowing, showHint: overflowing && !hintHidden };
+}
+
+function FadeOverlay({ color, rounded, testid }) {
+  return (
+    <div
+      aria-hidden="true"
+      data-testid={testid}
+      className={`pointer-events-none absolute top-0 right-0 h-full w-12 ${rounded}`}
+      style={{ background: `linear-gradient(to right, rgba(0,0,0,0), ${color})` }}
+    />
+  );
+}
+
+function ScrollHint({ testid }) {
+  return (
+    <div
+      className="mt-2 text-[11px] text-[#94A3B8] flex items-center gap-1.5 transition-opacity"
+      data-testid={testid}
+    >
+      <span aria-hidden="true">←</span> scroll <span aria-hidden="true">→</span>
+    </div>
+  );
+}
+
+function KBTable({ children }) {
+  const { ref, overflowing, showHint } = useScrollOverflowAffordance();
   return (
     <div className="my-4" data-testid="kb-table-block">
       <div className="relative">
-        <div ref={wrapRef} className="overflow-x-auto border border-[#E2E8F0] rounded-lg" data-testid="kb-table-wrap">
+        <div ref={ref} className="overflow-x-auto border border-[#E2E8F0] rounded-lg" data-testid="kb-table-wrap">
           <table className="text-sm border-collapse w-max min-w-full" style={{ tableLayout: "fixed" }}>{children}</table>
         </div>
-        {overflowing && (
-          <div
-            aria-hidden="true"
-            data-testid="kb-table-fade"
-            className="pointer-events-none absolute top-0 right-0 h-full w-12 rounded-r-lg"
-            style={{ background: "linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.95))" }}
-          />
-        )}
+        {overflowing && <FadeOverlay color="rgba(255,255,255,0.95)" rounded="rounded-r-lg" testid="kb-table-fade" />}
       </div>
-      {overflowing && !hintHidden && (
-        <div
-          className="mt-2 text-[11px] text-[#94A3B8] flex items-center gap-1.5 transition-opacity"
-          data-testid="kb-table-scroll-hint"
-        >
-          <span aria-hidden="true">←</span> scroll <span aria-hidden="true">→</span>
-        </div>
-      )}
+      {showHint && <ScrollHint testid="kb-table-scroll-hint" />}
+    </div>
+  );
+}
+
+function KBPre({ children }) {
+  const { ref, overflowing, showHint } = useScrollOverflowAffordance();
+  return (
+    <div className="my-4" data-testid="kb-pre-block">
+      <div className="relative">
+        <pre ref={ref} className="bg-[#0F172A] text-[#E2E8F0] p-4 rounded-lg overflow-x-auto text-sm" data-testid="kb-pre-wrap">{children}</pre>
+        {overflowing && <FadeOverlay color="rgba(15,23,40,0.98)" rounded="rounded-r-lg" testid="kb-pre-fade" />}
+      </div>
+      {showHint && <ScrollHint testid="kb-pre-scroll-hint" />}
     </div>
   );
 }
