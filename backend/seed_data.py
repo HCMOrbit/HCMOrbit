@@ -9,22 +9,54 @@ def iso(dt):
 
 SPACES = [
     {"slug": "core-hcm", "name": "Core HCM", "icon": "Users",
-     "description": "Staffing models, org structures, business process framework, worker profiles"},
-    {"slug": "integrations", "name": "Integrations", "icon": "Network",
-     "description": "Studio, EIB, Core Connectors, REST/SOAP APIs, XSLT, error handling"},
-    {"slug": "security", "name": "Security & Roles", "icon": "Shield",
-     "description": "Role design, SoD, domain security, access governance, audit readiness"},
-    {"slug": "reporting", "name": "Reporting & Analytics", "icon": "BarChart3",
-     "description": "BIRT, composite reports, dashboards, Prism, calculated fields"},
-    {"slug": "compensation", "name": "Compensation", "icon": "CircleDollarSign",
-     "description": "Comp plans, grades, benchmarks, merit cycles, advanced comp"},
+     "description": "Staffing models, org structures, business process framework, worker profiles", "sort_order": 1},
+    {"slug": "talent-acquisition", "name": "Talent Acquisition", "icon": "Target",
+     "description": "Recruiting, candidate experience, sourcing, hiring workflows, offer management", "sort_order": 2},
+    {"slug": "talent-management", "name": "Talent Management", "icon": "Sprout",
+     "description": "Performance, goals, succession, careers, calibration, talent reviews", "sort_order": 3},
+    {"slug": "compensation-benefits", "name": "Compensation & Benefits", "icon": "Briefcase",
+     "description": "Comp plans, grades, benchmarks, merit cycles, advanced comp, benefits", "sort_order": 4},
+    {"slug": "workforce-management", "name": "Workforce Management", "icon": "Clock",
+     "description": "Time tracking, absence, scheduling, accruals, work schedules", "sort_order": 5},
     {"slug": "payroll", "name": "Payroll", "icon": "Wallet",
-     "description": "US/UK payroll, payroll control center, ECP, pay calculations"},
-    {"slug": "financials", "name": "Financials", "icon": "Landmark",
-     "description": "GL, procurement, expenses, accounting center, financial reporting"},
-    {"slug": "career-lounge", "name": "Career Lounge", "icon": "Coffee",
-     "description": "Interview prep, salary talk, career transitions, job search strategies"},
+     "description": "US/UK payroll, payroll control center, ECP, PECI, pay calculations, tax", "sort_order": 6},
+    {"slug": "learning-employee-experience", "name": "Learning & Employee Experience", "icon": "GraduationCap",
+     "description": "Workday Learning, employee voice, journeys, onboarding, help", "sort_order": 7},
+    {"slug": "workforce-planning-analytics", "name": "Workforce Planning & Analytics", "icon": "LineChart",
+     "description": "Workforce planning, headcount, people analytics, skills cloud", "sort_order": 8},
+    {"slug": "finance-accounting", "name": "Finance & Accounting", "icon": "Landmark",
+     "description": "GL, accounting center, intercompany, banking, close, consolidation", "sort_order": 9},
+    {"slug": "procurement-spend-management", "name": "Procurement & Spend Management", "icon": "ShoppingCart",
+     "description": "Procurement, supplier management, expenses, spend, sourcing", "sort_order": 10},
+    {"slug": "projects-professional-services", "name": "Projects & Professional Services", "icon": "Ruler",
+     "description": "Projects, PSA, resource management, project billing", "sort_order": 11},
+    {"slug": "planning", "name": "Planning", "icon": "Map",
+     "description": "Adaptive Planning — financial, workforce, sales, operational planning", "sort_order": 12},
+    {"slug": "analytics-reporting", "name": "Analytics & Reporting", "icon": "BarChart3",
+     "description": "BIRT, composite reports, dashboards, Prism, calculated fields", "sort_order": 13},
+    {"slug": "integration-platform", "name": "Integration & Platform", "icon": "Network",
+     "description": "Studio, EIB, Core Connectors, REST/SOAP APIs, XSLT, OAuth, Extend", "sort_order": 14},
+    {"slug": "security-compliance", "name": "Security & Compliance", "icon": "Shield",
+     "description": "Role design, SoD, domain security, audit readiness, controls, SOX", "sort_order": 15},
+    {"slug": "ai-automation", "name": "AI & Automation", "icon": "Bot",
+     "description": "Workday Illuminate, ML-driven recommendations, agents, automation", "sort_order": 16},
+    {"slug": "industry-solutions", "name": "Industry Solutions", "icon": "Factory",
+     "description": "Healthcare, higher ed, government, financial services, retail, manufacturing", "sort_order": 17},
 ]
+
+
+# Existing slugs that map cleanly to a new slug. Career Lounge has no
+# functional-area equivalent; posts are temporarily parked under Core HCM
+# and the legacy space is hidden for later manual review.
+LEGACY_SPACE_MIGRATION = {
+    "integrations": "integration-platform",
+    "security": "security-compliance",
+    "reporting": "analytics-reporting",
+    "compensation": "compensation-benefits",
+    "financials": "finance-accounting",
+    "career-lounge": "core-hcm",  # parked — flag for review
+    # core-hcm and payroll keep their slugs in the new taxonomy
+}
 
 
 USERS = [
@@ -76,7 +108,7 @@ USERS = [
 
 POSTS = [
     {
-        "space_slug": "integrations", "type": "question",
+        "space_slug": "integration-platform", "type": "question",
         "author_username": "ana_lopez",
         "title": "EIB inbound transformation fails when employee has no manager assigned — XSLT returns null node",
         "body": "Working on an inbound EIB for a worker data load. The transformation fails silently when an employee record has no manager populated. The XSLT `<xsl:value-of select=\"manager/wd:ID\"/>` returns an empty node, but downstream the load throws a generic 'invalid reference' with no row pointer.\n\nWhat I tried:\n- Wrapped in `<xsl:if>` checking string-length\n- Added a `<xsl:choose>` with default to 'TOP_OF_HIERARCHY'\n\nNeither catches all rows. Roughly 4% of the dataset has no manager (CEO, contractors).\n\nWhat's the cleanest pattern people use for this in production?",
@@ -94,7 +126,7 @@ POSTS = [
         ],
     },
     {
-        "space_slug": "security", "type": "question",
+        "space_slug": "security-compliance", "type": "question",
         "author_username": "marcus_t",
         "title": "How do you structure intersection security groups for a shared services model across 3 business units?",
         "body": "We're consolidating 3 acquired entities onto a single tenant. Each has its own HR shared services team but with some overlap (e.g., comp analysts that work across all 3, but recruiters scoped to one).\n\nDo you go intersection-heavy (one group per role × BU) or use conditional roles with calculated fields? The architect calls are split 50/50 and I'd love real implementation notes from people who've done it.",
@@ -124,7 +156,7 @@ POSTS = [
         ],
     },
     {
-        "space_slug": "integrations", "type": "success_story",
+        "space_slug": "integration-platform", "type": "success_story",
         "author_username": "elena_carter",
         "title": "How I debugged a Workday Studio integration that was silently dropping 12% of payroll records",
         "body": "**Context:** Mid-year payroll integration with a third-party EWA provider. Outbound, daily. Studio assembly with 7 transformation steps.\n\n**Problem:** Reconciliation showed 12% record loss between source and destination. No errors. Process status: completed successfully. Every. Single. Day.\n\n**What I tried (in order):**\n1. Verified the source XML — all records present. ✓\n2. Counted records at each Studio assembly step — first 3 steps clean.\n3. At step 4 (a `Transformation` step with custom XSLT), the count dropped.\n4. Stared at the XSLT for an hour. Nothing obvious.\n5. Enabled `xsl:message` debugging on the transformation step.\n\n**What worked:**\n\nThe XSLT had this:\n```xml\n<xsl:for-each select=\"worker[active='true']\">\n```\n\nProblem: `active` was sometimes `'TRUE'` (uppercase), sometimes `'1'`, sometimes `'true'`. The integration was case-sensitive AND value-sensitive.\n\nFix:\n```xml\n<xsl:for-each select=\"worker[translate(active, 'TRUE1', 'true1') = 'true' or active = '1']\">\n```\n\n**Key lesson:** Workday Studio doesn't warn you when an `xsl:for-each` filters out rows. Silent data loss is the worst kind. Now I always add a `<xsl:message>` after every filter step showing the count delta.",
@@ -139,7 +171,7 @@ POSTS = [
         ],
     },
     {
-        "space_slug": "career-lounge", "type": "question",
+        "space_slug": "core-hcm", "type": "question",
         "author_username": "priya_hcm",
         "title": "What does a Workday architect interview at a Big 4 firm actually look like? Questions they asked me",
         "body": "Just went through a final-round Workday Solution Architect interview at one of the Big 4. Sharing the questions because I couldn't find anything specific online:\n\n1. Walk me through how you'd architect Workday security for a global org with 80k employees and 3 unionized populations.\n2. A client wants to migrate from SAP HCM to Workday in 8 months. Walk us through your risk register on day one.\n3. How do you decide between Studio and EIB for a given integration?\n4. Describe a time a client pushed back on a Workday best practice. How did you handle it?\n\nDidn't get the role (3rd round) but they said feedback was 'strong technically, want to see more delivery leadership exposure.' Anyone else been through this loop?",
@@ -154,7 +186,7 @@ POSTS = [
         ],
     },
     {
-        "space_slug": "reporting", "type": "discussion",
+        "space_slug": "analytics-reporting", "type": "discussion",
         "author_username": "tomek_v",
         "title": "BIRT vs Composite Report for executive dashboards — when does each actually make sense?",
         "body": "I see practitioners default to Composite reports because they're easier to build. But for any exec-facing dashboard with print/PDF requirements, BIRT wins on layout control by a mile.\n\nMy heuristic:\n- BIRT: PDF distribution, fixed-layout regulatory reports, anything that gets printed\n- Composite: interactive drilldowns, audience-built, dashboard-style consumption\n\nWhat's your decision tree?",
@@ -166,7 +198,7 @@ POSTS = [
         ],
     },
     {
-        "space_slug": "security", "type": "success_story",
+        "space_slug": "security-compliance", "type": "success_story",
         "author_username": "raj_n",
         "title": "We reduced our Workday role count from 847 to 112 — here's the framework we used",
         "body": "**Context:** Inherited a Workday tenant with 847 distinct security roles. Every audit took 6 weeks. Onboarding a new business unit meant cloning 80+ roles.\n\n**Problem:** Role explosion caused by 5 years of 'just add a new role for this exception' decisions. No taxonomy.\n\n**What I tried:**\n\n1. **Inventory:** Pulled all roles, mapped each to its actual users and used domains.\n2. **Pattern detection:** ~60% of roles were near-duplicates of 18 'archetype' roles, varying by org or BU.\n3. **Archetype + constraint model:** Defined 18 archetype personas. Used intersection groups for BU/org scoping instead of cloning.\n4. **SoD baseline:** Defined 23 conflict pairs upfront, embedded in the new taxonomy.\n5. **Migration script:** Built a calculated-field-driven role reassignment that ran nightly during cutover.\n\n**Result:** 847 → 112 roles. Audit time dropped from 6 weeks to 9 days. New BU onboarding: 2 days of role provisioning vs. 3 weeks.\n\n**Key lesson:** Role count is a vanity metric — but it's also a *leading indicator of audit cost*. If yours is over 300, you have a taxonomy problem, not a security problem.",
@@ -193,7 +225,7 @@ POSTS = [
         ],
     },
     {
-        "space_slug": "compensation", "type": "question",
+        "space_slug": "compensation-benefits", "type": "question",
         "author_username": "ana_lopez",
         "title": "Advanced Comp eligibility rules — how do you handle expat/inpat populations cleanly?",
         "body": "Building merit cycle for a global comp program. Expats receive comp from home country plan, but their org assignment is in host country. Default eligibility rules pick up the host country plan, which is wrong.\n\nCalculated field on 'home country' or use compensation-specific eligibility override?",
@@ -218,7 +250,7 @@ POSTS = [
     },
     # Lighter posts to fill volume
     {
-        "space_slug": "career-lounge", "type": "discussion",
+        "space_slug": "core-hcm", "type": "discussion",
         "author_username": "sara_devlin",
         "title": "Independent Workday consultant rates in 2026 — what are you seeing in EMEA?",
         "body": "Sharing market rates for the practitioner crowd. UK day rates I'm seeing in Q1 2026: junior consultants £450-600, mid £600-850, senior architects £950-1400. What's the picture in Germany, France, Netherlands?",
@@ -229,14 +261,14 @@ POSTS = [
         ],
     },
     {
-        "space_slug": "financials", "type": "question",
+        "space_slug": "finance-accounting", "type": "question",
         "author_username": "priya_hcm",
         "title": "Accounting Center: when does it actually pay off vs custom journal lines from HCM events?",
         "body": "Implementing Workday Financials alongside HCM. Accounting Center sits between them. Sales pitch says it eliminates custom journal logic, but the configuration overhead is non-trivial.\n\nAt what client size / complexity does it pay off?",
         "tags": ["financials", "accounting-center"], "is_solved": False, "vote_count": 9, "answers": [],
     },
     {
-        "space_slug": "integrations", "type": "discussion",
+        "space_slug": "integration-platform", "type": "discussion",
         "author_username": "tomek_v",
         "title": "REST APIs vs Core Connectors for IdP sync — has anyone actually moved away from Core Connectors?",
         "body": "Workday's REST APIs have matured a lot. For provisioning/deprovisioning to IdPs (Okta, Entra), I'm wondering if anyone has migrated off Core Connectors entirely. Tradeoffs?",
@@ -247,7 +279,7 @@ POSTS = [
         ],
     },
     {
-        "space_slug": "reporting", "type": "success_story",
+        "space_slug": "analytics-reporting", "type": "success_story",
         "author_username": "tomek_v",
         "title": "Cut executive headcount report runtime from 9 minutes to 11 seconds — what we changed",
         "body": "Exec headcount dashboard ran nightly, took 9 minutes. Frustrating but tolerable. Then they asked for it to run on-demand from a manager portal. 9 minutes was a non-starter.\n\n**What we did:**\n1. Replaced 14 calculated fields with a single aggregating calculated field that pre-computed at worker level\n2. Moved the report data source from 'All Workers' to 'Active Workers as of Effective Date' (huge difference)\n3. Cached the org hierarchy lookup using a custom report-level calculated field\n\nRuntime: 9m → 11s. Not always possible but always worth checking your calculated field count.",
@@ -269,7 +301,7 @@ POSTS = [
 
 
 async def seed_all(db, hash_password):
-    # Spaces
+    # Spaces — upsert canonical taxonomy (idempotent)
     for sp in SPACES:
         existing = await db.spaces.find_one({"slug": sp["slug"]})
         if not existing:
@@ -279,10 +311,46 @@ async def seed_all(db, hash_password):
                 "name": sp["name"],
                 "description": sp["description"],
                 "icon": sp["icon"],
+                "sort_order": sp.get("sort_order", 99),
                 "post_count": 0,
                 "member_count": 0,
+                "is_hidden": False,
                 "created_at": iso(datetime.now(timezone.utc)),
             })
+        else:
+            # Keep canonical name/icon/description/sort_order in sync with code
+            await db.spaces.update_one(
+                {"slug": sp["slug"]},
+                {"$set": {
+                    "name": sp["name"], "icon": sp["icon"],
+                    "description": sp["description"],
+                    "sort_order": sp.get("sort_order", 99),
+                    "is_hidden": False,
+                }},
+            )
+
+    # --- Migration: re-bucket posts from legacy spaces to canonical ones ---
+    for old_slug, new_slug in LEGACY_SPACE_MIGRATION.items():
+        old_sp = await db.spaces.find_one({"slug": old_slug})
+        new_sp = await db.spaces.find_one({"slug": new_slug})
+        if not old_sp or not new_sp or old_sp["id"] == new_sp["id"]:
+            continue
+        moved = await db.posts.update_many(
+            {"space_id": old_sp["id"]},
+            {"$set": {"space_id": new_sp["id"]}},
+        )
+        if moved.modified_count:
+            tag = " (parked — flag for review)" if old_slug == "career-lounge" else ""
+            print(f"[seed_all] Migrated {moved.modified_count} posts: {old_slug} -> {new_slug}{tag}")
+        # Hide the legacy space so it disappears from the public Spaces list
+        await db.spaces.update_one(
+            {"slug": old_slug}, {"$set": {"is_hidden": True, "post_count": 0}}
+        )
+
+    # Recompute post_count per space (covers both fresh seeds and migrations)
+    async for sp in db.spaces.find({}, {"_id": 0, "id": 1}):
+        count = await db.posts.count_documents({"space_id": sp["id"], "is_removed": {"$ne": True}})
+        await db.spaces.update_one({"id": sp["id"]}, {"$set": {"post_count": count}})
 
     # Users
     for u in USERS:
