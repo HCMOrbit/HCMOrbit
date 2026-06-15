@@ -203,9 +203,13 @@ export default function KBDoc() {
               ul: ({ children }) => <ul className="list-disc pl-6 mb-4 space-y-1.5">{children}</ul>,
               ol: ({ children }) => <ol className="list-decimal pl-6 mb-4 space-y-1.5">{children}</ol>,
               blockquote: ({ children }) => <BlockquoteCallout>{children}</BlockquoteCallout>,
-              table: ({ children }) => <div className="overflow-x-auto my-4"><table className="w-full text-sm border-collapse">{children}</table></div>,
-              th: ({ children }) => <th className="bg-[#F8FAFC] text-left px-3 py-2 font-semibold text-xs uppercase tracking-wider border border-[#E2E8F0]">{children}</th>,
-              td: ({ children }) => <td className="px-3 py-2 border border-[#E2E8F0]">{children}</td>,
+              table: ({ children }) => (
+                <div className="overflow-x-auto my-4 border border-[#E2E8F0] rounded-lg" data-testid="kb-table-wrap">
+                  <table className="text-sm border-collapse w-max min-w-full" style={{ tableLayout: "fixed" }}>{children}</table>
+                </div>
+              ),
+              th: ({ children }) => <th style={{ minWidth: "180px", width: "180px" }} className="bg-[#F8FAFC] text-left px-3 py-2 font-semibold text-xs uppercase tracking-wider border border-[#E2E8F0] break-words align-top">{children}</th>,
+              td: ({ children }) => <td style={{ minWidth: "180px", width: "180px" }} className="px-3 py-2 border border-[#E2E8F0] break-words align-top">{children}</td>,
             }}>{preprocessCallouts(doc.body)}</ReactMarkdown>
           </article>
 
