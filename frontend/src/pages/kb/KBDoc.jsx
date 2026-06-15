@@ -95,15 +95,60 @@ export default function KBDoc() {
   return (
     <div className="min-h-screen bg-[#F1F5F9]" data-testid="kb-doc">
       <NavHeader />
+
+      {/* Full-width dark hero */}
+      <section className="bg-[#0A1628] text-white" data-testid="kb-doc-hero">
+        <div className="max-w-[1300px] mx-auto px-4 lg:px-8 pt-5 pb-8">
+          <nav className="text-xs flex items-center gap-1.5 mb-5 text-white/60" data-testid="kb-doc-breadcrumb">
+            <Link to="/knowledge-base" className="text-white/80 hover:text-white hover:underline">Knowledge Base</Link>
+            <ChevronRight className="w-3 h-3" />
+            <Link to={`/knowledge-base/${slug}`} className="text-white/80 hover:text-white hover:underline">{doc.category?.name}</Link>
+            <ChevronRight className="w-3 h-3" />
+            <span className="truncate text-white/70">{doc.title.slice(0, 60)}</span>
+          </nav>
+          <div className="flex flex-wrap items-center gap-1.5 mb-4">
+            <DocTypeBadge type={doc.doc_type} />
+            <DifficultyBadge level={doc.difficulty} />
+            <VersionPill version={doc.workday_version} />
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20">{doc.category?.name}</span>
+          </div>
+          <h1 className="font-heading text-2xl lg:text-3xl font-bold tracking-tight" data-testid="doc-title">{doc.title}</h1>
+          {(doc.reference_id || doc.read_time) && (
+            <div className="mt-2 text-xs text-white/55 font-mono flex items-center gap-2 flex-wrap" data-testid="doc-ref-strip">
+              {doc.reference_id && <span>{doc.reference_id}</span>}
+              {doc.reference_id && doc.read_time && <span className="text-white/30">·</span>}
+              {doc.read_time && <span>{doc.read_time} read</span>}
+            </div>
+          )}
+          <p className="mt-3 text-white/70 leading-relaxed max-w-3xl">{doc.summary}</p>
+          <div className="mt-5 pt-5 border-t border-white/10 flex flex-wrap items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-medium">{(doc.author?.full_name || "U")[0].toUpperCase()}</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium flex items-center gap-2">
+                {doc.author?.full_name}
+                <GroupBadge group={doc.author?.group_type} />
+              </div>
+              <div className="text-xs text-white/50 mt-0.5"><span className="counter">{doc.author?.reputation_score}</span> rep · {timeAgo(doc.created_at)}</div>
+            </div>
+            <button onClick={toggleBookmark} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-bookmark-btn">
+              <Bookmark className="w-3.5 h-3.5" fill={bookmarked ? "currentColor" : "none"} /> {bookmarked ? "Saved" : "Save"}
+            </button>
+            <button onClick={share} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-share-btn">
+              <Share2 className="w-3.5 h-3.5" /> Share
+            </button>
+          </div>
+        </div>
+      </section>
+
       <div className="max-w-[1300px] mx-auto px-4 lg:px-8 py-6 flex gap-6">
-        <aside className="w-[175px] shrink-0 hidden lg:flex flex-col gap-5 sticky top-20 self-start" data-testid="kb-doc-sidebar">
+        <aside className="w-[250px] shrink-0 hidden lg:flex flex-col gap-5 sticky top-20 self-start" data-testid="kb-doc-sidebar">
           {headings.length > 0 && (
             <div className="bg-white rounded-lg border border-[#E2E8F0] p-4">
               <div className="text-[10px] uppercase tracking-wider font-semibold text-[#94A3B8] mb-3">In this document</div>
               <div className="flex flex-col gap-0.5">
                 {headings.map((h) => (
                   <a key={h.id} href={`#${h.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(h.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
-                    className={`text-xs py-1.5 px-2 rounded transition-colors ${activeAnchor === h.id ? "bg-[#F0FDF4] text-[#0D9373] font-medium border-l-2 border-[#0D9373]" : "text-[#475569] hover:bg-[#F8FAFC]"}`}
+                    className={`text-xs py-1.5 px-2 rounded transition-colors leading-snug ${activeAnchor === h.id ? "bg-[#F0FDF4] text-[#0D9373] font-medium border-l-2 border-[#0D9373]" : "text-[#475569] hover:bg-[#F8FAFC]"} ${h.level === 3 ? "pl-4" : ""}`}
                     data-testid={`toc-${h.id}`}>{h.text}</a>
                 ))}
               </div>
@@ -128,48 +173,6 @@ export default function KBDoc() {
         </aside>
 
         <main className="flex-1 min-w-0">
-          <nav className="text-xs flex items-center gap-1.5 mb-3 text-[#64748B]">
-            <Link to="/knowledge-base" className="text-[#0D9373] hover:underline">Knowledge Base</Link>
-            <ChevronRight className="w-3 h-3" />
-            <Link to={`/knowledge-base/${slug}`} className="text-[#0D9373] hover:underline">{doc.category?.name}</Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="truncate">{doc.title.slice(0, 60)}</span>
-          </nav>
-
-          <div className="bg-[#0A1628] text-white rounded-xl p-7 mb-5">
-            <div className="flex flex-wrap items-center gap-1.5 mb-4">
-              <DocTypeBadge type={doc.doc_type} />
-              <DifficultyBadge level={doc.difficulty} />
-              <VersionPill version={doc.workday_version} />
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20">{doc.category?.name}</span>
-            </div>
-            <h1 className="font-heading text-2xl lg:text-3xl font-bold tracking-tight" data-testid="doc-title">{doc.title}</h1>
-            {(doc.reference_id || doc.read_time) && (
-              <div className="mt-2 text-xs text-white/55 font-mono flex items-center gap-2 flex-wrap" data-testid="doc-ref-strip">
-                {doc.reference_id && <span>{doc.reference_id}</span>}
-                {doc.reference_id && doc.read_time && <span className="text-white/30">·</span>}
-                {doc.read_time && <span>{doc.read_time} read</span>}
-              </div>
-            )}
-            <p className="mt-3 text-white/70 leading-relaxed">{doc.summary}</p>
-            <div className="mt-5 pt-5 border-t border-white/10 flex flex-wrap items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-medium">{(doc.author?.full_name || "U")[0].toUpperCase()}</div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium flex items-center gap-2">
-                  {doc.author?.full_name}
-                  <GroupBadge group={doc.author?.group_type} />
-                </div>
-                <div className="text-xs text-white/50 mt-0.5"><span className="counter">{doc.author?.reputation_score}</span> rep · {timeAgo(doc.created_at)}</div>
-              </div>
-              <button onClick={toggleBookmark} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-bookmark-btn">
-                <Bookmark className="w-3.5 h-3.5" fill={bookmarked ? "currentColor" : "none"} /> {bookmarked ? "Saved" : "Save"}
-              </button>
-              <button onClick={share} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-share-btn">
-                <Share2 className="w-3.5 h-3.5" /> Share
-              </button>
-            </div>
-          </div>
-
           <div className="bg-white border border-[#E2E8F0] rounded-lg px-5 py-3 mb-5 flex flex-wrap items-center gap-3 text-xs text-[#64748B]">
             <Users className="w-4 h-4" />
             <span className="font-medium text-[#475569]">Written for:</span>
