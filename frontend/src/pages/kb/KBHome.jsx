@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Sparkles, LayoutGrid, ArrowRight, PenSquare } from "lucide-react";
+import { Sparkles, LayoutGrid, ArrowRight, PenSquare, ChevronDown } from "lucide-react";
 import NavHeader from "../../components/NavHeader";
 import { DocTypeBadge, DifficultyBadge, CategoryIcon, TYPE_BORDER } from "../../components/kb/KBBadges";
 import { api } from "../../lib/api";
@@ -10,6 +10,7 @@ export default function KBHome() {
   const [stats, setStats] = useState({});
   const [featured, setFeatured] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [showMore, setShowMore] = useState(false);
   const { user } = useAuth();
   const canContribute = !!user?.is_admin;
 
@@ -19,7 +20,14 @@ export default function KBHome() {
     api.get("/kb/categories").then((r) => setCategories(r.data)).catch(() => {});
   }, []);
 
-  const mostActiveSlug = categories.reduce((max, c) => (c.doc_count > (max?.doc_count || 0) ? c : max), null)?.slug;
+  // Surface categories that already have content; empty ones get tucked under "More topics"
+  const populated = categories
+    .filter((c) => (c.doc_count || 0) > 0)
+    .sort((a, b) => (b.doc_count || 0) - (a.doc_count || 0) || (a.sort_order || 99) - (b.sort_order || 99));
+  const empty = categories
+    .filter((c) => (c.doc_count || 0) === 0)
+    .sort((a, b) => (a.sort_order || 99) - (b.sort_order || 99));
+  const mostActiveSlug = populated[0]?.slug;
 
   return (
     <div className="min-h-screen bg-[#F1F5F9]" data-testid="kb-home">
@@ -78,7 +86,7 @@ export default function KBHome() {
           <LayoutGrid className="w-5 h-5 text-[#0D9373]" /> Browse by functional area
         </h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="kb-categories">
-          {categories.map((c) => (
+          {populated.map((c) => (
             <div key={c.slug} className="bg-white rounded-lg border border-[#E2E8F0] hover:border-[#0D9373]/40 hover:shadow-sm transition-all" data-testid={`category-${c.slug}`}>
               <Link to={`/knowledge-base/${c.slug}`} className="block p-5">
                 <div className="flex items-start gap-3">
@@ -107,6 +115,39 @@ export default function KBHome() {
             </div>
           ))}
         </div>
+
+        {empty.length > 0 && (
+          <div className="mt-8" data-testid="kb-more-topics">
+            <button
+              onClick={() => setShowMore((v) => !v)}
+              data-testid="kb-more-topics-toggle"
+              aria-expanded={showMore}
+              className="inline-flex items-center gap-2 text-sm font-medium text-[#475569] hover:text-[#0D9373] transition-colors"
+            >
+              <ChevronDown className={`w-4 h-4 transition-transform ${showMore ? "rotate-180" : ""}`} />
+              {showMore ? "Hide" : "More topics"}
+              <span className="text-xs text-[#94A3B8] font-normal">({empty.length} areas without docs yet)</span>
+            </button>
+            {showMore && (
+              <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="kb-categories-empty">
+                {empty.map((c) => (
+                  <Link
+                    key={c.slug}
+                    to={`/knowledge-base/${c.slug}`}
+                    className="flex items-center gap-3 p-3 rounded-md border border-dashed border-[#E2E8F0] hover:border-[#0D9373]/40 hover:bg-white transition-all"
+                    data-testid={`category-${c.slug}`}
+                  >
+                    <span className="text-lg opacity-60">{c.icon}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm text-[#475569] truncate">{c.name}</div>
+                      <div className="text-[11px] text-[#94A3B8]">No docs yet{canContribute ? " · be first" : ""}</div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </section>
     </div>
   );
