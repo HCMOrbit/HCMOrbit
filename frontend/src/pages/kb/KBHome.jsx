@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Sparkles, LayoutGrid, ArrowRight, PenSquare, ChevronDown } from "lucide-react";
+import { Sparkles, LayoutGrid, PenSquare } from "lucide-react";
 import NavHeader from "../../components/NavHeader";
-import { DocTypeBadge, DifficultyBadge, CategoryIcon, TYPE_BORDER } from "../../components/kb/KBBadges";
+import { DocTypeBadge, DifficultyBadge, TYPE_BORDER, CAT_BG } from "../../components/kb/KBBadges";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
+
+const VISIBLE_COUNT = 9;
 
 export default function KBHome() {
   const [stats, setStats] = useState({});
   const [featured, setFeatured] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [showMore, setShowMore] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const { user } = useAuth();
   const canContribute = !!user?.is_admin;
 
@@ -20,13 +22,16 @@ export default function KBHome() {
     api.get("/kb/categories").then((r) => setCategories(r.data)).catch(() => {});
   }, []);
 
-  // Surface categories that already have content; empty ones get tucked under "More topics"
+  // Sort: populated first (by doc count desc), then empty in canonical order
   const populated = categories
     .filter((c) => (c.doc_count || 0) > 0)
     .sort((a, b) => (b.doc_count || 0) - (a.doc_count || 0) || (a.sort_order || 99) - (b.sort_order || 99));
   const empty = categories
     .filter((c) => (c.doc_count || 0) === 0)
     .sort((a, b) => (a.sort_order || 99) - (b.sort_order || 99));
+  const ordered = [...populated, ...empty];
+  const first = ordered.slice(0, VISIBLE_COUNT);
+  const rest = ordered.slice(VISIBLE_COUNT);
   const mostActiveSlug = populated[0]?.slug;
 
   return (
@@ -86,70 +91,64 @@ export default function KBHome() {
           <LayoutGrid className="w-5 h-5 text-[#0D9373]" /> Browse by functional area
         </h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="kb-categories">
-          {populated.map((c) => (
-            <div key={c.slug} className="bg-white rounded-lg border border-[#E2E8F0] hover:border-[#0D9373]/40 hover:shadow-sm transition-all" data-testid={`category-${c.slug}`}>
-              <Link to={`/knowledge-base/${c.slug}`} className="block p-5">
-                <div className="flex items-start gap-3">
-                  <CategoryIcon slug={c.slug} icon={c.icon} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-heading font-semibold text-[#0A1628]">{c.name}</div>
-                    <div className="text-xs text-[#64748B] mt-0.5">
-                      <span className="counter">{c.doc_count}</span> docs
-                      {c.slug === mostActiveSlug && <span className="ml-2 inline-block px-1.5 py-0.5 rounded bg-[#0D9373]/10 text-[#0D9373] text-[10px] font-medium uppercase">Most active</span>}
-                    </div>
-                  </div>
-                </div>
-              </Link>
-              {c.top_docs?.length > 0 && (
-                <div className="border-t border-[#F1F5F9]">
-                  {c.top_docs.map((td) => (
-                    <Link key={td.id} to={`/knowledge-base/${c.slug}/${td.id}`} className="block px-5 py-2 text-sm text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0D9373] truncate">
-                      {td.title}
-                    </Link>
-                  ))}
-                  <Link to={`/knowledge-base/${c.slug}`} className="block px-5 py-2.5 text-xs font-medium text-[#0D9373] hover:bg-[#F8FAFC] border-t border-[#F1F5F9]">
-                    View all {c.doc_count} <ArrowRight className="inline w-3 h-3 ml-0.5" />
-                  </Link>
-                </div>
-              )}
-            </div>
+          {first.map((c) => (
+            <CategoryBox key={c.slug} cat={c} isMostActive={c.slug === mostActiveSlug} />
+          ))}
+          {showAll && rest.map((c) => (
+            <CategoryBox key={c.slug} cat={c} isMostActive={c.slug === mostActiveSlug} />
           ))}
         </div>
 
-        {empty.length > 0 && (
-          <div className="mt-8" data-testid="kb-more-topics">
+        {rest.length > 0 && (
+          <div className="mt-8 flex justify-center">
             <button
-              onClick={() => setShowMore((v) => !v)}
-              data-testid="kb-more-topics-toggle"
-              aria-expanded={showMore}
-              className="inline-flex items-center gap-2 text-sm font-medium text-[#475569] hover:text-[#0D9373] transition-colors"
+              onClick={() => setShowAll((v) => !v)}
+              data-testid="kb-view-all-toggle"
+              aria-expanded={showAll}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md border border-[#E2E8F0] bg-white hover:border-[#0D9373]/40 hover:text-[#0D9373] text-sm font-medium text-[#475569] transition-colors"
             >
-              <ChevronDown className={`w-4 h-4 transition-transform ${showMore ? "rotate-180" : ""}`} />
-              {showMore ? "Hide" : "More topics"}
-              <span className="text-xs text-[#94A3B8] font-normal">({empty.length} areas without docs yet)</span>
+              {showAll ? `Show fewer (${VISIBLE_COUNT} areas)` : `View all ${categories.length} areas`}
             </button>
-            {showMore && (
-              <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="kb-categories-empty">
-                {empty.map((c) => (
-                  <Link
-                    key={c.slug}
-                    to={`/knowledge-base/${c.slug}`}
-                    className="flex items-center gap-3 p-3 rounded-md border border-dashed border-[#E2E8F0] hover:border-[#0D9373]/40 hover:bg-white transition-all"
-                    data-testid={`category-${c.slug}`}
-                  >
-                    <span className="text-lg opacity-60">{c.icon}</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm text-[#475569] truncate">{c.name}</div>
-                      <div className="text-[11px] text-[#94A3B8]">No docs yet{canContribute ? " · be first" : ""}</div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
           </div>
         )}
       </section>
     </div>
+  );
+}
+
+function CategoryBox({ cat, isMostActive }) {
+  const count = cat.doc_count || 0;
+  const isEmpty = count === 0;
+  return (
+    <Link
+      to={`/knowledge-base/${cat.slug}`}
+      data-testid={`category-${cat.slug}`}
+      className={`p-4 rounded-lg flex items-start gap-3 transition-all ${
+        isEmpty
+          ? "border border-dashed border-[#E2E8F0] hover:border-[#0D9373]/40 hover:bg-white"
+          : "bg-white border border-[#E2E8F0] hover:border-[#0D9373]/40 hover:shadow-sm"
+      }`}
+    >
+      <div
+        className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 text-base"
+        style={{ background: isEmpty ? "#F1F5F9" : (CAT_BG[cat.slug] || "#F1F5F9") }}
+      >
+        <span className={isEmpty ? "opacity-60" : ""}>{cat.icon}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className={`font-heading font-semibold leading-tight ${isEmpty ? "text-[#64748B]" : "text-[#0A1628]"}`}>
+          {cat.name}
+        </div>
+        <div className={`text-xs mt-1 ${isEmpty ? "text-[#94A3B8]" : "text-[#64748B]"}`}>
+          {isEmpty ? "No docs yet" : <><span className="counter">{count}</span> doc{count === 1 ? "" : "s"}</>}
+        </div>
+        {isMostActive && (
+          <span className="mt-2 inline-block px-1.5 py-0.5 rounded bg-[#0D9373]/10 text-[#0D9373] text-[10px] font-medium uppercase tracking-wider">
+            Most active
+          </span>
+        )}
+      </div>
+    </Link>
   );
 }
 

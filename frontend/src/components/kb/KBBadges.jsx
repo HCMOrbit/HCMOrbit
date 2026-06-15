@@ -15,7 +15,7 @@ const DIFF_MAP = {
   advanced: { bg: "#FAEEDA", text: "#633806" },
 };
 
-const CAT_BG = {
+export const CAT_BG = {
   "core-hcm": "#E1F5EE",
   "talent-acquisition": "#FEF3E2",
   "talent-management": "#EAF3DE",
