@@ -123,23 +123,23 @@ function CategoryBox({ cat, isMostActive }) {
     <Link
       to={`/knowledge-base/${cat.slug}`}
       data-testid={`category-${cat.slug}`}
-      className="p-4 rounded-lg flex items-start gap-3 bg-white border border-[#E2E8F0] hover:border-[#0D9373]/40 hover:shadow-sm transition-all"
+      className="group p-5 rounded-xl flex items-start gap-3.5 bg-white border border-[#CBD5E1] shadow-sm hover:shadow-md hover:border-[#0D9373] hover:-translate-y-0.5 transition-all"
     >
       <div
-        className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 text-base"
+        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-xl ring-1 ring-black/5"
         style={{ background: isEmpty ? "#F1F5F9" : (CAT_BG[cat.slug] || "#F1F5F9") }}
       >
         <span className={isEmpty ? "opacity-60" : ""}>{cat.icon}</span>
       </div>
       <div className="flex-1 min-w-0">
-        <div className="font-heading font-semibold leading-tight text-[#0A1628]">
+        <div className="font-heading font-semibold text-[15px] leading-tight text-[#0A1628] group-hover:text-[#0D9373] transition-colors">
           {cat.name}
         </div>
-        <div className={`text-xs mt-1 ${isEmpty ? "text-[#94A3B8]" : "text-[#64748B]"}`}>
+        <div className={`text-[13px] mt-1.5 font-medium ${isEmpty ? "text-[#94A3B8]" : "text-[#475569]"}`}>
           {isEmpty ? "No docs yet" : <><span className="counter">{count}</span> doc{count === 1 ? "" : "s"}</>}
         </div>
         {isMostActive && (
-          <span className="mt-2 inline-block px-1.5 py-0.5 rounded bg-[#0D9373]/10 text-[#0D9373] text-[10px] font-medium uppercase tracking-wider">
+          <span className="mt-2 inline-block px-2 py-0.5 rounded bg-[#0D9373]/12 text-[#0D9373] text-[10px] font-semibold uppercase tracking-wider">
             Most active
           </span>
         )}
