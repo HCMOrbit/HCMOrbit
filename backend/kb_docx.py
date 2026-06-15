@@ -90,6 +90,22 @@ def _runs_to_markdown(paragraph) -> str:
     return "".join(out)
 
 
+def _list_level(paragraph) -> Optional[int]:
+    """Return the numbering indent level (0-based) from w:pPr/w:numPr/w:ilvl,
+    or None if the paragraph is not part of a numbered/bulleted list."""
+    pPr = paragraph._p.find(qn("w:pPr"))
+    if pPr is None:
+        return None
+    numPr = pPr.find(qn("w:numPr"))
+    if numPr is None:
+        return None
+    ilvl = numPr.find(qn("w:ilvl"))
+    try:
+        return int(ilvl.get(qn("w:val")))
+    except (TypeError, ValueError, AttributeError):
+        return 0
+
+
 def _paragraph_to_markdown(paragraph) -> str:
     style = (paragraph.style.name or "").strip() if paragraph.style else ""
     text = _runs_to_markdown(paragraph).rstrip()
@@ -105,10 +121,11 @@ def _paragraph_to_markdown(paragraph) -> str:
         return f"#### {text}"
     if style == "Heading 4":
         return f"##### {text}"
-    if "List Bullet" in style or "List Paragraph" in style:
-        return f"- {text}"
-    if "List Number" in style:
-        return f"1. {text}"
+    if "List Bullet" in style or "List Paragraph" in style or "List Number" in style:
+        level = _list_level(paragraph) or 0
+        indent = "  " * level
+        marker = "1." if "List Number" in style else "-"
+        return f"{indent}{marker} {text}"
     if style == "Quote" or style == "Intense Quote":
         return f"> {text}"
     if "Code" in style:
