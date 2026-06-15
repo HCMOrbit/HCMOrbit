@@ -203,11 +203,7 @@ export default function KBDoc() {
               ul: ({ children }) => <ul className="list-disc pl-6 mb-4 space-y-1.5">{children}</ul>,
               ol: ({ children }) => <ol className="list-decimal pl-6 mb-4 space-y-1.5">{children}</ol>,
               blockquote: ({ children }) => <BlockquoteCallout>{children}</BlockquoteCallout>,
-              table: ({ children }) => (
-                <div className="overflow-x-auto my-4 border border-[#E2E8F0] rounded-lg" data-testid="kb-table-wrap">
-                  <table className="text-sm border-collapse w-max min-w-full" style={{ tableLayout: "fixed" }}>{children}</table>
-                </div>
-              ),
+              table: ({ children }) => <KBTable>{children}</KBTable>,
               th: ({ children }) => <th style={{ minWidth: "180px", width: "180px" }} className="bg-[#F8FAFC] text-left px-3 py-2 font-semibold text-xs uppercase tracking-wider border border-[#E2E8F0] break-words align-top">{children}</th>,
               td: ({ children }) => <td style={{ minWidth: "180px", width: "180px" }} className="px-3 py-2 border border-[#E2E8F0] break-words align-top">{children}</td>,
             }}>{preprocessCallouts(doc.body)}</ReactMarkdown>
@@ -321,6 +317,59 @@ function extractText(children) {
   return "";
 }
 
+
+function KBTable({ children }) {
+  const wrapRef = React.useRef(null);
+  const [overflowing, setOverflowing] = React.useState(false);
+  const [hintHidden, setHintHidden] = React.useState(false);
+
+  React.useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const check = () => {
+      setOverflowing(el.scrollWidth - el.clientWidth > 1);
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    const onScroll = () => {
+      if (el.scrollLeft > 4) setHintHidden(true);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    const t = setTimeout(() => setHintHidden(true), 8000);
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("scroll", onScroll);
+      clearTimeout(t);
+    };
+  }, []);
+
+  return (
+    <div className="my-4" data-testid="kb-table-block">
+      <div className="relative">
+        <div ref={wrapRef} className="overflow-x-auto border border-[#E2E8F0] rounded-lg" data-testid="kb-table-wrap">
+          <table className="text-sm border-collapse w-max min-w-full" style={{ tableLayout: "fixed" }}>{children}</table>
+        </div>
+        {overflowing && (
+          <div
+            aria-hidden="true"
+            data-testid="kb-table-fade"
+            className="pointer-events-none absolute top-0 right-0 h-full w-12 rounded-r-lg"
+            style={{ background: "linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,0.95))" }}
+          />
+        )}
+      </div>
+      {overflowing && !hintHidden && (
+        <div
+          className="mt-2 text-[11px] text-[#94A3B8] flex items-center gap-1.5 transition-opacity"
+          data-testid="kb-table-scroll-hint"
+        >
+          <span aria-hidden="true">←</span> scroll <span aria-hidden="true">→</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function BlockquoteCallout({ children }) {
   const CALLOUT_VARIANTS = {
