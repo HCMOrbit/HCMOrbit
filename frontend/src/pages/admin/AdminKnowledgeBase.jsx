@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
-import { Plus, Search as SearchIcon, MoreVertical, ExternalLink, Star, StarOff, Eye, EyeOff, BookOpen, FileText, FileEdit, Layers, Upload } from "lucide-react";
+import { Plus, Search as SearchIcon, MoreVertical, ExternalLink, Star, StarOff, Eye, EyeOff, BookOpen, FileText, FileEdit, Layers, Upload, ChevronDown, ChevronRight } from "lucide-react";
 import AdminLayout from "../../components/AdminLayout";
 import ConfirmModal from "../../components/ConfirmModal";
 import { DocTypeBadge, DifficultyBadge } from "../../components/kb/KBBadges";
@@ -32,6 +32,32 @@ export default function AdminKnowledgeBase() {
   const [editingCategory, setEditingCategory] = useState(null);
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  // Collapsed group keys (default: all expanded -> empty set)
+  const [collapsedGroups, setCollapsedGroups] = useState(new Set());
+
+  const toggleGroup = (key) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  // Build ordered groups: { key, label, docs[] } sorted by Module → Sub-module → title
+  const groupedDocs = React.useMemo(() => {
+    const map = new Map();
+    for (const d of docs) {
+      const module = d.category?.name || "Uncategorized";
+      const sub = d.sub_module?.trim() || "—";
+      const key = `${module}__${sub}`;
+      if (!map.has(key)) map.set(key, { key, module, sub, docs: [] });
+      map.get(key).docs.push(d);
+    }
+    const groups = Array.from(map.values());
+    groups.sort((a, b) => a.module.localeCompare(b.module) || a.sub.localeCompare(b.sub));
+    for (const g of groups) g.docs.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+    return groups;
+  }, [docs]);
 
   const loadStats = useCallback(() => {
     api.get("/admin/kb/stats").then((r) => setStats(r.data)).catch(() => {});
@@ -194,78 +220,103 @@ export default function AdminKnowledgeBase() {
             </tr>
           </thead>
           <tbody>
-            {docs.map((d) => (
-              <tr key={d.id} className="border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC]" data-testid={`kb-row-${d.id}`}>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                    <DocTypeBadge type={d.doc_type} />
-                    <DifficultyBadge level={d.difficulty} />
-                    {d.is_featured && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-[#FEF3C7] text-[#92400E]">
-                        <Star className="w-3 h-3 fill-current" /> Featured
-                      </span>
-                    )}
-                  </div>
-                  <div className="font-medium text-[#0F172A] leading-snug line-clamp-2">{d.title}</div>
-                </td>
-                <td className="px-4 py-3 text-xs text-[#475569]">{d.category?.icon} {d.category?.name}</td>
-                <td className="px-4 py-3 text-xs text-[#475569]">{d.author?.full_name || "—"}</td>
-                <td className="px-4 py-3 text-xs text-[#64748B]">{timeAgo(d.updated_at)}</td>
-                <td className="px-4 py-3 text-right counter">{d.view_count}</td>
-                <td className="px-4 py-3">
-                  {d.is_published ? (
-                    <span className="text-xs px-2 py-0.5 rounded bg-[#F0FDF4] text-[#16A34A] font-medium">Published</span>
-                  ) : (
-                    <span className="text-xs px-2 py-0.5 rounded bg-[#FFFBEB] text-[#D97706] font-medium">Draft</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-right relative">
-                  <button onClick={(e) => {
-                    if (openMenuId === d.id) { setOpenMenuId(null); return; }
-                    const r = e.currentTarget.getBoundingClientRect();
-                    setMenuPos({ top: r.bottom + 4, right: Math.max(8, window.innerWidth - r.right) });
-                    setOpenMenuId(d.id);
-                  }} className="p-1.5 hover:bg-[#F1F5F9] rounded text-[#64748B]" data-testid={`kb-menu-${d.id}`}>
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
-                  {openMenuId === d.id && createPortal(
-                    <>
-                      <div className="fixed inset-0 z-[60]" onClick={() => setOpenMenuId(null)} />
-                      <div style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 70 }} className="w-56 bg-white border border-[#E2E8F0] rounded-lg shadow-lg py-1 text-left">
-                        {d.is_published && d.category?.slug && (
-                          <a href={`/knowledge-base/${d.category.slug}/${d.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC]">
-                            <ExternalLink className="w-3.5 h-3.5" /> View document
-                          </a>
-                        )}
-                        {d.is_published ? (
-                          <button onClick={() => patchDoc(d.id, { is_published: false }, "Document unpublished")} data-testid={`kb-unpublish-${d.id}`} className="w-full text-left px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC] flex items-center gap-2">
-                            <EyeOff className="w-3.5 h-3.5" /> Unpublish
-                          </button>
-                        ) : (
-                          <button onClick={() => patchDoc(d.id, { is_published: true }, "Document published")} data-testid={`kb-publish-${d.id}`} className="w-full text-left px-3 py-2 text-sm text-[#16A34A] hover:bg-[#F0FDF4] flex items-center gap-2">
-                            <Eye className="w-3.5 h-3.5" /> Publish now
-                          </button>
-                        )}
-                        {d.is_featured ? (
-                          <button onClick={() => patchDoc(d.id, { is_featured: false }, "Removed from featured")} className="w-full text-left px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC] flex items-center gap-2">
-                            <StarOff className="w-3.5 h-3.5" /> Remove featured
-                          </button>
-                        ) : (
-                          <button onClick={() => patchDoc(d.id, { is_featured: true }, "Marked as featured")} data-testid={`kb-feature-${d.id}`} className="w-full text-left px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC] flex items-center gap-2">
-                            <Star className="w-3.5 h-3.5" /> Mark as featured
-                          </button>
-                        )}
-                        <div className="border-t border-[#F1F5F9] my-1" />
-                        <button onClick={() => { setConfirm({ type: "delete", doc: d }); setOpenMenuId(null); }} className="w-full text-left px-3 py-2 text-sm text-[#DC2626] hover:bg-[#FEF2F2] flex items-center gap-2" data-testid={`kb-delete-${d.id}`}>
-                          <FileEdit className="w-3.5 h-3.5" /> Delete permanently
-                        </button>
+            {groupedDocs.map((g) => {
+              const collapsed = collapsedGroups.has(g.key);
+              return (
+                <React.Fragment key={g.key}>
+                  <tr
+                    className="bg-[#F1F5F9] border-y border-[#E2E8F0] cursor-pointer hover:bg-[#E9EFF5] select-none"
+                    onClick={() => toggleGroup(g.key)}
+                    data-testid={`kb-group-${g.key}`}
+                  >
+                    <td colSpan={7} className="px-4 py-2">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-[#0F172A]">
+                        {collapsed ? <ChevronRight className="w-3.5 h-3.5 text-[#64748B]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#64748B]" />}
+                        <span>{g.module}</span>
+                        <span className="text-[#94A3B8]">›</span>
+                        <span className="text-[#475569]">{g.sub}</span>
+                        <span className="ml-2 text-[#94A3B8] font-normal">({g.docs.length})</span>
                       </div>
-                    </>,
-                    document.body
-                  )}
-                </td>
-              </tr>
-            ))}
+                    </td>
+                  </tr>
+                  {!collapsed && g.docs.map((d) => (
+                    <tr key={d.id} className="border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC]" data-testid={`kb-row-${d.id}`}>
+                      <td className="px-4 py-3">
+                        <div className="font-mono text-[10px] font-bold tracking-wider text-[#0D9373] uppercase mb-1" data-testid={`kb-refid-${d.id}`}>
+                          {d.reference_id || "—"}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                          <DocTypeBadge type={d.doc_type} />
+                          <DifficultyBadge level={d.difficulty} />
+                          {d.is_featured && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-[#FEF3C7] text-[#92400E]">
+                              <Star className="w-3 h-3 fill-current" /> Featured
+                            </span>
+                          )}
+                        </div>
+                        <div className="font-normal text-[#0F172A] leading-snug line-clamp-2">{d.title}</div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-[#475569]">{d.category?.icon} {d.category?.name}</td>
+                      <td className="px-4 py-3 text-xs text-[#475569]">{d.author?.full_name || "—"}</td>
+                      <td className="px-4 py-3 text-xs text-[#64748B]">{timeAgo(d.updated_at)}</td>
+                      <td className="px-4 py-3 text-right counter">{d.view_count}</td>
+                      <td className="px-4 py-3">
+                        {d.is_published ? (
+                          <span className="text-xs px-2 py-0.5 rounded bg-[#F0FDF4] text-[#16A34A] font-medium">Published</span>
+                        ) : (
+                          <span className="text-xs px-2 py-0.5 rounded bg-[#FFFBEB] text-[#D97706] font-medium">Draft</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right relative">
+                        <button onClick={(e) => {
+                          if (openMenuId === d.id) { setOpenMenuId(null); return; }
+                          const r = e.currentTarget.getBoundingClientRect();
+                          setMenuPos({ top: r.bottom + 4, right: Math.max(8, window.innerWidth - r.right) });
+                          setOpenMenuId(d.id);
+                        }} className="p-1.5 hover:bg-[#F1F5F9] rounded text-[#64748B]" data-testid={`kb-menu-${d.id}`}>
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                        {openMenuId === d.id && createPortal(
+                          <>
+                            <div className="fixed inset-0 z-[60]" onClick={() => setOpenMenuId(null)} />
+                            <div style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 70 }} className="w-56 bg-white border border-[#E2E8F0] rounded-lg shadow-lg py-1 text-left">
+                              {d.is_published && d.category?.slug && (
+                                <a href={`/knowledge-base/${d.category.slug}/${d.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC]">
+                                  <ExternalLink className="w-3.5 h-3.5" /> View document
+                                </a>
+                              )}
+                              {d.is_published ? (
+                                <button onClick={() => patchDoc(d.id, { is_published: false }, "Document unpublished")} data-testid={`kb-unpublish-${d.id}`} className="w-full text-left px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC] flex items-center gap-2">
+                                  <EyeOff className="w-3.5 h-3.5" /> Unpublish
+                                </button>
+                              ) : (
+                                <button onClick={() => patchDoc(d.id, { is_published: true }, "Document published")} data-testid={`kb-publish-${d.id}`} className="w-full text-left px-3 py-2 text-sm text-[#16A34A] hover:bg-[#F0FDF4] flex items-center gap-2">
+                                  <Eye className="w-3.5 h-3.5" /> Publish now
+                                </button>
+                              )}
+                              {d.is_featured ? (
+                                <button onClick={() => patchDoc(d.id, { is_featured: false }, "Removed from featured")} className="w-full text-left px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC] flex items-center gap-2">
+                                  <StarOff className="w-3.5 h-3.5" /> Remove featured
+                                </button>
+                              ) : (
+                                <button onClick={() => patchDoc(d.id, { is_featured: true }, "Marked as featured")} data-testid={`kb-feature-${d.id}`} className="w-full text-left px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC] flex items-center gap-2">
+                                  <Star className="w-3.5 h-3.5" /> Mark as featured
+                                </button>
+                              )}
+                              <div className="border-t border-[#F1F5F9] my-1" />
+                              <button onClick={() => { setConfirm({ type: "delete", doc: d }); setOpenMenuId(null); }} className="w-full text-left px-3 py-2 text-sm text-[#DC2626] hover:bg-[#FEF2F2] flex items-center gap-2" data-testid={`kb-delete-${d.id}`}>
+                                <FileEdit className="w-3.5 h-3.5" /> Delete permanently
+                              </button>
+                            </div>
+                          </>,
+                          document.body
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+              );
+            })}
             {docs.length === 0 && (
               <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-[#94A3B8]">
                 <FileText className="w-8 h-8 mx-auto mb-3 text-[#CBD5E1]" />
