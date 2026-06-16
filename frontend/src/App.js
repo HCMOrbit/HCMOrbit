@@ -33,6 +33,7 @@ import Cookies from "@/pages/Cookies";
 import WhyHCMOrbit from "@/pages/WhyHCMOrbit";
 import CookieBanner from "@/components/CookieBanner";
 import SiteFooter from "@/components/SiteFooter";
+import ScrollToHash from "@/components/ScrollToHash";
 import AuthCallback from "@/components/AuthCallback";
 
 function AppRoutes() {
@@ -92,6 +93,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ScrollToHash />
         <ImpersonationBanner />
         <AppRoutes />
         <GlobalFooter />

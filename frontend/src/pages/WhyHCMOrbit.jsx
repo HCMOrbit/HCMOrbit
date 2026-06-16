@@ -162,8 +162,11 @@ export default function WhyHCMOrbit() {
       </section>
 
       {/* Founder story */}
-      <section className="bg-[#F8FAFC] py-20 lg:py-24" data-testid="why-founder">
+      <section id="founder" className="bg-[#F8FAFC] py-20 lg:py-24 scroll-mt-24" data-testid="why-founder">
         <div className="max-w-[1100px] mx-auto px-6 lg:px-8">
+          <h2 className="font-heading text-3xl lg:text-5xl font-bold tracking-tight text-[#0A1628] mb-12">
+            Meet the Founder
+          </h2>
           <div className="grid lg:grid-cols-[340px_1fr] gap-10 lg:gap-14 items-start">
             <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
               <img
@@ -177,26 +180,15 @@ export default function WhyHCMOrbit() {
               <Quote className="w-6 h-6 text-[#0D9373]/40 mt-6 hidden lg:block" />
             </div>
 
-            <div className="space-y-5 text-[15px] lg:text-base leading-relaxed text-[#334155]">
-              <div className="text-xs uppercase tracking-wider text-[#0D9373] font-semibold mb-1">From the Founder</div>
-              <h2 className="font-heading text-3xl lg:text-4xl font-semibold text-[#0A1628] !leading-tight">
-                17+ years in HR technology. One recurring problem.
-              </h2>
-              <p>
-                I&apos;ve spent more than seventeen years inside HR technology — across <strong className="text-[#0A1628] font-semibold">HRIS, ERP, Workday, SAP, UKG, SuccessFactors, Dayforce, Oracle HCM, and ADP</strong> — supporting enterprise organizations in Healthcare, Manufacturing, Technology, and Services.
-              </p>
-              <p>
-                Since 2022 I&apos;ve been focused on Workday as a Technical Lead and Architect — most recently designing and building an entire HRIS system from the ground up for an EV startup.
-              </p>
-              <p>
-                Across every platform, every employer, every implementation — <strong className="text-[#0A1628] font-semibold">I kept seeing the same problems repeated</strong>. The same retro pay headache. The same integration that fails after the release. The same security model that nobody documented before the architect left.
-              </p>
-              <p>
-                Smart people, on different continents, were solving the same problem from scratch — privately, in their own DMs, away from anyone who could have shortcut the path.
-              </p>
-              <p>
-                <strong className="text-[#0A1628] font-semibold">HCMOrbit was born from that observation.</strong> A focused, independent community where Workday practitioners can ask hard questions without judgment, share what actually works in production, and build the careers they deserve — together.
-              </p>
+            <div className="space-y-5 text-[15px] lg:text-base leading-relaxed text-[#334155]" data-testid="founder-story">
+              <p>Hi, I&apos;m Suchismita — most people call me <strong className="text-[#0A1628] font-semibold">Suchi</strong>!</p>
+              <p>I&apos;ve spent <strong className="text-[#0A1628] font-semibold">17+ years working across the full spectrum of HR technology</strong> — <strong className="text-[#0A1628] font-semibold">HRIS, ERP, Workday, SAP, UKG, SuccessFactors</strong>, Dayforce, Oracle HCM, and ADP — supporting enterprise organizations across <strong className="text-[#0A1628] font-semibold">Healthcare, Manufacturing, Technology, and Services</strong>.</p>
+              <p>Since 2022 I&apos;ve been <strong className="text-[#0A1628] font-semibold">focused on Workday, serving as Technical Lead and Architect</strong> — most recently designing and building the entire HRIS system from the ground up for an EV startup.</p>
+              <p>Across every platform, every employer, every implementation — <strong className="text-[#0A1628] font-semibold">I kept seeing the same problems repeated</strong>. The same retro pay headache. The same integration that fails after the release. The same security model that nobody documented before the architect left.</p>
+              <p>I kept running into the same problem throughout my career. <strong className="text-[#0A1628] font-semibold">There was no dedicated space where HR technology practitioners could openly share real challenges</strong>, learn from each other&apos;s implementations, and grow together professionally.</p>
+              <p>LinkedIn is too noisy. Generic HR forums don&apos;t go deep enough. Workday Community is great for product docs — <strong className="text-[#0A1628] font-semibold">but not for candid practitioner conversations</strong>.</p>
+              <p><strong className="text-[#0A1628] font-semibold">HCMOrbit was built to fill that gap</strong> — a focused community where Workday professionals can ask hard questions without judgment, share what actually works in production, and build meaningful careers together.</p>
+              <p>Whether you&apos;re new to Workday or a seasoned architect — <strong className="text-[#0A1628] font-semibold">this community was built by a practitioner, for practitioners</strong>.</p>
               <p className="text-[#0A1628] font-semibold pt-2">— Suchi, Founder of HCMOrbit</p>
             </div>
           </div>

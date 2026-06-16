@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
-import { Bell, PlusCircle, LogOut, User, Settings, ChevronDown, Search, ShieldCheck, Sparkles } from "lucide-react";
+import { Bell, PlusCircle, LogOut, User, Settings, ChevronDown, Search, ShieldCheck, Sparkles, UserRound } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import GroupBadge from "./GroupBadge";
@@ -41,6 +41,20 @@ function AboutMenu() {
             <div>
               <div className="text-sm font-semibold text-[#0A1628]">Why HCMOrbit Exists</div>
               <div className="text-xs text-[#64748B] mt-0.5 leading-snug">Our story and why we built this community.</div>
+            </div>
+          </Link>
+          <Link
+            to="/why-hcmorbit#founder"
+            onClick={() => setOpen(false)}
+            className="flex items-start gap-3 px-4 py-3 hover:bg-[#F8FAFC] border-t border-[#F1F5F9]"
+            data-testid="nav-about-founder"
+          >
+            <div className="w-8 h-8 rounded-md bg-[#0D9373]/10 text-[#0D9373] flex items-center justify-center shrink-0">
+              <UserRound className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-[#0A1628]">Meet the Founder</div>
+              <div className="text-xs text-[#64748B] mt-0.5 leading-snug">17+ years in HR tech — the story behind HCMOrbit.</div>
             </div>
           </Link>
         </div>

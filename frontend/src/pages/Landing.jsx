@@ -125,30 +125,6 @@ function Counter({ value, suffix = "" }) {
   return <span className="counter">{n.toLocaleString()}{suffix}</span>;
 }
 
-function FounderAvatar() {
-  const [errored, setErrored] = useState(false);
-  if (errored) {
-    return (
-      <div
-        className="w-64 h-64 lg:w-72 lg:h-72 flex items-center justify-center font-heading text-6xl font-bold text-[#0D9373]"
-        data-testid="founder-avatar-fallback"
-        aria-label="Suchismita Tripathy"
-      >
-        ST
-      </div>
-    );
-  }
-  return (
-    <img
-      src="/suchi_founder_photo.png"
-      alt="Suchismita (Suchi) Tripathy"
-      onError={() => setErrored(true)}
-      className="w-64 h-64 lg:w-72 lg:h-72 object-contain"
-      data-testid="founder-avatar"
-    />
-  );
-}
-
 function Credential({ value, label }) {
   return (
     <div className="text-center lg:text-left">
@@ -303,34 +279,6 @@ function Credential({ value, label }) {
           >
             Read Our Story <ArrowRight className="w-4 h-4" />
           </Link>
-        </div>
-      </section>
-
-      {/* Founder */}
-      <section className="bg-white py-20 lg:py-28" data-testid="founder-section">
-        <div className="max-w-[1100px] mx-auto px-6 lg:px-8">
-          <h2 className="font-heading text-3xl lg:text-5xl font-bold tracking-tight text-[#0A1628] mb-12">
-            Meet the Founder
-          </h2>
-
-          <div className="grid lg:grid-cols-[320px_1fr] gap-10 lg:gap-14 items-start">
-            <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
-              <FounderAvatar />
-              <div className="mt-5 font-heading text-xl font-bold text-[#0A1628]">Suchismita (Suchi) Tripathy</div>
-              <div className="mt-1 text-sm font-medium text-[#0D9373]">Founder, HCMOrbit</div>
-            </div>
-
-            <div className="space-y-5 text-[15px] lg:text-base leading-relaxed text-[#334155]" data-testid="founder-story">
-              <p>Hi, I&apos;m Suchismita — most people call me <strong className="text-[#0A1628] font-semibold">Suchi</strong>!</p>
-              <p>I&apos;ve spent <strong className="text-[#0A1628] font-semibold">17+ years working across the full spectrum of HR technology</strong> — SAP, UKG, SAP SuccessFactors, Dayforce, Oracle HCM, and ADP — supporting enterprise organizations across <strong className="text-[#0A1628] font-semibold">Healthcare, Manufacturing, Technology, and Services</strong>.</p>
-              <p>Since 2022 I&apos;ve been <strong className="text-[#0A1628] font-semibold">focused on Workday, serving as Technical Lead and Architect</strong> — most recently designing and building the entire HRIS system from the ground up for an EV startup.</p>
-              <p>I kept running into the same problem throughout my career. <strong className="text-[#0A1628] font-semibold">There was no dedicated space where HR technology practitioners could openly share real challenges</strong>, learn from each other&apos;s implementations, and grow together professionally.</p>
-              <p>LinkedIn is too noisy. Generic HR forums don&apos;t go deep enough. Workday Community is great for product docs — <strong className="text-[#0A1628] font-semibold">but not for candid practitioner conversations</strong>.</p>
-              <p><strong className="text-[#0A1628] font-semibold">HCMOrbit was built to fill that gap</strong> — a focused community where Workday professionals can ask hard questions without judgment, share what actually works in production, and build meaningful careers together.</p>
-              <p>Whether you&apos;re new to Workday or a seasoned architect — <strong className="text-[#0A1628] font-semibold">this community was built by a practitioner, for practitioners</strong>.</p>
-              <p className="text-[#0A1628] font-semibold pt-2">— Suchi, Founder of HCMOrbit</p>
-            </div>
-          </div>
         </div>
       </section>
 
