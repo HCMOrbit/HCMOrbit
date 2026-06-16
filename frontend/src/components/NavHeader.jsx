@@ -101,7 +101,7 @@ export default function NavHeader() {
         {user ? (
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium" data-testid="nav-main">
             <NavLink to="/community" className={({isActive}) => isActive ? "text-[#0A1628]" : "text-[#64748B] hover:text-[#0A1628]"} data-testid="nav-home">
-              Home
+              Community
             </NavLink>
             <NavLink to="/knowledge-base" className={({isActive}) => isActive ? "text-[#0A1628]" : "text-[#64748B] hover:text-[#0A1628]"} data-testid="nav-kb">
               Knowledge Base
