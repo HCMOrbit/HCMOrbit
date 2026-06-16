@@ -77,19 +77,33 @@ def test_root():
 
 # ---------- Spaces ----------
 def test_spaces_seeded(s):
+    """Spaces should match the canonical 17-area taxonomy (aligned with KB
+    categories in Feb 2026). Legacy slugs are hidden, not deleted."""
     r = s.get(f"{BASE_URL}/api/spaces")
     assert r.status_code == 200
     spaces = r.json()
     slugs = {sp["slug"] for sp in spaces}
-    expected = {"core-hcm", "integrations", "security", "reporting", "compensation", "payroll", "financials", "career-lounge"}
+    expected = {
+        "core-hcm", "talent-acquisition", "talent-management",
+        "compensation-benefits", "workforce-management", "payroll",
+        "learning-employee-experience", "workforce-planning-analytics",
+        "finance-accounting", "procurement-spend-management",
+        "projects-professional-services", "planning", "analytics-reporting",
+        "integration-platform", "security-compliance", "ai-automation",
+        "industry-solutions",
+    }
     assert expected.issubset(slugs), f"Missing: {expected - slugs}"
-    assert len(spaces) >= 8
+    assert len(spaces) == 17
+    # Legacy slugs MUST NOT appear in the public list
+    legacy = {"integrations", "security", "reporting", "compensation", "financials", "career-lounge"}
+    leaked = slugs & legacy
+    assert not leaked, f"Hidden legacy space slugs leaked into public list: {leaked}"
 
 
 def test_space_detail(s):
-    r = s.get(f"{BASE_URL}/api/spaces/integrations")
+    r = s.get(f"{BASE_URL}/api/spaces/integration-platform")
     assert r.status_code == 200
-    assert r.json()["slug"] == "integrations"
+    assert r.json()["slug"] == "integration-platform"
 
 
 def test_space_not_found(s):
@@ -117,10 +131,10 @@ def test_posts_filter_type(s):
 
 
 def test_posts_filter_space(s):
-    r = s.get(f"{BASE_URL}/api/posts", params={"space": "integrations"})
+    r = s.get(f"{BASE_URL}/api/posts", params={"space": "integration-platform"})
     assert r.status_code == 200
     posts = r.json()["posts"]
-    assert all(p["space"]["slug"] == "integrations" for p in posts)
+    assert all(p["space"]["slug"] == "integration-platform" for p in posts)
 
 
 def test_posts_sort_top(s):

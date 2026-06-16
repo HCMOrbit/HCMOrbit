@@ -12,6 +12,7 @@ import {
   FileText,
   MessageSquare,
   Library,
+  BookOpen,
   Quote,
 } from "lucide-react";
 import NavHeader from "../components/NavHeader";
@@ -104,6 +105,23 @@ export default function WhyHCMOrbit() {
                 <div className="mt-2 text-sm text-[#475569] leading-relaxed">{desc}</div>
               </div>
             ))}
+            <Link
+              to="/knowledge-base"
+              data-testid="why-problem-kb-card"
+              className="group bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-6 hover:border-[#0D9373] hover:shadow-md hover:-translate-y-0.5 transition-all"
+            >
+              <div className="w-10 h-10 rounded-md bg-[#0D9373]/10 text-[#0D9373] flex items-center justify-center mb-4 group-hover:bg-[#0D9373] group-hover:text-white transition-colors">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <div className="font-heading font-semibold text-[#0A1628] group-hover:text-[#0D9373] transition-colors flex items-center gap-1.5">
+                HCMOrbit Knowledge Base
+                <ArrowRight className="w-4 h-4 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+              </div>
+              <div className="mt-1 text-xs uppercase tracking-wider text-[#0D9373] font-semibold">Structured practitioner knowledge</div>
+              <div className="mt-3 text-sm text-[#475569] leading-relaxed">
+                Turn lessons learned, implementation patterns, governance frameworks, and troubleshooting guides into searchable knowledge that remains available long after projects end.
+              </div>
+            </Link>
           </div>
         </div>
       </section>
