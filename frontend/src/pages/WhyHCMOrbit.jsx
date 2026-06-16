@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import React from "react";
+import { Link } from "react-router-dom";
 import {
   ArrowRight,
   CheckCircle2,
@@ -54,17 +54,6 @@ const VISION_POINTS = [
 ];
 
 export default function WhyHCMOrbit() {
-  const location = useLocation();
-  useEffect(() => {
-    if (!location.hash) return;
-    // Defer until the page paints so getElementById can find the anchor
-    const id = location.hash.slice(1);
-    requestAnimationFrame(() => {
-      const el = document.getElementById(id);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }, [location.hash]);
-
   return (
     <div className="min-h-screen bg-white" data-testid="why-hcmorbit-page">
       <NavHeader />
