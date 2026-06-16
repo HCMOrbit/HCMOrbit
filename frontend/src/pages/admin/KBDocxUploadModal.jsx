@@ -31,9 +31,11 @@ export default function KBDocxUploadModal({ onClose, onSaved }) {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const { data } = await api.post("/admin/kb/docs/upload", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      // Don't set Content-Type manually — axios/the browser must compute the
+      // multipart/form-data header WITH the random boundary parameter from the
+      // FormData body. Hard-coding "multipart/form-data" without a boundary
+      // produces a malformed request that the edge proxy bounces back as 405.
+      const { data } = await api.post("/admin/kb/docs/upload", fd);
       setParsed(data);
     } catch (e) {
       toast.error(formatApiError(e));
