@@ -168,6 +168,11 @@ async def get_user_profile(username: str):
         "answers": await db.answers.count_documents({"author_id": user["user_id"]}),
         "accepted": await db.answers.count_documents({"author_id": user["user_id"], "is_accepted": True}),
         "votes_received": max(0, user.get("reputation_score", 0)) // 10,
+        "posts": await db.posts.count_documents({"author_id": user["user_id"], "is_removed": {"$ne": True}}),
+        "kb_articles": await db.kb_docs.count_documents({"author_id": user["user_id"], "is_published": True}),
+        # Followers / following — placeholders until the follow system ships
+        "followers": 0,
+        "following": 0,
     }
     return {"user": user, "stats": stats}
 
