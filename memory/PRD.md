@@ -1,61 +1,75 @@
-# HCMOrbit (Tenantry) — Product Requirements Document
+# HCMOrbit — PRD
 
-## Original Problem Statement
-Build the MVP of HCMOrbit — an independent professional community for the HCM (Human Capital Management) ecosystem, specifically for Workday practitioners, aspirants, and employers. Structured like a technical Q&A forum (Stack Overflow + dbt Slack + Reddit), not a social network. Three principles: (1) Signal over noise, (2) Trust through community, (3) Professional credibility.
+## Original problem statement
+HCMOrbit is an independent professional Q&A community for the HCM (Workday) ecosystem, serving Aspirants, Practitioners, and Employers. The MVP needs:
+- Registration with role-based onboarding
+- Community spaces (categories)
+- Threaded Q&A, discussions, success stories
+- Voting, reputation, user profiles
+- Admin Dashboard (member management, moderation, impersonation, reporting)
+- Knowledge Base (structured guides, references, checklists) with `.docx` ingestion
+- Stack: React (CRA) + FastAPI + MongoDB
 
-Original spec called for Next.js 14 + Supabase. Adapted to this platform's React (CRA) + FastAPI + MongoDB stack with full fidelity to the product brief.
+## Stack & architecture
+- **Frontend**: React, Tailwind, React Router. Entry: `/app/frontend/src/App.js`.
+- **Backend** (post-refactor, Feb 2026): modular FastAPI app.
+  - `/app/backend/server.py` (~120 lines) — thin entrypoint, mounts routers, startup seeding
+  - `/app/backend/core.py` — DB (Motor/Atlas via certifi), JWT, password hashing, logger
+  - `/app/backend/schemas.py` — Pydantic models + type literals
+  - `/app/backend/dependencies.py` — `get_current_user`, `require_admin`, `get_setting`, `log_admin_action`, `check_active`, `update_reputation`, `create_notification`
+  - `/app/backend/routes/auth.py` — register, login, /me, OAuth callback, profile setup, user profiles
+  - `/app/backend/routes/community.py` — spaces, posts, answers, votes, comments, bookmarks, notifications, community discovery, public settings, reports
+  - `/app/backend/routes/kb.py` — KB categories, docs (public reads), feedback voting, bookmarks, admin-only `POST /kb/docs`
+  - `/app/backend/routes/admin.py` — overview, members, post moderation, reports, spaces, KB admin CRUD, `.docx` upload, settings
+  - `/app/backend/kb_docx.py` — `.docx` parser (preserved)
+- **Auth**: Custom JWT. Auth-gate redirect preservation via `/app/frontend/src/lib/redirect.js`.
+- **Deployment**: Railway (separate from this preview).
+- **Analytics**: GA4 wired in `/app/frontend/public/index.html`.
 
-## Architecture
-- **Backend**: FastAPI on `/api`, MongoDB via Motor, JWT (PyJWT) + Emergent Google OAuth session_token (httpx)
-- **Auth**: Bearer token in `Authorization` header. Stored in `localStorage` as `hcm_token`. Email/password (bcrypt) OR Google via Emergent.
-- **Frontend**: React (CRA), CRACO with `@/*` alias, Tailwind, Shadcn UI components, React Router, Sonner toasts, ReactMarkdown + remark-gfm
-- **Design**: Dark navy (#0A1628) + teal accent (#0D9373), DM Sans + IBM Plex Sans + IBM Plex Mono, Lucide icons
-- **Database**: Collections `users`, `user_sessions`, `spaces`, `posts`, `answers`, `votes`, `comments`, `notifications`. UUID string IDs.
+## Implemented (chronological highlights)
+- Landing page + custom homepage (Built For, Why Join, Founder, Founding Member, Featured Topics)
+- Auth (register/login), `/why-hcmorbit` page, shared `SiteFooter`
+- Community feed + post detail, threaded Q&A, voting, reputation
+- Admin Dashboard (members, moderation, impersonation, reports)
+- Knowledge Base (categories, list, search, doc viewer, bookmarks)
+- KB authoring restricted to admins
+- Inline `<AuthPrompt>` gating for logged-out community/KB actions
+- KB thumbs-up/down voting (`POST /api/kb/docs/:id/feedback`)
+- `.docx` upload parsing for KB: 11-row metadata table, duplicate `reference_id` detection, nested lists, bold/italic whitespace fixes
+- KB Markdown blockquotes styled as Callouts (Note, Tip, Warning, Important)
+- "What kind of post is this?" step removed from `/community/new-post`
+- "Ask in Discussions" deep-link CTA from KB doc pages
+- GA4 + custom favicon/title + branding cleanup
+- **[Feb 2026] KBDoc layout restructure**: full-width dark hero, wider 250px sidebar with H3 indentation, anchor links with smooth scroll + active state, markdown stripped from TOC labels
+- **[Feb 2026] KB table overflow**: `table-layout: fixed` with min-width cols + overflow-x scroll container, right-edge fade gradient + "← scroll →" hint that hides on scroll/8s timeout
+- **[Feb 2026] KB code-block overflow**: same affordance pattern as tables, via shared `useScrollOverflowAffordance` hook (`KBTable` + `KBPre`)
+- **[Feb 2026] KB sidebar sticky+scrollable**: `max-height: calc(100vh - 6rem) + overflow-y-auto`
+- **[Feb 2026] KB TOC active-item auto-scroll**: `scrollIntoView({ block: 'nearest' })` on active anchor change
+- **[Feb 2026] Backend refactor**: `server.py` split from ~2000 lines into `routes/` (auth, community, kb, admin) + `core.py` + `schemas.py` + `dependencies.py`; zero behavior change verified via curl + 40 pytest tests passing
 
-## User Personas
-1. **Aspirants** (Teal) — Workday learners, 0–3 yrs, career changers
-2. **Practitioners** (Blue) — Certified consultants, devs, architects, 3–10+ yrs
-3. **Employers** (Amber) — Companies/firms hiring Workday talent
+## Key DB schemas
+- `users`, `posts`, `comments`, `votes`, `categories`, `bookmarks`
+- `kb_docs`: `{_id, category_id, title, doc_type, difficulty, target_groups, is_published, reference_id?, sub_module?, read_time?, platform?, helpful_count, not_helpful_count}`
+- `kb_feedback` / `kb_helpful_votes`: `{user_id, doc_id, helpful: bool}`
 
-## Core Requirements (Static)
-- Three group system with permanent badge display everywhere a user is mentioned
-- Reputation system (+10 upvote, +25 accepted, etc.) driving trust
-- 8 module-based spaces (Core HCM, Integrations, Security, Reporting, Compensation, Payroll, Financials, Career Lounge)
-- 3 post types: Question, Discussion, Success Story
-- Vote/accept-answer mechanics, optimistic UI
-- Guest-readable, registration-gated participation
+## Key endpoints
+- `POST /api/admin/kb/docs/upload` — `.docx` ingestion
+- `POST /api/kb/docs/{id}/feedback`, `GET /api/kb/docs/{id}/feedback`
+- `POST /api/kb/bookmarks/{id}`
+- Full CRUD: `/api/posts`, `/api/comments`, `/api/votes`, `/api/admin/*`, `/api/kb/*`
 
-## What's Been Implemented
-**2026-02 (initial MVP)**
-- **Backend** (FastAPI): full auth (register/login/me/logout/check-username/Emergent OAuth), profile setup, spaces, posts (CRUD + filter/sort/unanswered/pagination), answers + comments, votes (toggle + reputation), accept-answer, notifications, community stats/top-contributors/recent-activity/tags
-- **Seed data**: 8 spaces + 10 demo users + 16 demo posts. Idempotent.
-- **Frontend pages**: Landing, Login, Register, Onboarding, Community Home, Post Detail, New Post, Space page, Profile page, Notifications.
+## Roadmap
+### P1 — Next up
+- Full User Profile page `/profile/[username]`: follower logic, paginated answers/questions tabs, reputation breakdown
 
-**2026-02 (later in session)**
-- Bookmarks (backend + UI), Search (`/search`), live vote polling, edit/delete on answers, Share buttons.
-- **Admin Dashboard** (6 pages): Stats, Members, Posts, Reported Content (with reporter thank-you notifications), Spaces, Settings. Admin impersonation of users via special JWT claim.
-- **Knowledge Base — read flows**: KB Home, Category pages, KB Search, Document detail (with helpful votes + bookmarks). Seeded with 6 categories and 8 documents.
+### P2 — Soon
+- Add `/app/backend/tests` pytest suite for the new route structure (refresh KB tests to reflect admin-only authoring policy)
 
-**2026-02 (this session — P0 KB authoring)**
-- **POST /api/kb/docs** — Practitioners/Employers can author KB docs (draft or publish). Aspirants get 403.
-- **GET /api/kb/docs/mine** — list current user's KB docs (drafts + published).
-- **Admin KB endpoints** — `/api/admin/kb/stats`, `/api/admin/kb/docs` (filters: status/category/q + pagination), PATCH (publish/feature/edit + adjusts category counts), DELETE (cascades helpful votes & bookmarks), categories list/create/update.
-- **Frontend `/knowledge-base/new`** — 2-step contribute flow (doc type → form + markdown body with live preview + callout helper). Save draft / Publish.
-- **Frontend `/admin/knowledge-base`** — Stats cards, status tabs (All/Published/Drafts/Featured), search + category filter, action menu per row (view/publish/unpublish/feature/delete), Categories panel with create + edit modal.
-- KB Home shows "Contribute a document" CTA for Practitioners/Employers.
-- Admin sidebar adds "Knowledge Base" entry.
-- **Testing**: 17/17 new pytest tests + full frontend e2e via testing_agent (iteration_2.json). 100% pass.
+### P3 — Backlog
+- Notifications (mentions, answers, follows)
+- Email digests
+- Tag pages / tag follow
+- Search improvements (full-text on KB body)
 
-## Prioritized Backlog (Phase 2+)
-- P1 Full User Profile Page (`/profile/[username]`) — follower logic, paginated Questions/Answers/Reputation tabs.
-- P1 Sub-badges (Contributor/Trusted/Expert) on reputation milestones.
-- P1 Edit existing KB documents (author flow) — currently only admins can edit via PATCH.
-- P2 Realtime updates (Mongo change streams).
-- P2 Email/mention notifications.
-- P2 Refactor `server.py` (1803 lines) into APIRouters: `auth.py`, `posts.py`, `kb.py`, `admin.py`.
-- P2 Add `Field(max_length=...)` bounds to KBDocIn for abuse prevention.
-- P2 DELETE endpoint for kb categories (currently hide-only).
-- P2 Cookie consent banner overlap on /knowledge-base/new bottom action bar — move to corner toast.
-
-## Test Credentials
-See `/app/memory/test_credentials.md`
+## Credentials
+See `/app/memory/test_credentials.md`.

@@ -1,0 +1,106 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pytest:
+    name: pytest tests/
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      MONGO_URL: mongodb://localhost:27017
+      DB_NAME: hcmorbit_ci
+      JWT_SECRET: ci-test-secret-not-used-in-prod
+      ADMIN_EMAIL: admin@hcmorbit.com
+      ADMIN_PASSWORD: Admin123!
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Start backend
+        working-directory: backend
+        run: |
+          nohup uvicorn server:app --host 0.0.0.0 --port 8001 > /tmp/backend.log 2>&1 &
+          echo "Waiting for backend to come up..."
+          for i in {1..40}; do
+            if curl -fs http://localhost:8001/api/ > /dev/null; then
+              echo "Backend ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Backend failed to start within 40s"
+          cat /tmp/backend.log
+          exit 1
+
+      - name: Run pytest
+        working-directory: backend
+        env:
+          REACT_APP_BACKEND_URL: http://localhost:8001
+        run: pytest tests/ -v --tb=short
+
+      - name: Dump backend log on failure
+        if: failure()
+        run: tail -200 /tmp/backend.log || true
+
+  frontend-build:
+    name: yarn build frontend/
+    runs-on: ubuntu-latest
+
+    env:
+      # CRA inlines REACT_APP_* at build time — set a placeholder so the build
+      # succeeds. The real value is configured per-environment on Railway.
+      REACT_APP_BACKEND_URL: https://ci-placeholder.invalid
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        working-directory: frontend
+        env:
+          # GitHub Actions sets CI=true automatically, which makes CRA treat
+          # ESLint warnings as build errors. Disable that so the workflow fails
+          # only on actual compile errors, not lint-style nits.
+          CI: "false"
+        run: yarn build

@@ -36,9 +36,8 @@ export default function KBDoc() {
     const lines = doc.body.split("\n");
     return lines.filter((l) => /^##\s+|^###\s+/.test(l)).map((l) => {
       const level = l.startsWith("### ") ? 3 : 2;
-      const text = l.replace(/^#+\s+/, "").trim();
-      const id = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-      return { id, text, level };
+      const text = cleanHeadingText(l.replace(/^#+\s+/, ""));
+      return { id: slugify(text), text, level };
     });
   }, [doc?.body]);
 
@@ -55,6 +54,12 @@ export default function KBDoc() {
     onScroll();
     return () => window.removeEventListener("scroll", onScroll);
   }, [headings]);
+
+  useEffect(() => {
+    if (!activeAnchor) return;
+    const link = document.querySelector(`[data-testid="toc-${activeAnchor}"]`);
+    if (link) link.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeAnchor]);
 
   const vote = async (helpful) => {
     if (!user) return;
@@ -96,15 +101,60 @@ export default function KBDoc() {
   return (
     <div className="min-h-screen bg-[#F1F5F9]" data-testid="kb-doc">
       <NavHeader />
+
+      {/* Full-width dark hero */}
+      <section className="bg-[#0A1628] text-white" data-testid="kb-doc-hero">
+        <div className="max-w-[1300px] mx-auto px-4 lg:px-8 pt-5 pb-8">
+          <nav className="text-xs flex items-center gap-1.5 mb-5 text-white/60" data-testid="kb-doc-breadcrumb">
+            <Link to="/knowledge-base" className="text-white/80 hover:text-white hover:underline">Knowledge Base</Link>
+            <ChevronRight className="w-3 h-3" />
+            <Link to={`/knowledge-base/${slug}`} className="text-white/80 hover:text-white hover:underline">{doc.category?.name}</Link>
+            <ChevronRight className="w-3 h-3" />
+            <span className="truncate text-white/70">{doc.title.slice(0, 60)}</span>
+          </nav>
+          <div className="flex flex-wrap items-center gap-1.5 mb-4">
+            <DocTypeBadge type={doc.doc_type} />
+            <DifficultyBadge level={doc.difficulty} />
+            <VersionPill version={doc.workday_version} />
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20">{doc.category?.name}</span>
+          </div>
+          <h1 className="font-heading text-2xl lg:text-3xl font-bold tracking-tight" data-testid="doc-title">{doc.title}</h1>
+          {(doc.reference_id || doc.read_time) && (
+            <div className="mt-2 text-xs text-white/55 font-mono flex items-center gap-2 flex-wrap" data-testid="doc-ref-strip">
+              {doc.reference_id && <span>{doc.reference_id}</span>}
+              {doc.reference_id && doc.read_time && <span className="text-white/30">·</span>}
+              {doc.read_time && <span>{doc.read_time} read</span>}
+            </div>
+          )}
+          <p className="mt-3 text-white/70 leading-relaxed max-w-3xl">{doc.summary}</p>
+          <div className="mt-5 pt-5 border-t border-white/10 flex flex-wrap items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-medium">{(doc.author?.full_name || "U")[0].toUpperCase()}</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium flex items-center gap-2">
+                {doc.author?.full_name}
+                <GroupBadge group={doc.author?.group_type} />
+              </div>
+              <div className="text-xs text-white/50 mt-0.5"><span className="counter">{doc.author?.reputation_score}</span> rep · {timeAgo(doc.created_at)}</div>
+            </div>
+            <button onClick={toggleBookmark} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-bookmark-btn">
+              <Bookmark className="w-3.5 h-3.5" fill={bookmarked ? "currentColor" : "none"} /> {bookmarked ? "Saved" : "Save"}
+            </button>
+            <button onClick={share} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-share-btn">
+              <Share2 className="w-3.5 h-3.5" /> Share
+            </button>
+          </div>
+        </div>
+      </section>
+
       <div className="max-w-[1300px] mx-auto px-4 lg:px-8 py-6 flex gap-6">
-        <aside className="w-[175px] shrink-0 hidden lg:flex flex-col gap-5 sticky top-20 self-start" data-testid="kb-doc-sidebar">
+        <aside className="w-[250px] shrink-0 hidden lg:flex flex-col gap-5 sticky top-20 self-start max-h-[calc(100vh-6rem)] overflow-y-auto pr-1" data-testid="kb-doc-sidebar">
           {headings.length > 0 && (
             <div className="bg-white rounded-lg border border-[#E2E8F0] p-4">
               <div className="text-[10px] uppercase tracking-wider font-semibold text-[#94A3B8] mb-3">In this document</div>
               <div className="flex flex-col gap-0.5">
                 {headings.map((h) => (
                   <a key={h.id} href={`#${h.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(h.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
-                    className={`text-xs py-1.5 px-2 rounded transition-colors ${activeAnchor === h.id ? "bg-[#F0FDF4] text-[#0D9373] font-medium border-l-2 border-[#0D9373]" : "text-[#475569] hover:bg-[#F8FAFC]"}`}
+                    className={`text-xs py-1.5 px-2 rounded transition-colors leading-snug ${activeAnchor === h.id ? "bg-[#F0FDF4] text-[#0D9373] font-medium border-l-2 border-[#0D9373]" : "text-[#475569] hover:bg-[#F8FAFC]"} ${h.level === 3 ? "pl-4" : ""}`}
                     data-testid={`toc-${h.id}`}>{h.text}</a>
                 ))}
               </div>
@@ -129,48 +179,6 @@ export default function KBDoc() {
         </aside>
 
         <main className="flex-1 min-w-0">
-          <nav className="text-xs flex items-center gap-1.5 mb-3 text-[#64748B]">
-            <Link to="/knowledge-base" className="text-[#0D9373] hover:underline">Knowledge Base</Link>
-            <ChevronRight className="w-3 h-3" />
-            <Link to={`/knowledge-base/${slug}`} className="text-[#0D9373] hover:underline">{doc.category?.name}</Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="truncate">{doc.title.slice(0, 60)}</span>
-          </nav>
-
-          <div className="bg-[#0A1628] text-white rounded-xl p-7 mb-5">
-            <div className="flex flex-wrap items-center gap-1.5 mb-4">
-              <DocTypeBadge type={doc.doc_type} />
-              <DifficultyBadge level={doc.difficulty} />
-              <VersionPill version={doc.workday_version} />
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20">{doc.category?.name}</span>
-            </div>
-            <h1 className="font-heading text-2xl lg:text-3xl font-bold tracking-tight" data-testid="doc-title">{doc.title}</h1>
-            {(doc.reference_id || doc.read_time) && (
-              <div className="mt-2 text-xs text-white/55 font-mono flex items-center gap-2 flex-wrap" data-testid="doc-ref-strip">
-                {doc.reference_id && <span>{doc.reference_id}</span>}
-                {doc.reference_id && doc.read_time && <span className="text-white/30">·</span>}
-                {doc.read_time && <span>{doc.read_time} read</span>}
-              </div>
-            )}
-            <p className="mt-3 text-white/70 leading-relaxed">{doc.summary}</p>
-            <div className="mt-5 pt-5 border-t border-white/10 flex flex-wrap items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-medium">{(doc.author?.full_name || "U")[0].toUpperCase()}</div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium flex items-center gap-2">
-                  {doc.author?.full_name}
-                  <GroupBadge group={doc.author?.group_type} />
-                </div>
-                <div className="text-xs text-white/50 mt-0.5"><span className="counter">{doc.author?.reputation_score}</span> rep · {timeAgo(doc.created_at)}</div>
-              </div>
-              <button onClick={toggleBookmark} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-bookmark-btn">
-                <Bookmark className="w-3.5 h-3.5" fill={bookmarked ? "currentColor" : "none"} /> {bookmarked ? "Saved" : "Save"}
-              </button>
-              <button onClick={share} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-share-btn">
-                <Share2 className="w-3.5 h-3.5" /> Share
-              </button>
-            </div>
-          </div>
-
           <div className="bg-white border border-[#E2E8F0] rounded-lg px-5 py-3 mb-5 flex flex-wrap items-center gap-3 text-xs text-[#64748B]">
             <Users className="w-4 h-4" />
             <span className="font-medium text-[#475569]">Written for:</span>
@@ -181,14 +189,12 @@ export default function KBDoc() {
           <article className="bg-white border border-[#E2E8F0] rounded-lg p-6 lg:p-8 kb-prose" data-testid="doc-body">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
               h2: ({ children }) => {
-                const text = String(children);
-                const id = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-                return <h2 id={id} className="font-heading text-xl font-semibold mt-8 mb-4 pb-2 border-b border-[#E2E8F0] text-[#0A1628] scroll-mt-20">{children}</h2>;
+                const text = cleanHeadingText(extractText(children));
+                return <h2 id={slugify(text)} className="font-heading text-xl font-semibold mt-8 mb-4 pb-2 border-b border-[#E2E8F0] text-[#0A1628] scroll-mt-20">{children}</h2>;
               },
               h3: ({ children }) => {
-                const text = String(children);
-                const id = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-                return <h3 id={id} className="font-heading text-base font-semibold mt-6 mb-3 text-[#0A1628] scroll-mt-20">{children}</h3>;
+                const text = cleanHeadingText(extractText(children));
+                return <h3 id={slugify(text)} className="font-heading text-base font-semibold mt-6 mb-3 text-[#0A1628] scroll-mt-20">{children}</h3>;
               },
               p: ({ children }) => {
                 const text = Array.isArray(children) ? children.join("") : String(children);
@@ -199,13 +205,13 @@ export default function KBDoc() {
               code: ({ inline, children }) => inline
                 ? <code className="font-mono text-[0.85em] bg-[#F1F5F9] text-[#0F172A] px-1.5 py-0.5 rounded">{children}</code>
                 : <code className="block font-mono text-sm leading-relaxed">{children}</code>,
-              pre: ({ children }) => <pre className="bg-[#0F172A] text-[#E2E8F0] p-4 rounded-lg overflow-x-auto my-4 text-sm">{children}</pre>,
+              pre: ({ children }) => <KBPre>{children}</KBPre>,
               ul: ({ children }) => <ul className="list-disc pl-6 mb-4 space-y-1.5">{children}</ul>,
               ol: ({ children }) => <ol className="list-decimal pl-6 mb-4 space-y-1.5">{children}</ol>,
               blockquote: ({ children }) => <BlockquoteCallout>{children}</BlockquoteCallout>,
-              table: ({ children }) => <div className="overflow-x-auto my-4"><table className="w-full text-sm border-collapse">{children}</table></div>,
-              th: ({ children }) => <th className="bg-[#F8FAFC] text-left px-3 py-2 font-semibold text-xs uppercase tracking-wider border border-[#E2E8F0]">{children}</th>,
-              td: ({ children }) => <td className="px-3 py-2 border border-[#E2E8F0]">{children}</td>,
+              table: ({ children }) => <KBTable>{children}</KBTable>,
+              th: ({ children }) => <th style={{ minWidth: "180px", width: "180px" }} className="bg-[#F8FAFC] text-left px-3 py-2 font-semibold text-xs uppercase tracking-wider border border-[#E2E8F0] break-words align-top">{children}</th>,
+              td: ({ children }) => <td style={{ minWidth: "180px", width: "180px" }} className="px-3 py-2 border border-[#E2E8F0] break-words align-top">{children}</td>,
             }}>{preprocessCallouts(doc.body)}</ReactMarkdown>
           </article>
 
@@ -293,6 +299,109 @@ function preprocessCallouts(body) {
   return body.replace(/:::(mistake|tip|warning|info)\n([\s\S]*?)\n:::/g, (_m, type, content) => `:::${type}\n${content.replace(/\n/g, " ")}\n:::`);
 }
 
+function slugify(text) {
+  return (text || "").toString().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function cleanHeadingText(raw) {
+  if (!raw) return "";
+  return raw
+    .replace(/`+/g, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    .replace(/\\([\\`*_])/g, "$1")
+    .trim();
+}
+
+function extractText(children) {
+  if (children == null || children === false) return "";
+  if (typeof children === "string" || typeof children === "number") return String(children);
+  if (Array.isArray(children)) return children.map(extractText).join("");
+  if (children.props && children.props.children !== undefined) return extractText(children.props.children);
+  return "";
+}
+
+
+function useScrollOverflowAffordance() {
+  const ref = React.useRef(null);
+  const [overflowing, setOverflowing] = React.useState(false);
+  const [hintHidden, setHintHidden] = React.useState(false);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => {
+      setOverflowing(el.scrollWidth - el.clientWidth > 1);
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    const onScroll = () => {
+      if (el.scrollLeft > 4) setHintHidden(true);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    const t = setTimeout(() => setHintHidden(true), 8000);
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("scroll", onScroll);
+      clearTimeout(t);
+    };
+  }, []);
+
+  return { ref, overflowing, showHint: overflowing && !hintHidden };
+}
+
+function FadeOverlay({ color, rounded, testid }) {
+  return (
+    <div
+      aria-hidden="true"
+      data-testid={testid}
+      className={`pointer-events-none absolute top-0 right-0 h-full w-12 ${rounded}`}
+      style={{ background: `linear-gradient(to right, rgba(0,0,0,0), ${color})` }}
+    />
+  );
+}
+
+function ScrollHint({ testid }) {
+  return (
+    <div
+      className="mt-2 text-[11px] text-[#94A3B8] flex items-center gap-1.5 transition-opacity"
+      data-testid={testid}
+    >
+      <span aria-hidden="true">←</span> scroll <span aria-hidden="true">→</span>
+    </div>
+  );
+}
+
+function KBTable({ children }) {
+  const { ref, overflowing, showHint } = useScrollOverflowAffordance();
+  return (
+    <div className="my-4" data-testid="kb-table-block">
+      <div className="relative">
+        <div ref={ref} className="overflow-x-auto border border-[#E2E8F0] rounded-lg" data-testid="kb-table-wrap">
+          <table className="text-sm border-collapse w-max min-w-full" style={{ tableLayout: "fixed" }}>{children}</table>
+        </div>
+        {overflowing && <FadeOverlay color="rgba(255,255,255,0.95)" rounded="rounded-r-lg" testid="kb-table-fade" />}
+      </div>
+      {showHint && <ScrollHint testid="kb-table-scroll-hint" />}
+    </div>
+  );
+}
+
+function KBPre({ children }) {
+  const { ref, overflowing, showHint } = useScrollOverflowAffordance();
+  return (
+    <div className="my-4" data-testid="kb-pre-block">
+      <div className="relative">
+        <pre ref={ref} className="bg-[#0F172A] text-[#E2E8F0] p-4 rounded-lg overflow-x-auto text-sm" data-testid="kb-pre-wrap">{children}</pre>
+        {overflowing && <FadeOverlay color="rgba(15,23,40,0.98)" rounded="rounded-r-lg" testid="kb-pre-fade" />}
+      </div>
+      {showHint && <ScrollHint testid="kb-pre-scroll-hint" />}
+    </div>
+  );
+}
 
 function BlockquoteCallout({ children }) {
   const CALLOUT_VARIANTS = {

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ArrowUp } from "lucide-react";
 import NavHeader from "./NavHeader";
-import Footer from "./Footer";
 
 export default function LegalLayout({ title, updated, intro, children }) {
   const [showTop, setShowTop] = useState(false);
@@ -24,7 +23,6 @@ export default function LegalLayout({ title, updated, intro, children }) {
           <div className="legal-body mt-8">{children}</div>
         </div>
       </main>
-      <Footer />
       {showTop && (
         <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           className="fixed bottom-6 right-6 z-40 w-11 h-11 rounded-full bg-[#0A1628] text-white shadow-lg hover:bg-[#0F1F36] flex items-center justify-center"

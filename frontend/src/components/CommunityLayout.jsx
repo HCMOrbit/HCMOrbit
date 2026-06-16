@@ -1,15 +1,23 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Users, Network, Shield, BarChart3, CircleDollarSign, Wallet, Landmark, Coffee, Home, Bookmark, FileQuestion, MessageCircle } from "lucide-react";import { api } from "../lib/api";
+import {
+  Users, Network, Shield, BarChart3, Wallet, Landmark, Home, Bookmark, FileQuestion, MessageCircle,
+  Target, Sprout, Briefcase, Clock, GraduationCap, LineChart, ShoppingCart, Ruler, Map, Bot, Factory,
+} from "lucide-react";
+import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import GroupBadge from "./GroupBadge";
 
-const ICON_MAP = { Users, Network, Shield, BarChart3, CircleDollarSign, Wallet, Landmark, Coffee };
+const ICON_MAP = {
+  Users, Network, Shield, BarChart3, Wallet, Landmark,
+  Target, Sprout, Briefcase, Clock, GraduationCap, LineChart, ShoppingCart, Ruler, Map, Bot, Factory,
+};
 
 export default function CommunityLayout({ children, rightSidebar = true }) {
   const [spaces, setSpaces] = useState([]);
   const [topContrib, setTopContrib] = useState([]);
   const [tags, setTags] = useState([]);
+  const [showAllSpaces, setShowAllSpaces] = useState(false);
   const { user } = useAuth();
   const location = useLocation();
 
@@ -20,6 +28,15 @@ export default function CommunityLayout({ children, rightSidebar = true }) {
       api.get("/community/tags").then((r) => setTags(r.data)).catch(() => {});
     }
   }, [rightSidebar]);
+
+  // Populated first (by post count desc), then empty in canonical order
+  const populated = spaces
+    .filter((s) => (s.post_count || 0) > 0)
+    .sort((a, b) => (b.post_count || 0) - (a.post_count || 0) || (a.sort_order || 99) - (b.sort_order || 99));
+  const empty = spaces
+    .filter((s) => (s.post_count || 0) === 0)
+    .sort((a, b) => (a.sort_order || 99) - (b.sort_order || 99));
+  const visible = showAllSpaces ? [...populated, ...empty] : populated;
 
   return (
     <div className="max-w-[1440px] mx-auto px-4 lg:px-8 py-6 flex gap-6">
@@ -53,15 +70,16 @@ export default function CommunityLayout({ children, rightSidebar = true }) {
         <div>
           <div className="text-[11px] uppercase tracking-wider text-[#94A3B8] font-semibold mb-2 px-3">Spaces</div>
           <nav className="flex flex-col gap-0.5">
-            {spaces.map((s) => {
+            {visible.map((s) => {
               const Icon = ICON_MAP[s.icon] || Users;
               const active = location.pathname === `/community/spaces/${s.slug}`;
+              const isEmpty = (s.post_count || 0) === 0;
               return (
                 <Link
                   key={s.slug}
                   to={`/community/spaces/${s.slug}`}
                   data-testid={`sidebar-space-${s.slug}`}
-                  className={`flex items-center justify-between gap-2 px-3 py-1.5 rounded text-sm transition-colors ${active ? "bg-[#0D9373]/10 text-[#0D9373]" : "text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0A1628]"}`}
+                  className={`flex items-center justify-between gap-2 px-3 py-1.5 rounded text-sm transition-colors ${active ? "bg-[#0D9373]/10 text-[#0D9373]" : isEmpty ? "text-[#94A3B8] hover:bg-[#F1F5F9] hover:text-[#475569]" : "text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0A1628]"}`}
                 >
                   <span className="flex items-center gap-2 min-w-0">
                     <Icon className="w-4 h-4 shrink-0" />
@@ -71,6 +89,16 @@ export default function CommunityLayout({ children, rightSidebar = true }) {
                 </Link>
               );
             })}
+            {empty.length > 0 && (
+              <button
+                onClick={() => setShowAllSpaces((v) => !v)}
+                data-testid="sidebar-show-more-spaces"
+                aria-expanded={showAllSpaces}
+                className="mt-1 px-3 py-1.5 text-left text-xs font-medium text-[#0D9373] hover:bg-[#F1F5F9] rounded transition-colors"
+              >
+                {showAllSpaces ? `Show fewer (${populated.length})` : `Show more spaces (${empty.length} empty)`}
+              </button>
+            )}
           </nav>
         </div>
       </aside>
