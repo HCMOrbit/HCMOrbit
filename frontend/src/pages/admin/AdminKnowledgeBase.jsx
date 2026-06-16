@@ -55,7 +55,19 @@ export default function AdminKnowledgeBase() {
     }
     const groups = Array.from(map.values());
     groups.sort((a, b) => a.module.localeCompare(b.module) || a.sub.localeCompare(b.sub));
-    for (const g of groups) g.docs.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+    // Sort docs within each group by reference_id numerically (TA-JOBREQ-KB-001
+    // before TA-JOBREQ-KB-010). Docs missing a reference_id fall to the end
+    // and are sorted alphabetically among themselves.
+    for (const g of groups) {
+      g.docs.sort((a, b) => {
+        const ra = (a.reference_id || "").trim();
+        const rb = (b.reference_id || "").trim();
+        if (ra && !rb) return -1;
+        if (!ra && rb) return 1;
+        if (ra && rb) return ra.localeCompare(rb, undefined, { numeric: true, sensitivity: "base" });
+        return (a.title || "").localeCompare(b.title || "");
+      });
+    }
     return groups;
   }, [docs]);
 
