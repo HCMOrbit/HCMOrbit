@@ -106,9 +106,6 @@ export default function NavHeader() {
             <NavLink to="/knowledge-base" className={({isActive}) => isActive ? "text-[#0A1628]" : "text-[#64748B] hover:text-[#0A1628]"} data-testid="nav-kb">
               Knowledge Base
             </NavLink>
-            <NavLink to="/notifications" className={({isActive}) => isActive ? "text-[#0A1628]" : "text-[#64748B] hover:text-[#0A1628]"} data-testid="nav-notifications">
-              Notifications
-            </NavLink>
             <AboutMenu />
           </nav>
         ) : (
