@@ -89,9 +89,12 @@ async def kb_list_docs(
     type: Optional[str] = None,
     difficulty: Optional[str] = None,
     version: Optional[str] = None,
+    author_id: Optional[str] = None,
     limit: int = 50,
 ):
     query = {"is_published": True}
+    if author_id:
+        query["author_id"] = author_id
     if category:
         c = await db.kb_categories.find_one({"slug": category}, {"_id": 0})
         if not c:
