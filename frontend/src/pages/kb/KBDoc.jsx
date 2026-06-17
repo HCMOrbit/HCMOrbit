@@ -134,7 +134,7 @@ export default function KBDoc() {
                 {doc.author?.full_name}
                 <GroupBadge group={doc.author?.group_type} />
               </div>
-              <div className="text-xs text-white/50 mt-0.5"><span className="counter">{doc.author?.reputation_score}</span> rep · {timeAgo(doc.created_at)}</div>
+              <div className="text-xs text-white/50 mt-0.5"><span className="counter">{doc.author?.reputation_score}</span> rep</div>
             </div>
             <button onClick={toggleBookmark} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-bookmark-btn">
               <Bookmark className="w-3.5 h-3.5" fill={bookmarked ? "currentColor" : "none"} /> {bookmarked ? "Saved" : "Save"}
