@@ -22,6 +22,7 @@ import AdminReported from "@/pages/admin/AdminReported";
 import AdminSpaces from "@/pages/admin/AdminSpaces";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminKnowledgeBase from "@/pages/admin/AdminKnowledgeBase";
+import AdminEmailPreviews from "@/pages/admin/AdminEmailPreviews";
 import KBHome from "@/pages/kb/KBHome";
 import KBCategory from "@/pages/kb/KBCategory";
 import KBSearch from "@/pages/kb/KBSearch";
@@ -63,6 +64,7 @@ function AppRoutes() {
       <Route path="/admin/spaces" element={<AdminSpaces />} />
       <Route path="/admin/settings" element={<AdminSettings />} />
       <Route path="/admin/knowledge-base" element={<AdminKnowledgeBase />} />
+      <Route path="/admin/email-previews" element={<AdminEmailPreviews />} />
       <Route path="/knowledge-base" element={<KBHome />} />
       <Route path="/knowledge-base/new" element={<NewKBDoc />} />
       <Route path="/knowledge-base/:slug" element={<KBCategory />} />

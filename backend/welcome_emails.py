@@ -239,6 +239,16 @@ EMAIL_BUILDERS = {
 }
 
 
+def render_welcome_html(step: int, full_name: str | None) -> tuple[str, str] | None:
+    """Return (subject, html) for the given step, or None if step is invalid.
+    Used by admin tools that need to render or send a specific welcome email
+    without touching any user record."""
+    builder = EMAIL_BUILDERS.get(step)
+    if not builder:
+        return None
+    return builder(full_name)
+
+
 async def _send_via_resend(to_email: str, subject: str, html: str) -> bool:
     """Send a single email via Resend. Returns True on success."""
     cfg = _resend_config()
