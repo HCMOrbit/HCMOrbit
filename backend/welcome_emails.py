@@ -62,12 +62,15 @@ HEADER_HTML = """
 </table>
 """
 
-FOOTER_HTML = """
+def _footer_html() -> str:
+    """Build the email footer with the current UTC year (computed at render time)."""
+    year = datetime.now(timezone.utc).year
+    return f"""
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
        style="background:#f3f4f6;border-radius:0 0 8px 8px;">
   <tr><td style="padding:18px 32px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#6b7280;text-align:center;line-height:1.5;">
     You received this because you joined HCMOrbit.<br>
-    &copy; 2026 HCMOrbit. All rights reserved.
+    &copy; {year} HCMOrbit. All rights reserved.
   </td></tr>
 </table>
 """
@@ -88,7 +91,7 @@ def _wrap(body_html: str) -> str:
           {body_html}
           {SIGNATURE_HTML}
         </td></tr>
-        <tr><td>{FOOTER_HTML}</td></tr>
+        <tr><td>{_footer_html()}</td></tr>
       </table>
     </td></tr>
   </table>

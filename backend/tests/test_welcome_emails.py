@@ -41,9 +41,10 @@ def test_branded_visual_design_applied_to_all_emails():
         assert "#0D9373" in html, "teal accent color missing"
         # Quick-ask / pro-tip / hit-reply callout uses light teal
         assert "#E1F5EE" in html, "light teal callout color missing"
-        # Footer copy
+        # Footer copy — year is computed at render time
         assert "You received this because you joined HCMOrbit" in html
-        assert "2026 HCMOrbit" in html
+        current_year = datetime.now(timezone.utc).year
+        assert f"{current_year} HCMOrbit" in html
         # Email-client-safe font (no system-ui)
         assert "Arial" in html
         # Width constraint
