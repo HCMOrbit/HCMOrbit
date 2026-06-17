@@ -334,16 +334,11 @@ function FeedbackModal({ onClose }) {
     if (!message.trim()) return;
     setSubmitting(true);
     try {
-      // Try POST to a feedback endpoint if it exists; fall back to mailto.
-      try {
-        await api.post("/feedback", { name, email, message });
-      } catch (_err) {
-        const subject = encodeURIComponent("HCMOrbit feedback");
-        const body = encodeURIComponent(`From: ${name || "(anonymous)"} <${email || "n/a"}>\n\n${message}`);
-        window.location.href = `mailto:support@hcmorbit.com?subject=${subject}&body=${body}`;
-      }
+      await api.post("/feedback", { name, email, message, source: "founder_page" });
       toast.success("Thanks — we got your feedback.");
       onClose();
+    } catch (err) {
+      toast.error("Couldn't send right now. Please try again in a moment.");
     } finally {
       setSubmitting(false);
     }

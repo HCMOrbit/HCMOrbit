@@ -17,6 +17,7 @@ from routes.auth import router as auth_router
 from routes.community import router as community_router
 from routes.kb import router as kb_router
 from routes.admin import router as admin_router
+from routes.feedback import router as feedback_router
 
 
 app = FastAPI(title="HCMOrbit API")
@@ -27,6 +28,7 @@ api.include_router(auth_router)
 api.include_router(community_router)
 api.include_router(kb_router)
 api.include_router(admin_router)
+api.include_router(feedback_router)
 
 
 @api.get("/")
