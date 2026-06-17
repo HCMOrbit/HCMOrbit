@@ -95,14 +95,16 @@ export default function AdminKnowledgeBase() {
   }, []);
 
   const loadDocs = useCallback(() => {
-    const params = new URLSearchParams({ page, page_size: 30 });
+    // Fetch all matching docs in one go — pagination is now module-aware on
+    // the client so we can never split a module across pages.
+    const params = new URLSearchParams({ page: 1, page_size: 500 });
     if (q) params.set("q", q);
     if (statusFilter !== "all") params.set("status", statusFilter);
     if (categoryFilter !== "all") params.set("category", categoryFilter);
     api.get(`/admin/kb/docs?${params}`)
       .then((r) => { setDocs(r.data.docs); setTotal(r.data.total); })
       .catch(() => {});
-  }, [q, statusFilter, categoryFilter, page]);
+  }, [q, statusFilter, categoryFilter]);
 
   useEffect(loadStats, [loadStats]);
   useEffect(loadCategories, [loadCategories]);
@@ -130,7 +132,29 @@ export default function AdminKnowledgeBase() {
     setConfirm(null);
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / 30));
+  // Module-aware pagination — pack modules greedily into pages of at-least 30
+  // docs. A page can exceed 30 if a single module is bigger; modules never
+  // split across pages.
+  const PAGE_THRESHOLD = 30;
+  const modulePages = React.useMemo(() => {
+    const pages = [];
+    let current = [];
+    let count = 0;
+    for (const mod of moduleTree) {
+      if (count > 0 && count + mod.total > PAGE_THRESHOLD) {
+        pages.push(current);
+        current = [];
+        count = 0;
+      }
+      current.push(mod);
+      count += mod.total;
+    }
+    if (current.length > 0) pages.push(current);
+    return pages.length > 0 ? pages : [[]];
+  }, [moduleTree]);
+
+  const visibleModules = modulePages[page - 1] || modulePages[0];
+  const totalPages = modulePages.length;
 
   return (
     <AdminLayout>
@@ -247,7 +271,7 @@ export default function AdminKnowledgeBase() {
             </tr>
           </thead>
           <tbody>
-            {moduleTree.map((m) => {
+            {visibleModules.map((m) => {
               const moduleOpen = expandedModules.has(m.name);
               return (
                 <React.Fragment key={m.name}>
