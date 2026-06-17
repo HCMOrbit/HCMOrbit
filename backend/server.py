@@ -18,6 +18,8 @@ from routes.community import router as community_router
 from routes.kb import router as kb_router
 from routes.admin import router as admin_router
 from routes.feedback import router as feedback_router
+from welcome_emails import process_welcome_queue
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
 app = FastAPI(title="HCMOrbit API")
@@ -107,9 +109,20 @@ async def on_startup():
         )
     log.info("Startup seeding complete")
 
+    # Start hourly welcome-email scheduler (idempotent — guarded by per-user timestamps)
+    scheduler = AsyncIOScheduler(timezone="UTC")
+    scheduler.add_job(process_welcome_queue, "interval", hours=1, id="welcome_emails",
+                      next_run_time=None, max_instances=1, coalesce=True)
+    scheduler.start()
+    app.state.scheduler = scheduler
+    log.info("Welcome-email scheduler started (every 1h)")
+
 
 @app.on_event("shutdown")
 async def on_shutdown():
+    sched = getattr(app.state, "scheduler", None)
+    if sched:
+        sched.shutdown(wait=False)
     client.close()
 
 

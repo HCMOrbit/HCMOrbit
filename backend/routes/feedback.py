@@ -29,7 +29,7 @@ async def _send_email_notification(doc: dict):
     api_key = os.environ.get("RESEND_API_KEY")
     if not api_key:
         return
-    sender = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+    sender = os.environ.get("FEEDBACK_SENDER_EMAIL", "onboarding@resend.dev")
     try:
         import resend
         resend.api_key = api_key
