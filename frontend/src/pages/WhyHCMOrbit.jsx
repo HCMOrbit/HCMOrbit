@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
+import { api } from "../lib/api";
 import {
   ArrowRight,
   CheckCircle2,
@@ -11,6 +13,11 @@ import {
   Users,
   FileText,
   MessageSquare,
+  Mail,
+  Calendar as CalendarIcon,
+  Linkedin,
+  MessageCircle,
+  X as XIcon,
   Library,
   BookOpen,
   Quote,
@@ -208,6 +215,9 @@ export default function WhyHCMOrbit() {
               <p><strong className="text-[#0A1628] font-semibold">HCMOrbit was built to fill that gap</strong> — a focused community where Workday professionals can ask hard questions without judgment, share what actually works in production, and build meaningful careers together.</p>
               <p>Whether you&apos;re new to Workday or a seasoned architect — <strong className="text-[#0A1628] font-semibold">this community was built by a practitioner, for practitioners</strong>.</p>
               <p className="text-[#0A1628] font-semibold pt-2">— Suchi, Founder of HCMOrbit</p>
+
+              {/* Let's Sync — contact row */}
+              <LetsSync />
             </div>
           </div>
         </div>
@@ -262,6 +272,111 @@ export default function WhyHCMOrbit() {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function LetsSync() {
+  const [showFeedback, setShowFeedback] = useState(false);
+  const items = [
+    { label: "Email", icon: Mail, href: "mailto:support@hcmorbit.com", external: false, testid: "sync-email" },
+    { label: "Book", icon: CalendarIcon, href: "https://calendar.app.google/xPmeV4iQ9WKi3ezY8", external: true, testid: "sync-book" },
+    { label: "Connect", icon: Linkedin, href: "https://www.linkedin.com/in/suchismita-tripathy-b1b53678/", external: true, testid: "sync-connect" },
+    { label: "Feedback", icon: MessageCircle, onClick: () => setShowFeedback(true), testid: "sync-feedback" },
+  ];
+  return (
+    <div className="pt-8 mt-2 border-t border-[#E2E8F0]" data-testid="lets-sync">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+        <div className="font-heading italic font-bold text-[#F43F5E] text-base sm:whitespace-nowrap">Let&apos;s Sync:</div>
+        <div className="flex flex-wrap gap-3">
+          {items.map((it) => {
+            const Icon = it.icon;
+            const inner = (
+              <>
+                <div className="w-12 h-12 rounded-lg border border-[#CBD5E1] bg-white flex items-center justify-center text-[#1B3A6B] group-hover:border-[#1B3A6B] group-hover:bg-[#1B3A6B] group-hover:text-white transition-colors">
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div className="mt-1.5 text-[11px] text-[#475569] font-medium text-center group-hover:text-[#1B3A6B] transition-colors">{it.label}</div>
+              </>
+            );
+            const className = "group flex flex-col items-center w-16";
+            if (it.onClick) {
+              return (
+                <button key={it.label} onClick={it.onClick} data-testid={it.testid} className={className} type="button">{inner}</button>
+              );
+            }
+            return (
+              <a
+                key={it.label}
+                href={it.href}
+                target={it.external ? "_blank" : undefined}
+                rel={it.external ? "noopener noreferrer" : undefined}
+                data-testid={it.testid}
+                className={className}
+              >{inner}</a>
+            );
+          })}
+        </div>
+      </div>
+      {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
+    </div>
+  );
+}
+
+function FeedbackModal({ onClose }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+    setSubmitting(true);
+    try {
+      // Try POST to a feedback endpoint if it exists; fall back to mailto.
+      try {
+        await api.post("/feedback", { name, email, message });
+      } catch (_err) {
+        const subject = encodeURIComponent("HCMOrbit feedback");
+        const body = encodeURIComponent(`From: ${name || "(anonymous)"} <${email || "n/a"}>\n\n${message}`);
+        window.location.href = `mailto:support@hcmorbit.com?subject=${subject}&body=${body}`;
+      }
+      toast.success("Thanks — we got your feedback.");
+      onClose();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose} data-testid="feedback-modal">
+      <form onClick={(e) => e.stopPropagation()} onSubmit={submit} className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+        <div className="flex items-start justify-between mb-1">
+          <div>
+            <h3 className="font-heading text-lg font-semibold text-[#1B3A6B]">Share your feedback</h3>
+            <p className="text-xs text-[#64748B] mt-0.5">Bugs, ideas, KB requests — anything goes.</p>
+          </div>
+          <button type="button" onClick={onClose} className="p-1 hover:bg-[#F1F5F9] rounded text-[#94A3B8]" data-testid="feedback-close">
+            <XIcon className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="mt-4 space-y-3">
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name (optional)" data-testid="feedback-name"
+            className="w-full px-3 py-2 rounded-md border border-[#CBD5E1] text-sm focus:outline-none focus:border-[#1B3A6B]" />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your email (optional)" data-testid="feedback-email"
+            className="w-full px-3 py-2 rounded-md border border-[#CBD5E1] text-sm focus:outline-none focus:border-[#1B3A6B]" />
+          <textarea required value={message} onChange={(e) => setMessage(e.target.value)} placeholder="What's on your mind?" rows={5} data-testid="feedback-message"
+            className="w-full px-3 py-2 rounded-md border border-[#CBD5E1] text-sm focus:outline-none focus:border-[#1B3A6B] resize-none" />
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-[#475569] hover:bg-[#F1F5F9] rounded-md">Cancel</button>
+          <button type="submit" disabled={submitting || !message.trim()} data-testid="feedback-submit"
+            className="px-4 py-2 text-sm font-medium bg-[#1B3A6B] text-white rounded-md hover:bg-[#0F2347] disabled:opacity-50 disabled:cursor-not-allowed">
+            {submitting ? "Sending..." : "Send feedback"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
