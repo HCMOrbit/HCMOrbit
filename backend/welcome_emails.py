@@ -278,6 +278,16 @@ async def send_welcome_email(user: dict, step: int) -> bool:
     return sent
 
 
+async def send_welcome_email_preview(to_email: str, full_name: str | None, step: int) -> bool:
+    """Render and send a welcome email for testing. Does NOT update any user record
+    and is NOT gated by the 'already sent' flags. Returns True iff Resend accepted it."""
+    builder = EMAIL_BUILDERS.get(step)
+    if not builder:
+        return False
+    subject, html = builder(full_name)
+    return await _send_via_resend(to_email, subject, html)
+
+
 # -------- Scheduler job --------
 EMAIL_DELAYS = {
     2: timedelta(days=2),

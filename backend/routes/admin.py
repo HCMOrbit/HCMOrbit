@@ -18,6 +18,7 @@ from dependencies import require_admin, log_admin_action, create_notification
 from kb_docx import parse_kb_docx
 from routes.community import enrich_posts
 from routes.kb import enrich_docs
+from welcome_emails import send_welcome_email_preview
 
 router = APIRouter()
 
@@ -26,6 +27,24 @@ router = APIRouter()
 @router.get("/admin/check")
 async def admin_check(admin: dict = Depends(require_admin)):
     return {"is_admin": True, "username": admin["username"]}
+
+
+# ---------- Temporary: preview welcome email sequence ----------
+# Sends all 3 branded welcome emails to a chosen address, bypassing the scheduler
+# and the per-user 'already sent' flags. Intended for one-time visual QA — remove
+# this endpoint after the templates are approved.
+@router.post("/admin/test-welcome-emails")
+async def admin_test_welcome_emails(body: dict, admin: dict = Depends(require_admin)):
+    to_email = (body.get("email") or "").strip()
+    if not to_email:
+        raise HTTPException(400, "Missing 'email' in body")
+    full_name = (body.get("full_name") or "Friend").strip() or "Friend"
+    results = {}
+    for step in (1, 2, 3):
+        ok = await send_welcome_email_preview(to_email, full_name, step)
+        results[f"email_{step}"] = "sent" if ok else "failed"
+    await log_admin_action(admin, "test_welcome_emails", note=f"to={to_email} results={results}")
+    return {"to": to_email, "results": results}
 
 
 @router.get("/admin/stats")
