@@ -4,7 +4,7 @@ import { Search as SearchIcon, ChevronRight, Bookmark } from "lucide-react";
 import NavHeader from "../../components/NavHeader";
 import { DocTypeBadge, DifficultyBadge, VersionPill, CategoryIcon } from "../../components/kb/KBBadges";
 import GroupBadge from "../../components/GroupBadge";
-import { api, timeAgo } from "../../lib/api";
+import { api } from "../../lib/api";
 
 export default function KBCategory() {
   const { slug } = useParams();
@@ -90,7 +90,6 @@ export function DocRow({ doc, categorySlug, highlightQuery }) {
             <span className="font-medium text-[#0F172A]">{doc.author?.full_name}</span>
             <GroupBadge group={doc.author?.group_type} />
             <span className="counter">{doc.view_count} views</span>
-            <span>· {timeAgo(doc.created_at)}</span>
           </div>
         </div>
         <div className="text-right shrink-0 flex flex-col items-end gap-2">
