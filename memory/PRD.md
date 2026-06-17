@@ -46,6 +46,8 @@ HCMOrbit is an independent professional Q&A community for the HCM (Workday) ecos
 - **[Feb 2026] KB sidebar sticky+scrollable**: `max-height: calc(100vh - 6rem) + overflow-y-auto`
 - **[Feb 2026] KB TOC active-item auto-scroll**: `scrollIntoView({ block: 'nearest' })` on active anchor change
 - **[Feb 2026] Backend refactor**: `server.py` split from ~2000 lines into `routes/` (auth, community, kb, admin) + `core.py` + `schemas.py` + `dependencies.py`; zero behavior change verified via curl + 40 pytest tests passing
+- **[Feb 2026] Feedback endpoint `POST /api/feedback`**: persists submissions to MongoDB `feedback` collection AND sends Resend email notification (best-effort, non-blocking) — wired to `routes/feedback.py`. Sender `onboarding@resend.dev` (sandbox), recipient `support@hcmorbit.com` until `hcmorbit.com` domain is verified on Resend; then switch to `noreply@hcmorbit.com` → `admin@hcmorbit.com`.
+- **[Feb 2026] 3-step welcome email sequence** (`/app/backend/welcome_emails.py`): Email 1 sent immediately on register (both `/auth/register` and `/auth/emergent-session` for net-new users), Email 2 at +2 days, Email 3 at +5 days. APScheduler hourly job (`process_welcome_queue`) picks up backlog; per-user timestamps (`welcome_email_{1,2,3}_sent`) guarantee idempotency. Throttled at ~3 req/sec to stay under Resend's 5/sec limit. Seed/demo (`@hcmorbit.demo`) users excluded. Sender: `suchi@hcmorbit.com` (requires `hcmorbit.com` domain verification on Resend to deliver). 5 unit tests covering templates, eligibility windows, and idempotency.
 
 ## Key DB schemas
 - `users`, `posts`, `comments`, `votes`, `categories`, `bookmarks`

@@ -1,4 +1,5 @@
 """Auth, profile, and user-profile endpoints."""
+import asyncio
 import uuid
 from datetime import datetime, timezone, timedelta
 
@@ -8,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from core import db, now_iso, hash_password, verify_password, create_token
 from schemas import RegisterIn, LoginIn, ProfileSetupIn, EmergentSessionIn
 from dependencies import get_current_user, get_setting
+from welcome_emails import send_welcome_email
 
 router = APIRouter()
 
@@ -47,6 +49,8 @@ async def register(payload: RegisterIn):
     doc.pop("_id", None)
     token = create_token(user_id)
     user = {k: v for k, v in doc.items() if k != "password_hash"}
+    # Fire-and-forget welcome email 1 (never blocks registration)
+    asyncio.create_task(send_welcome_email(user, 1))
     return {"user": user, "token": token}
 
 
@@ -103,6 +107,7 @@ async def emergent_session(payload: EmergentSessionIn):
             {"user_id": user_id},
             {"$set": {"avatar_url": picture or existing.get("avatar_url")}},
         )
+        is_new_user = False
     else:
         user_id = f"user_{uuid.uuid4().hex[:12]}"
         base_username = email.split("@")[0].replace(".", "_").lower()[:20]
@@ -130,6 +135,7 @@ async def emergent_session(payload: EmergentSessionIn):
             "auth_provider": "google",
             "created_at": now_iso(),
         })
+        is_new_user = True
 
     await db.user_sessions.insert_one({
         "user_id": user_id,
@@ -138,6 +144,8 @@ async def emergent_session(payload: EmergentSessionIn):
         "created_at": now_iso(),
     })
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+    if is_new_user and user:
+        asyncio.create_task(send_welcome_email(user, 1))
     return {"user": user, "token": session_token}
 
 
