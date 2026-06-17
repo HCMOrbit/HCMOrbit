@@ -29,6 +29,27 @@ def test_email_1_template_contains_required_copy():
     assert "Hi Alex," in html
 
 
+def test_branded_visual_design_applied_to_all_emails():
+    """All 3 emails share the new branded shell: navy header, teal accents,
+    light-teal callout, footer copyright. Locks the brand colors in regression."""
+    for builder in (_email_1_html, _email_2_html, _email_3_html):
+        _, html = builder("Sam")
+        # Header navy band + tagline
+        assert "#1B3A6B" in html, "navy brand color missing"
+        assert "The Community Where Workday Professionals Learn, Solve, and Grow" in html
+        # Teal accent on cards + signature links
+        assert "#0D9373" in html, "teal accent color missing"
+        # Quick-ask / pro-tip / hit-reply callout uses light teal
+        assert "#E1F5EE" in html, "light teal callout color missing"
+        # Footer copy
+        assert "You received this because you joined HCMOrbit" in html
+        assert "2026 HCMOrbit" in html
+        # Email-client-safe font (no system-ui)
+        assert "Arial" in html
+        # Width constraint
+        assert "max-width:600px" in html or 'width="600"' in html
+
+
 def test_email_2_template_contains_top_5_resources():
     subject, html = _email_2_html(None)
     assert "Top 5 resources" in subject

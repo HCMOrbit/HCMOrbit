@@ -30,127 +30,201 @@ def _resend_config():
 
 
 SIGNATURE_HTML = """
-<p style="margin-top:32px;font-family:system-ui,-apple-system,sans-serif;color:#0f172a;line-height:1.55;">
-  Warmly,<br>
-  <b>Suchismita Tripathy</b><br>
-  Founder | HCMOrbit<br>
-  <i style="color:#475569;">The Community Where Workday Professionals Learn, Solve, and Grow</i>
-</p>
-<p style="font-family:system-ui,-apple-system,sans-serif;color:#475569;font-size:14px;">
-  <a href="https://hcmorbit.com" style="color:#2563eb;">hcmorbit.com</a>
-  &nbsp;|&nbsp;
-  <a href="https://calendar.app.google/xPmeV4iQ9WKi3ezY8" style="color:#2563eb;">Book a 1:1</a>
-  &nbsp;|&nbsp;
-  <a href="mailto:suchi@hcmorbit.com" style="color:#2563eb;">suchi@hcmorbit.com</a>
-</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+       style="margin-top:32px;border-top:1px solid #e5e7eb;padding-top:20px;">
+  <tr><td style="font-family:Arial,Helvetica,sans-serif;color:#1B3A6B;line-height:1.55;font-size:15px;">
+    Warmly,<br>
+    <strong style="font-weight:700;">Suchismita Tripathy</strong><br>
+    <span style="color:#1B3A6B;">Founder | HCMOrbit</span><br>
+    <em style="color:#6b7280;font-size:13px;">The Community Where Workday Professionals Learn, Solve, and Grow</em>
+  </td></tr>
+  <tr><td style="padding-top:10px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#0D9373;">
+    <a href="https://hcmorbit.com" style="color:#0D9373;text-decoration:none;font-weight:600;">hcmorbit.com</a>
+    &nbsp;<span style="color:#cbd5e1;">|</span>&nbsp;
+    <a href="https://calendar.app.google/xPmeV4iQ9WKi3ezY8" style="color:#0D9373;text-decoration:none;font-weight:600;">Book a 1:1</a>
+    &nbsp;<span style="color:#cbd5e1;">|</span>&nbsp;
+    <a href="mailto:suchi@hcmorbit.com" style="color:#0D9373;text-decoration:none;font-weight:600;">suchi@hcmorbit.com</a>
+  </td></tr>
+</table>
+"""
+
+HEADER_HTML = """
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+       style="background:#1B3A6B;border-radius:8px 8px 0 0;">
+  <tr><td style="padding:32px 32px 24px 32px;font-family:Arial,Helvetica,sans-serif;text-align:left;">
+    <div style="color:#ffffff;font-size:26px;font-weight:800;letter-spacing:0.5px;line-height:1;">
+      HCM<span style="color:#5EEAD4;">Orbit</span>
+    </div>
+    <div style="color:#cbd5e1;font-size:13px;margin-top:8px;line-height:1.4;">
+      The Community Where Workday Professionals Learn, Solve, and Grow
+    </div>
+  </td></tr>
+</table>
+"""
+
+FOOTER_HTML = """
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+       style="background:#f3f4f6;border-radius:0 0 8px 8px;">
+  <tr><td style="padding:18px 32px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#6b7280;text-align:center;line-height:1.5;">
+    You received this because you joined HCMOrbit.<br>
+    &copy; 2026 HCMOrbit. All rights reserved.
+  </td></tr>
+</table>
 """
 
 
 def _wrap(body_html: str) -> str:
-    """Wrap email body in a clean responsive shell."""
+    """Wrap email body in a branded, email-client-safe shell."""
     return f"""<!doctype html>
-<html><body style="margin:0;padding:0;background:#f8fafc;">
-  <div style="max-width:640px;margin:24px auto;padding:32px;background:#ffffff;border-radius:12px;
-              font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#0f172a;line-height:1.6;">
-    {body_html}
-    {SIGNATURE_HTML}
-  </div>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef2f7;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#eef2f7;">
+    <tr><td align="center" style="padding:24px 12px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600"
+             style="max-width:600px;width:100%;background:#ffffff;border-radius:8px;
+                    box-shadow:0 1px 2px rgba(15,23,42,0.06);">
+        <tr><td>{HEADER_HTML}</td></tr>
+        <tr><td style="padding:32px;font-family:Arial,Helvetica,sans-serif;color:#1f2937;line-height:1.6;font-size:15px;">
+          {body_html}
+          {SIGNATURE_HTML}
+        </td></tr>
+        <tr><td>{FOOTER_HTML}</td></tr>
+      </table>
+    </td></tr>
+  </table>
 </body></html>"""
+
+
+def _resource_card(emoji: str, title: str, url: str, description: str) -> str:
+    """Single styled resource card with teal left border."""
+    return f"""
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="margin:10px 0;background:#f9fafb;border-left:4px solid #0D9373;border-radius:4px;">
+      <tr><td style="padding:14px 18px;font-family:Arial,Helvetica,sans-serif;">
+        <a href="{url}" style="color:#1B3A6B;text-decoration:none;font-weight:700;font-size:16px;">
+          <span style="margin-right:8px;">{emoji}</span>{title}
+        </a>
+        <div style="color:#4b5563;font-size:14px;line-height:1.55;margin-top:4px;">{description}</div>
+      </td></tr>
+    </table>
+    """
 
 
 def _email_1_html(full_name: str | None) -> tuple[str, str]:
     greeting = f"Hi {full_name.split()[0]}," if full_name else "Hi there,"
+    cards = (
+        _resource_card("📚", "Knowledge Base", "https://hcmorbit.com/knowledge-base",
+                       "Structured guides, references, and checklists across Workday modules.")
+        + _resource_card("💬", "Community", "https://hcmorbit.com/community",
+                         "Ask questions, share success stories, and learn from practitioners.")
+        + _resource_card("🚀", "Career Hub", "https://hcmorbit.com/career-hub",
+                         "Interview prep, learning paths, and career growth.")
+    )
     body = f"""
-    <p style="font-size:16px;">{greeting}</p>
+    <p style="font-size:16px;margin:0 0 14px 0;">{greeting}</p>
 
-    <p>Welcome to <b>HCMOrbit</b> — I'm so glad you joined.</p>
+    <p style="margin:0 0 16px 0;">Welcome to <strong>HCMOrbit</strong> — I'm so glad you joined.</p>
 
-    <p style="border-left:3px solid #2563eb;padding-left:14px;color:#334155;font-style:italic;">
-      I created HCMOrbit because the knowledge exists but it's scattered across consultants,
-      project documents, Slack conversations, and tribal knowledge. HCMOrbit was built to bring
-      that knowledge together.
-    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="margin:18px 0;background:#f3f4f6;border-left:4px solid #0D9373;border-radius:4px;">
+      <tr><td style="padding:16px 20px;font-family:Arial,Helvetica,sans-serif;font-style:italic;color:#374151;line-height:1.6;">
+        I created HCMOrbit because the knowledge exists but it's scattered across consultants,
+        project documents, Slack conversations, and tribal knowledge. HCMOrbit was built to bring
+        that knowledge together.
+      </td></tr>
+    </table>
 
-    <p>Here's where to start exploring:</p>
-    <ul style="padding-left:18px;">
-      <li><a href="https://hcmorbit.com/knowledge-base" style="color:#2563eb;font-weight:600;">Knowledge Base</a>
-         — structured guides, references, and checklists across Workday modules.</li>
-      <li><a href="https://hcmorbit.com/community" style="color:#2563eb;font-weight:600;">Community</a>
-         — ask questions, share success stories, and learn from practitioners.</li>
-      <li><a href="https://hcmorbit.com/career-hub" style="color:#2563eb;font-weight:600;">Career Hub</a>
-         — interview prep, learning paths, and career growth.</li>
-    </ul>
+    <p style="margin:24px 0 8px 0;font-weight:600;color:#1B3A6B;">Here's where to start exploring:</p>
+    {cards}
 
-    <p style="background:#f1f5f9;padding:14px 16px;border-radius:8px;">
-      <b>Quick ask:</b> What brought you to HCMOrbit? Just hit reply and tell me your role,
-      which Workday modules you work with, and what challenges you'd like to solve.
-      I read every message.
-    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="margin-top:24px;background:#E1F5EE;border-radius:6px;">
+      <tr><td style="padding:18px 20px;font-family:Arial,Helvetica,sans-serif;color:#0f5132;line-height:1.6;">
+        <strong style="color:#0D9373;">Quick ask:</strong> What brought you to HCMOrbit?
+        Just hit reply and tell me your role, which Workday modules you work with, and what
+        challenges you'd like to solve. I read every message.
+      </td></tr>
+    </table>
     """
     return "Welcome to HCMOrbit", _wrap(body)
 
 
 def _email_2_html(full_name: str | None) -> tuple[str, str]:
     greeting = f"Hi {full_name.split()[0]}," if full_name else "Hi there,"
+    cards = (
+        _resource_card("📚", "Knowledge Base", "https://hcmorbit.com/knowledge-base",
+                       "Start here. Module-by-module guides covering HCM Core, Security, Reporting, "
+                       "Integrations, Payroll, Talent, Recruiting, and more.")
+        + _resource_card("🛡️", "Governance & Security articles",
+                         "https://hcmorbit.com/knowledge-base?category=security-governance",
+                         "The most underrated skill in any Workday team. These guides will save you "
+                         "weeks of trial-and-error.")
+        + _resource_card("🎯", "Interview prep in Career Hub", "https://hcmorbit.com/career-hub",
+                         "Real questions, scenario walk-throughs, and what hiring managers actually look for.")
+        + _resource_card("💬", "Community discussions", "https://hcmorbit.com/community",
+                         "See what fellow practitioners are wrestling with right now. Jump in with an "
+                         "answer or ask your own.")
+        + _resource_card("🚀", "Career Hub learning paths", "https://hcmorbit.com/career-hub",
+                         "Whether you're just starting or moving into architecture, there's a path "
+                         "mapped out for you.")
+    )
     body = f"""
-    <p style="font-size:16px;">{greeting}</p>
+    <p style="font-size:16px;margin:0 0 14px 0;">{greeting}</p>
 
-    <p>A few days in — here are the <b>top 5 resources every Workday professional should know</b>
-       on HCMOrbit:</p>
+    <p style="margin:0 0 16px 0;">A few days in — here are the
+       <strong>top 5 resources every Workday professional should know</strong> on HCMOrbit:</p>
 
-    <ol style="padding-left:20px;">
-      <li style="margin-bottom:10px;">
-        <a href="https://hcmorbit.com/knowledge-base" style="color:#2563eb;font-weight:600;">Knowledge Base</a>
-        — start here. Module-by-module guides covering HCM Core, Security, Reporting,
-        Integrations, Payroll, Talent, Recruiting, and more.
-      </li>
-      <li style="margin-bottom:10px;">
-        <a href="https://hcmorbit.com/knowledge-base?category=security-governance" style="color:#2563eb;font-weight:600;">Governance &amp; Security articles</a>
-        — the most underrated skill in any Workday team. These guides will save you weeks of
-        trial-and-error.
-      </li>
-      <li style="margin-bottom:10px;">
-        <a href="https://hcmorbit.com/career-hub" style="color:#2563eb;font-weight:600;">Interview prep in Career Hub</a>
-        — real questions, scenario walk-throughs, and what hiring managers actually look for.
-      </li>
-      <li style="margin-bottom:10px;">
-        <a href="https://hcmorbit.com/community" style="color:#2563eb;font-weight:600;">Community discussions</a>
-        — see what fellow practitioners are wrestling with right now. Jump in with an answer
-        or ask your own.
-      </li>
-      <li style="margin-bottom:10px;">
-        <a href="https://hcmorbit.com/career-hub" style="color:#2563eb;font-weight:600;">Career Hub learning paths</a>
-        — whether you're just starting or moving into architecture, there's a path mapped out for you.
-      </li>
-    </ol>
+    {cards}
 
-    <p>Bookmark anything that's useful — it'll show up under your profile so you can come back to it.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="margin-top:24px;background:#E1F5EE;border-radius:6px;">
+      <tr><td style="padding:18px 20px;font-family:Arial,Helvetica,sans-serif;color:#0f5132;line-height:1.6;">
+        <strong style="color:#0D9373;">Pro tip:</strong> Bookmark anything that's useful —
+        it'll show up under your profile so you can come back to it.
+      </td></tr>
+    </table>
     """
     return "Top 5 resources every Workday professional should know", _wrap(body)
 
 
 def _email_3_html(full_name: str | None) -> tuple[str, str]:
     greeting = f"Hi {full_name.split()[0]}," if full_name else "Hi there,"
+    cards = (
+        _resource_card("🛡️", "Security",
+                       "https://hcmorbit.com/community",
+                       "Domains, roles, segmented security, audit pressure?")
+        + _resource_card("📊", "Reporting",
+                         "https://hcmorbit.com/community",
+                         "Calc fields, composite reports, Prism, dashboards?")
+        + _resource_card("🔗", "Integrations",
+                         "https://hcmorbit.com/community",
+                         "Studio, EIBs, Core Connectors, web services?")
+        + _resource_card("👥", "Recruiting / Talent",
+                         "https://hcmorbit.com/community",
+                         "Candidate flow, requisitions, performance cycles?")
+        + _resource_card("🚀", "Career growth",
+                         "https://hcmorbit.com/career-hub",
+                         "Making the next move into architecture, lead, or consulting?")
+    )
     body = f"""
-    <p style="font-size:16px;">{greeting}</p>
+    <p style="font-size:16px;margin:0 0 14px 0;">{greeting}</p>
 
-    <p>Quick one — <b>what's your biggest Workday challenge right now?</b></p>
+    <p style="margin:0 0 16px 0;">Quick one — <strong>what's your biggest Workday challenge right now?</strong></p>
 
-    <p>I'd love to know where you're spending the most energy these days. Is it:</p>
+    <p style="margin:0 0 8px 0;">I'd love to know where you're spending the most energy these days. Is it:</p>
 
-    <ul style="padding-left:18px;">
-      <li><b>Security</b> — domains, roles, segmented security, audit pressure?</li>
-      <li><b>Reporting</b> — calc fields, composite reports, Prism, dashboards?</li>
-      <li><b>Integrations</b> — Studio, EIBs, Core Connectors, web services?</li>
-      <li><b>Recruiting / Talent</b> — candidate flow, requisitions, performance cycles?</li>
-      <li><b>Career growth</b> — making the next move into architecture, lead, or consulting?</li>
-    </ul>
+    {cards}
 
-    <p>Hit reply with whichever one (or two) resonates. Your answer helps me prioritize what
-       to build next on HCMOrbit — and I'll point you to the resources, people, and articles
-       that can help most.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+           style="margin-top:24px;background:#E1F5EE;border-radius:6px;">
+      <tr><td style="padding:18px 20px;font-family:Arial,Helvetica,sans-serif;color:#0f5132;line-height:1.6;">
+        <strong style="color:#0D9373;">Hit reply</strong> with whichever one (or two) resonates.
+        Your answer helps me prioritize what to build next on HCMOrbit — and I'll point you to the
+        resources, people, and articles that can help most.
+      </td></tr>
+    </table>
 
-    <p>Looking forward to hearing from you.</p>
+    <p style="margin-top:18px;color:#4b5563;">Looking forward to hearing from you.</p>
     """
     return "What's your biggest Workday challenge?", _wrap(body)
 
