@@ -1,8 +1,28 @@
 /**
  * Client-side port of `/app/backend/welcome_emails.py` template builders.
  * Used by `/admin/email-previews` to render each welcome email in an iframe
- * without round-tripping to the server. Keep this file in sync with the
- * Python templates when copy / branding changes.
+ * without round-tripping to the server.
+ *
+ * ┌──────────────────────────────────────────────────────────────────────┐
+ * │ SYNC CHECKLIST — keep in lock-step with                              │
+ * │   /app/backend/welcome_emails.py                                     │
+ * │                                                                      │
+ * │ When you change ANY of these strings here, mirror it in the Python:  │
+ * │                                                                      │
+ * │   Email 1 subject : "Welcome to HCMOrbit"                            │
+ * │   Email 2 subject : "Top 5 resources every Workday professional      │
+ * │                     should know"                                     │
+ * │   Email 3 subject : "What's your biggest Workday challenge?"         │
+ * │                                                                      │
+ * │   CTA labels     : "Quick ask:" / "Pro tip:" / "Hit reply"           │
+ * │   Founder quote  : "I created HCMOrbit because the knowledge exists" │
+ * │   Signature      : "Suchismita Tripathy" / "Founder | HCMOrbit"      │
+ * │   Footer         : "You received this because you joined HCMOrbit."  │
+ * │                                                                      │
+ * │ `backend/tests/test_template_sync.py` runs in CI and fails the build │
+ * │ if these two files drift apart — but the checklist above is your     │
+ * │ at-a-glance reminder while editing.                                  │
+ * └──────────────────────────────────────────────────────────────────────┘
  */
 
 const HEADER_HTML = `

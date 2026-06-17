@@ -10,6 +10,29 @@ breaks registration; the scheduled job retries on the next tick (every hour).
 
 Each successful send sets `welcome_email_{N}_sent` (ISO timestamp) on the
 user document so the scheduler only ever sends once per email.
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ SYNC CHECKLIST — keep in lock-step with                                  │
+│   /app/frontend/src/lib/welcomeEmailTemplates.js                         │
+│                                                                          │
+│ When you change ANY of the following strings here, mirror the change     │
+│ in the JS file (used by /admin/email-previews):                          │
+│                                                                          │
+│   Email 1 subject : "Welcome to HCMOrbit"                                │
+│   Email 2 subject : "Top 5 resources every Workday professional should   │
+│                     know"                                                │
+│   Email 3 subject : "What's your biggest Workday challenge?"             │
+│                                                                          │
+│   CTA labels     : "Quick ask:" / "Pro tip:" / "Hit reply"               │
+│   Founder quote  : starts with "I created HCMOrbit because the           │
+│                    knowledge exists"                                     │
+│   Signature      : "Suchismita Tripathy" / "Founder | HCMOrbit"          │
+│   Footer         : "You received this because you joined HCMOrbit."      │
+│                                                                          │
+│ `tests/test_template_sync.py` runs in CI and fails the build if the      │
+│ two files drift apart — but the comment above is your at-a-glance        │
+│ reminder while editing.                                                  │
+└──────────────────────────────────────────────────────────────────────────┘
 """
 import os
 import asyncio
