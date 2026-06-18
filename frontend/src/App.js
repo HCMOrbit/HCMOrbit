@@ -23,6 +23,7 @@ import AdminSpaces from "@/pages/admin/AdminSpaces";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminKnowledgeBase from "@/pages/admin/AdminKnowledgeBase";
 import AdminEmailPreviews from "@/pages/admin/AdminEmailPreviews";
+import Ecosystem from "@/pages/Ecosystem";
 import KBHome from "@/pages/kb/KBHome";
 import KBCategory from "@/pages/kb/KBCategory";
 import KBSearch from "@/pages/kb/KBSearch";
@@ -74,6 +75,7 @@ function AppRoutes() {
       <Route path="/terms" element={<Terms />} />
       <Route path="/cookies" element={<Cookies />} />
       <Route path="/why-hcmorbit" element={<WhyHCMOrbit />} />
+      <Route path="/ecosystem" element={<Ecosystem />} />
       <Route path="/about/why-hcmorbit" element={<WhyHCMOrbit />} />
     </Routes>
   );

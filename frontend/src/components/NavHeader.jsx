@@ -106,12 +106,18 @@ export default function NavHeader() {
             <NavLink to="/knowledge-base" className={({isActive}) => isActive ? "text-[#0A1628]" : "text-[#64748B] hover:text-[#0A1628]"} data-testid="nav-kb">
               Knowledge Base
             </NavLink>
+            <NavLink to="/ecosystem" className={({isActive}) => isActive ? "text-[#0A1628]" : "text-[#64748B] hover:text-[#0A1628]"} data-testid="nav-ecosystem">
+              Ecosystem
+            </NavLink>
             <AboutMenu />
           </nav>
         ) : (
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium" data-testid="nav-main-guest">
             <NavLink to="/knowledge-base" className="text-[#64748B] hover:text-[#0A1628]" data-testid="nav-kb-guest">
               Knowledge Base
+            </NavLink>
+            <NavLink to="/ecosystem" className={({isActive}) => isActive ? "text-[#0A1628]" : "text-[#64748B] hover:text-[#0A1628]"} data-testid="nav-ecosystem-guest">
+              Ecosystem
             </NavLink>
             <AboutMenu />
           </nav>

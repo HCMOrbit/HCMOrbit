@@ -1,0 +1,255 @@
+import React, { useEffect, useState } from "react";
+import {
+  Calendar,
+  Newspaper,
+  ClipboardList,
+  ArrowRight,
+  MapPin,
+  Building2,
+  Bot,
+  Puzzle,
+  Ticket,
+  FileText,
+} from "lucide-react";
+import NavHeader from "../components/NavHeader";
+import { api } from "../lib/api";
+
+// ── Placeholder / fallback data ────────────────────────────────────────────
+
+const PLACEHOLDER_EVENTS = [
+  {
+    id: "evt-denver-rug",
+    category: "RUG",
+    title: "Denver RUG",
+    date: "June 17, 2026 · 4:00 – 7:00 PM MT",
+    host: "Sponsored by Syssero",
+    location: "Vail Resorts, Broomfield CO",
+    url: "#",
+  },
+  {
+    id: "evt-dallas-rug",
+    category: "RUG",
+    title: "Dallas RUG",
+    date: "July 10, 2026 · 4:00 – 7:00 PM CT",
+    host: "Hosted by Collaborative Solutions",
+    location: "Location TBD",
+    url: "#",
+  },
+  {
+    id: "evt-rising-2026",
+    category: "CONFERENCE",
+    title: "Workday Rising 2026",
+    date: "Sept 15 – 18, 2026",
+    host: "Workday",
+    location: "San Francisco, CA",
+    url: "https://www.workday.com/en-us/company/events/rising.html",
+  },
+];
+
+const PLACEHOLDER_NEWS = [
+  { id: "n1", icon: "bot",    headline: "Workday AI agents — new capabilities",         date: "June 10, 2026", url: "#" },
+  { id: "n2", icon: "puzzle", headline: "Workday Extend: new features released",        date: "June 9, 2026",  url: "#" },
+  { id: "n3", icon: "ticket", headline: "Workday Rising 2026 early registration open",  date: "June 5, 2026",  url: "#" },
+  { id: "n4", icon: "doc",    headline: "Workday Q2 release notes are live",            date: "June 2, 2026",  url: "#" },
+];
+
+const PLACEHOLDER_CERTS = [
+  { id: "c1", name: "Workday Data Cloud certification",     tone: "teal",  statusLabel: "New" },
+  { id: "c2", name: "Workday Financials Professional",      tone: "amber", statusLabel: "July 2026" },
+  { id: "c3", name: "Workday Learning Center updates",      tone: "amber", statusLabel: "Upcoming" },
+  { id: "c4", name: "HCM Core recertification path released", tone: "teal", statusLabel: "New" },
+];
+
+// ── Visual primitives ──────────────────────────────────────────────────────
+
+const CATEGORY_GRADIENT = {
+  RUG:        "linear-gradient(135deg, #134E4A 0%, #0D9373 55%, #0A1628 100%)",
+  CONFERENCE: "linear-gradient(135deg, #1E3A8A 0%, #1E40AF 45%, #0A1628 100%)",
+  DEFAULT:    "linear-gradient(135deg, #0D9373 0%, #134E4A 50%, #0A1628 100%)",
+};
+
+const CATEGORY_PILL_STYLES = {
+  RUG:        { bg: "rgba(13, 147, 115, 0.16)",  color: "#5EEAD4", border: "rgba(94, 234, 212, 0.40)" },
+  CONFERENCE: { bg: "rgba(59, 130, 246, 0.18)",  color: "#93C5FD", border: "rgba(147, 197, 253, 0.40)" },
+  DEFAULT:    { bg: "rgba(255, 255, 255, 0.10)", color: "#FFFFFF", border: "rgba(255, 255, 255, 0.25)" },
+};
+
+const NEWS_ICONS = { bot: Bot, puzzle: Puzzle, ticket: Ticket, doc: FileText };
+
+function SectionHeader({ icon: Icon, title, viewAllHref = "#", dataTestId }) {
+  return (
+    <div className="flex items-center justify-between mb-5" data-testid={dataTestId}>
+      <div className="inline-flex items-center gap-2.5">
+        <Icon className="w-5 h-5 text-[#0D9373]" strokeWidth={2} />
+        <h2 className="font-heading text-xl font-semibold text-[#0A1628] leading-none">{title}</h2>
+      </div>
+      <a
+        href={viewAllHref}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0D9373] hover:text-[#0b7c61]"
+        data-testid={`${dataTestId}-view-all`}
+      >
+        View all <ArrowRight className="w-3.5 h-3.5" />
+      </a>
+    </div>
+  );
+}
+
+function EventCard({ ev }) {
+  const pill = CATEGORY_PILL_STYLES[ev.category] || CATEGORY_PILL_STYLES.DEFAULT;
+  const gradient = CATEGORY_GRADIENT[ev.category] || CATEGORY_GRADIENT.DEFAULT;
+  return (
+    <div
+      className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow"
+      data-testid={`event-${ev.id}`}
+    >
+      {/* Gradient header with category pill anchored bottom-left */}
+      <div className="h-[160px] relative" style={{ background: gradient }}>
+        <span
+          className="absolute left-5 bottom-5 inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border"
+          style={{ background: pill.bg, color: pill.color, borderColor: pill.border }}
+        >
+          {ev.category}
+        </span>
+      </div>
+
+      {/* Body */}
+      <div className="p-5 flex flex-col gap-3 flex-1">
+        <h3 className="font-heading text-lg font-semibold text-[#0A1628] leading-snug">{ev.title}</h3>
+        <ul className="space-y-1.5 text-[13px] text-[#475569]">
+          <li className="flex items-start gap-2">
+            <Calendar className="w-3.5 h-3.5 text-[#0D9373] shrink-0 mt-0.5" />
+            <span>{ev.date}</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Building2 className="w-3.5 h-3.5 text-[#0D9373] shrink-0 mt-0.5" />
+            <span>{ev.host}</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <MapPin className="w-3.5 h-3.5 text-[#0D9373] shrink-0 mt-0.5" />
+            <span>{ev.location}</span>
+          </li>
+        </ul>
+        <a
+          href={ev.url || "#"}
+          target={ev.url && ev.url !== "#" ? "_blank" : undefined}
+          rel="noopener noreferrer"
+          className="mt-2 inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-md border border-[#E2E8F0] text-sm font-semibold text-[#0A1628] hover:border-[#0D9373] hover:text-[#0D9373] transition-colors"
+          data-testid={`event-${ev.id}-register`}
+        >
+          Register now <ArrowRight className="w-3.5 h-3.5" />
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function NewsRow({ n, isLast }) {
+  const Icon = NEWS_ICONS[n.icon] || FileText;
+  return (
+    <a
+      href={n.url || "#"}
+      target={n.url && n.url !== "#" ? "_blank" : undefined}
+      rel="noopener noreferrer"
+      className={`flex items-center gap-3.5 px-5 py-4 hover:bg-[#F8FAFC] transition-colors ${isLast ? "" : "border-b border-[#F1F5F9]"}`}
+      data-testid={`news-${n.id}`}
+    >
+      <div className="w-9 h-9 rounded-md bg-[#E8F5F0] text-[#0D9373] flex items-center justify-center shrink-0">
+        <Icon className="w-4 h-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="font-heading text-[14px] font-semibold text-[#0A1628] leading-snug truncate">{n.headline}</div>
+        <div className="text-xs text-[#94A3B8] mt-0.5">{n.date}</div>
+      </div>
+    </a>
+  );
+}
+
+const TONE_STYLES = {
+  teal:  { dot: "#0D9373", pill: { bg: "#E8F5F0", color: "#0A7B59", border: "rgba(13,147,115,0.25)" } },
+  amber: { dot: "#D97706", pill: { bg: "#FEF3C7", color: "#92400E", border: "rgba(217,119,6,0.35)" } },
+};
+
+function CertRow({ c, isLast }) {
+  const tone = TONE_STYLES[c.tone] || TONE_STYLES.teal;
+  return (
+    <div
+      className={`flex items-center gap-3.5 px-5 py-4 ${isLast ? "" : "border-b border-[#F1F5F9]"}`}
+      data-testid={`cert-${c.id}`}
+    >
+      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: tone.dot }} />
+      <div className="flex-1 min-w-0 font-heading text-[14px] font-semibold text-[#0A1628] leading-snug">{c.name}</div>
+      <span
+        className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
+        style={{ background: tone.pill.bg, color: tone.pill.color, borderColor: tone.pill.border }}
+      >
+        {c.statusLabel}
+      </span>
+    </div>
+  );
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────
+
+export default function Ecosystem() {
+  const [news, setNews] = useState(PLACEHOLDER_NEWS);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get("/ecosystem/news?limit=5")
+      .then((r) => {
+        const items = Array.isArray(r.data) ? r.data : r.data?.items;
+        if (!cancelled && Array.isArray(items) && items.length > 0) setNews(items);
+      })
+      .catch(() => { /* keep placeholder */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#F1F5F9]" data-testid="ecosystem-page">
+      <NavHeader />
+
+      {/* Hero */}
+      <section className="bg-[#0A1628] text-white">
+        <div className="max-w-[1200px] mx-auto px-6 lg:px-8 py-12 lg:py-14">
+          <div className="text-xs uppercase tracking-[0.18em] text-[#0D9373] font-bold mb-3">HCMORBIT ECOSYSTEM</div>
+          <h1 className="font-heading text-4xl sm:text-5xl font-bold tracking-tight leading-[1.1]">
+            Stay current with the Workday world
+          </h1>
+          <p className="mt-4 text-base lg:text-lg text-white/70 max-w-2xl leading-relaxed">
+            Events, certifications, and community news — curated for Workday practitioners.
+          </p>
+        </div>
+      </section>
+
+      <main className="max-w-[1200px] mx-auto px-6 lg:px-8 py-10 lg:py-12">
+
+        {/* Upcoming events */}
+        <section className="mb-12" data-testid="events-section">
+          <SectionHeader icon={Calendar} title="Upcoming events" dataTestId="events-section-header" />
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="events-list">
+            {PLACEHOLDER_EVENTS.map((ev) => <EventCard key={ev.id} ev={ev} />)}
+          </div>
+        </section>
+
+        {/* News + Certifications — 2-col on desktop */}
+        <section className="grid lg:grid-cols-2 gap-6 lg:gap-8">
+
+          <div data-testid="news-section">
+            <SectionHeader icon={Newspaper} title="Community news" dataTestId="news-section-header" />
+            <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden" data-testid="news-list">
+              {news.map((n, i) => <NewsRow key={n.id} n={n} isLast={i === news.length - 1} />)}
+            </div>
+          </div>
+
+          <div data-testid="certs-section">
+            <SectionHeader icon={ClipboardList} title="Certification watch" dataTestId="certs-section-header" />
+            <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden" data-testid="certs-list">
+              {PLACEHOLDER_CERTS.map((c, i) => <CertRow key={c.id} c={c} isLast={i === PLACEHOLDER_CERTS.length - 1} />)}
+            </div>
+          </div>
+
+        </section>
+      </main>
+    </div>
+  );
+}

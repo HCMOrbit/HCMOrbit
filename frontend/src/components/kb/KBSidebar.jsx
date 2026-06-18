@@ -12,16 +12,6 @@ const BORDER     = "#E2E8F0";
 const BRAND_NAVY = "#0A1628";
 const TEAL       = "#0D9373";
 
-function CountPill({ n }) {
-  if (!n) return null;
-  return (
-    <span className="ml-auto shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-          style={{ background: "#F1F5F9", color: "#64748B" }}>
-      {n}
-    </span>
-  );
-}
-
 function ModuleRow({ cat, activeSlug, activeSubModule, subModules }) {
   const isActive = cat.slug === activeSlug;
   const [open, setOpen] = useState(isActive);
@@ -70,7 +60,6 @@ function ModuleRow({ cat, activeSlug, activeSubModule, subModules }) {
           >
             <Layers className="w-3 h-3 shrink-0 opacity-60" />
             All documents
-            <CountPill n={count} />
           </Link>
           {subs.map((sm) => {
             const isActiveSub = isActive && activeSubModule === sm.sub_module;
@@ -88,7 +77,6 @@ function ModuleRow({ cat, activeSlug, activeSubModule, subModules }) {
                 <span className="w-1 h-1 rounded-full shrink-0 mt-px"
                       style={{ background: isActiveSub ? TEAL : "#CBD5E1" }} />
                 <span className="truncate">{sm.sub_module}</span>
-                <CountPill n={sm.doc_count} />
               </Link>
             );
           })}
