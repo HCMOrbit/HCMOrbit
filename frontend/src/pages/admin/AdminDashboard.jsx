@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Users, FileText, TrendingUp, Calendar } from "lucide-react";
+import { Users, FileText, TrendingUp, Calendar, RefreshCw } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { toast } from "sonner";
 import AdminLayout from "../../components/AdminLayout";
 import GroupBadge from "../../components/GroupBadge";
-import { api, timeAgo } from "../../lib/api";
+import { api, timeAgo, formatApiError } from "../../lib/api";
 
 function StatCard({ icon: Icon, label, value, hint }) {
   return (
@@ -27,6 +28,26 @@ export default function AdminDashboard() {
   const [posts, setPosts] = useState([]);
   const [chart, setChart] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refreshEcosystemNews = async () => {
+    setRefreshing(true);
+    try {
+      const { data } = await api.post("/admin/ecosystem/refresh-news");
+      const n = data?.new ?? 0;
+      const pruned = data?.pruned ?? 0;
+      const failures = data?.failures || [];
+      const msg = n === 0
+        ? "No new ecosystem news — feed is up to date."
+        : `Fetched ${n} new ${n === 1 ? "item" : "items"}${pruned ? `, pruned ${pruned}` : ""}.`;
+      if (failures.length) toast.warning(`${msg} (Source issues: ${failures.join(", ")})`);
+      else toast.success(msg);
+    } catch (e) {
+      toast.error(formatApiError(e));
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     Promise.all([
@@ -40,9 +61,20 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout pendingReports={stats.pending_reports || 0}>
-      <div className="mb-6">
-        <h1 className="font-heading text-2xl font-semibold text-[#0A1628]" data-testid="admin-dashboard-title">Admin overview</h1>
-        <p className="text-sm text-[#64748B] mt-1">Pulse of the HCMOrbit community.</p>
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="font-heading text-2xl font-semibold text-[#0A1628]" data-testid="admin-dashboard-title">Admin overview</h1>
+          <p className="text-sm text-[#64748B] mt-1">Pulse of the HCMOrbit community.</p>
+        </div>
+        <button
+          onClick={refreshEcosystemNews}
+          disabled={refreshing}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-[#E2E8F0] bg-white text-sm font-medium text-[#0A1628] hover:border-[#0D9373] hover:text-[#0D9373] disabled:opacity-50 transition-colors"
+          data-testid="admin-refresh-ecosystem-news-btn"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+          {refreshing ? "Refreshing…" : "Refresh ecosystem news"}
+        </button>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

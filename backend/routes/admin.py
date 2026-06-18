@@ -19,6 +19,7 @@ from kb_docx import parse_kb_docx
 from routes.community import enrich_posts
 from routes.kb import enrich_docs
 from welcome_emails import render_welcome_html, _send_via_resend
+from jobs.rss_fetch import fetch_workday_news
 
 router = APIRouter()
 
@@ -27,6 +28,17 @@ router = APIRouter()
 @router.get("/admin/check")
 async def admin_check(admin: dict = Depends(require_admin)):
     return {"is_admin": True, "username": admin["username"]}
+
+
+# ---------- Ecosystem news manual refresh ----------
+@router.post("/admin/ecosystem/refresh-news")
+async def admin_refresh_ecosystem_news(admin: dict = Depends(require_admin)):
+    """Manually trigger an immediate RSS fetch. Returns the same stats dict
+    the scheduled job logs (seen / new / pruned / skipped_stale / failures)."""
+    stats = await fetch_workday_news()
+    await log_admin_action(admin, "ecosystem_refresh_news",
+                           note=f"new={stats.get('new')} pruned={stats.get('pruned')}")
+    return stats
 
 
 # ---------- Email previews (admin-only) ----------
