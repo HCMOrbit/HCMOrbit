@@ -23,6 +23,15 @@ class LoginIn(BaseModel):
     password: str
 
 
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordIn(BaseModel):
+    token: str
+    password: str
+
+
 class ProfileSetupIn(BaseModel):
     group_type: GroupType
     workday_modules: List[str] = []

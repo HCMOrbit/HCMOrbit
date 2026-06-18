@@ -70,6 +70,9 @@ async def on_startup():
     # Ecosystem news
     await db.ecosystem_news.create_index("url", unique=True)
     await db.ecosystem_news.create_index([("published_at", -1)])
+    # Password reset tokens — TTL index auto-prunes expired records
+    await db.password_reset_tokens.create_index("token", unique=True)
+    await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
     from seed_data import seed_all
     await seed_all(db, hash_password)
     from seed_kb import seed_kb

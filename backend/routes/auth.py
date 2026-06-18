@@ -1,5 +1,7 @@
 """Auth, profile, and user-profile endpoints."""
 import asyncio
+import os
+import secrets
 import uuid
 from datetime import datetime, timezone, timedelta
 
@@ -7,11 +9,21 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from core import db, now_iso, hash_password, verify_password, create_token
-from schemas import RegisterIn, LoginIn, ProfileSetupIn, EmergentSessionIn
+from schemas import RegisterIn, LoginIn, ProfileSetupIn, EmergentSessionIn, ForgotPasswordIn, ResetPasswordIn
 from dependencies import get_current_user, get_optional_user, get_setting
 from welcome_emails import send_welcome_email
+from password_reset_email import send_password_reset_email
 
 router = APIRouter()
+
+
+PASSWORD_RESET_TTL = timedelta(hours=1)
+
+
+def _frontend_origin() -> str:
+    """Resolve where the reset link should land. Prefer explicit FRONTEND_URL,
+    else fall back to the production domain."""
+    return os.environ.get("FRONTEND_URL", "https://hcmorbit.com").rstrip("/")
 
 
 @router.post("/auth/register")
@@ -66,6 +78,61 @@ async def login(payload: LoginIn):
     user.pop("password_hash", None)
     token = create_token(user["user_id"])
     return {"user": user, "token": token}
+
+
+@router.post("/auth/forgot-password")
+async def forgot_password(payload: ForgotPasswordIn):
+    """Issue a single-use password-reset token and email it to the user.
+
+    Always returns a success response — never reveals whether the email exists,
+    to prevent user enumeration. Email send is fire-and-forget so response
+    time is constant regardless of branch taken.
+    """
+    email = payload.email.lower().strip()
+    user = await db.users.find_one({"email": email, "auth_provider": "email"})
+    if user:
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.now(timezone.utc) + PASSWORD_RESET_TTL
+        # Invalidate any previous outstanding tokens for this user
+        await db.password_reset_tokens.delete_many({"user_id": user["user_id"]})
+        await db.password_reset_tokens.insert_one({
+            "token": token,
+            "user_id": user["user_id"],
+            "expires_at": expires_at,
+            "created_at": now_iso(),
+        })
+        reset_url = f"{_frontend_origin()}/reset-password?token={token}"
+        asyncio.create_task(send_password_reset_email(user["email"], user.get("full_name"), reset_url))
+    return {"ok": True, "message": "If that email is associated with an account, a reset link is on its way."}
+
+
+@router.post("/auth/reset-password")
+async def reset_password(payload: ResetPasswordIn):
+    """Consume a password-reset token and set the new password."""
+    if len(payload.password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters.")
+
+    record = await db.password_reset_tokens.find_one({"token": payload.token})
+    if not record:
+        raise HTTPException(400, "Invalid or already-used reset link.")
+    expires_at = record["expires_at"]
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        await db.password_reset_tokens.delete_one({"_id": record["_id"]})
+        raise HTTPException(400, "This reset link has expired. Please request a new one.")
+
+    user = await db.users.find_one({"user_id": record["user_id"]})
+    if not user:
+        await db.password_reset_tokens.delete_one({"_id": record["_id"]})
+        raise HTTPException(400, "Invalid reset link.")
+
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"password_hash": hash_password(payload.password)}},
+    )
+    await db.password_reset_tokens.delete_one({"_id": record["_id"]})
+    return {"ok": True, "message": "Password updated. You can now sign in with your new password."}
 
 
 @router.get("/auth/me")

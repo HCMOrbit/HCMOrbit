@@ -6,6 +6,8 @@ import ImpersonationBanner from "@/components/ImpersonationBanner";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import Onboarding from "@/pages/Onboarding";
 import CommunityHome from "@/pages/CommunityHome";
 import PostDetail from "@/pages/PostDetail";
@@ -49,6 +51,8 @@ function AppRoutes() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/community" element={<CommunityHome />} />
       <Route path="/community/new-post" element={<NewPost />} />
