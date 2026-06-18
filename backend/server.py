@@ -58,6 +58,10 @@ async def on_startup():
     await db.kb_docs.create_index("id", unique=True)
     await db.kb_docs.create_index([("category_id", 1), ("view_count", -1)])
     await db.kb_helpful_votes.create_index([("doc_id", 1), ("user_id", 1)], unique=True)
+    # Follows
+    await db.follows.create_index([("follower_id", 1), ("following_id", 1)], unique=True)
+    await db.follows.create_index("follower_id")
+    await db.follows.create_index("following_id")
     await db.kb_bookmarks.create_index([("user_id", 1), ("doc_id", 1)], unique=True)
     from seed_data import seed_all
     await seed_all(db, hash_password)

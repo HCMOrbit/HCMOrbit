@@ -10,6 +10,29 @@ breaks registration; the scheduled job retries on the next tick (every hour).
 
 Each successful send sets `welcome_email_{N}_sent` (ISO timestamp) on the
 user document so the scheduler only ever sends once per email.
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│ SYNC CHECKLIST — keep in lock-step with                                  │
+│   /app/frontend/src/lib/welcomeEmailTemplates.js                         │
+│                                                                          │
+│ When you change ANY of the following strings here, mirror the change     │
+│ in the JS file (used by /admin/email-previews):                          │
+│                                                                          │
+│   Email 1 subject : "Welcome to HCMOrbit"                                │
+│   Email 2 subject : "Top 5 resources every Workday professional should   │
+│                     know"                                                │
+│   Email 3 subject : "What's your biggest Workday challenge?"             │
+│                                                                          │
+│   CTA labels     : "Quick ask:" / "Pro tip:" / "Hit reply"               │
+│   Founder quote  : starts with "I created HCMOrbit because the           │
+│                    knowledge exists"                                     │
+│   Signature      : "Suchismita Tripathy" / "Founder | HCMOrbit"          │
+│   Footer         : "You received this because you joined HCMOrbit."      │
+│                                                                          │
+│ `tests/test_template_sync.py` runs in CI and fails the build if the      │
+│ two files drift apart — but the comment above is your at-a-glance        │
+│ reminder while editing.                                                  │
+└──────────────────────────────────────────────────────────────────────────┘
 """
 import os
 import asyncio
@@ -62,12 +85,15 @@ HEADER_HTML = """
 </table>
 """
 
-FOOTER_HTML = """
+def _footer_html() -> str:
+    """Build the email footer with the current UTC year (computed at render time)."""
+    year = datetime.now(timezone.utc).year
+    return f"""
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
        style="background:#f3f4f6;border-radius:0 0 8px 8px;">
   <tr><td style="padding:18px 32px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#6b7280;text-align:center;line-height:1.5;">
     You received this because you joined HCMOrbit.<br>
-    &copy; 2026 HCMOrbit. All rights reserved.
+    &copy; {year} HCMOrbit. All rights reserved.
   </td></tr>
 </table>
 """
@@ -88,7 +114,7 @@ def _wrap(body_html: str) -> str:
           {body_html}
           {SIGNATURE_HTML}
         </td></tr>
-        <tr><td>{FOOTER_HTML}</td></tr>
+        <tr><td>{_footer_html()}</td></tr>
       </table>
     </td></tr>
   </table>
@@ -234,6 +260,16 @@ EMAIL_BUILDERS = {
     2: _email_2_html,
     3: _email_3_html,
 }
+
+
+def render_welcome_html(step: int, full_name: str | None) -> tuple[str, str] | None:
+    """Return (subject, html) for the given step, or None if step is invalid.
+    Used by admin tools that need to render or send a specific welcome email
+    without touching any user record."""
+    builder = EMAIL_BUILDERS.get(step)
+    if not builder:
+        return None
+    return builder(full_name)
 
 
 async def _send_via_resend(to_email: str, subject: str, html: str) -> bool:

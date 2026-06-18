@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from core import db, now_iso, hash_password, verify_password, create_token
 from schemas import RegisterIn, LoginIn, ProfileSetupIn, EmergentSessionIn
-from dependencies import get_current_user, get_setting
+from dependencies import get_current_user, get_optional_user, get_setting
 from welcome_emails import send_welcome_email
 
 router = APIRouter()
@@ -167,10 +167,17 @@ async def profile_setup(payload: ProfileSetupIn, user: dict = Depends(get_curren
 
 
 @router.get("/users/{username}")
-async def get_user_profile(username: str):
+async def get_user_profile(username: str, me: dict | None = Depends(get_optional_user)):
     user = await db.users.find_one({"username": username}, {"_id": 0, "password_hash": 0})
     if not user:
         raise HTTPException(404, "User not found")
+    followers_count = await db.follows.count_documents({"following_id": user["user_id"]})
+    following_count = await db.follows.count_documents({"follower_id": user["user_id"]})
+    is_following = False
+    if me and me["user_id"] != user["user_id"]:
+        is_following = await db.follows.find_one(
+            {"follower_id": me["user_id"], "following_id": user["user_id"]}
+        ) is not None
     stats = {
         "questions": await db.posts.count_documents({"author_id": user["user_id"], "type": "question"}),
         "answers": await db.answers.count_documents({"author_id": user["user_id"]}),
@@ -178,11 +185,46 @@ async def get_user_profile(username: str):
         "votes_received": max(0, user.get("reputation_score", 0)) // 10,
         "posts": await db.posts.count_documents({"author_id": user["user_id"], "is_removed": {"$ne": True}}),
         "kb_articles": await db.kb_docs.count_documents({"author_id": user["user_id"], "is_published": True}),
-        # Followers / following — placeholders until the follow system ships
-        "followers": 0,
-        "following": 0,
+        "followers": followers_count,
+        "following": following_count,
     }
-    return {"user": user, "stats": stats}
+    return {"user": user, "stats": stats, "is_following": is_following}
+
+
+@router.post("/users/{username}/follow")
+async def follow_user(username: str, me: dict = Depends(get_current_user)):
+    target = await db.users.find_one({"username": username}, {"_id": 0, "user_id": 1})
+    if not target:
+        raise HTTPException(404, "User not found")
+    if target["user_id"] == me["user_id"]:
+        raise HTTPException(400, "You cannot follow yourself")
+    try:
+        await db.follows.insert_one({
+            "follower_id": me["user_id"],
+            "following_id": target["user_id"],
+            "created_at": now_iso(),
+        })
+    except Exception:
+        # Duplicate key (unique index on follower_id+following_id) — already following
+        pass
+    followers_count = await db.follows.count_documents({"following_id": target["user_id"]})
+    following_count = await db.follows.count_documents({"follower_id": target["user_id"]})
+    return {"is_following": True, "followers_count": followers_count, "following_count": following_count}
+
+
+@router.delete("/users/{username}/follow")
+async def unfollow_user(username: str, me: dict = Depends(get_current_user)):
+    target = await db.users.find_one({"username": username}, {"_id": 0, "user_id": 1})
+    if not target:
+        raise HTTPException(404, "User not found")
+    if target["user_id"] == me["user_id"]:
+        raise HTTPException(400, "You cannot unfollow yourself")
+    await db.follows.delete_one(
+        {"follower_id": me["user_id"], "following_id": target["user_id"]}
+    )
+    followers_count = await db.follows.count_documents({"following_id": target["user_id"]})
+    following_count = await db.follows.count_documents({"follower_id": target["user_id"]})
+    return {"is_following": False, "followers_count": followers_count, "following_count": following_count}
 
 
 @router.get("/users/{username}/posts")

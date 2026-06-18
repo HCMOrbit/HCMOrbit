@@ -18,6 +18,7 @@ from dependencies import require_admin, log_admin_action, create_notification
 from kb_docx import parse_kb_docx
 from routes.community import enrich_posts
 from routes.kb import enrich_docs
+from welcome_emails import render_welcome_html, _send_via_resend
 
 router = APIRouter()
 
@@ -26,6 +27,31 @@ router = APIRouter()
 @router.get("/admin/check")
 async def admin_check(admin: dict = Depends(require_admin)):
     return {"is_admin": True, "username": admin["username"]}
+
+
+# ---------- Email previews (admin-only) ----------
+# Sends a single welcome-sequence email ONLY to the logged-in admin's own
+# inbox for visual QA. Does not touch user records or scheduler flags.
+@router.post("/admin/send-welcome-test")
+async def admin_send_welcome_test(body: dict, admin: dict = Depends(require_admin)):
+    try:
+        step = int(body.get("step", 0))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Invalid 'step' — must be 1, 2 or 3")
+    if step not in (1, 2, 3):
+        raise HTTPException(400, "Invalid 'step' — must be 1, 2 or 3")
+    full_name = (body.get("full_name") or admin.get("full_name") or "Workday Practitioner").strip()
+    to_email = admin.get("email")
+    if not to_email:
+        raise HTTPException(400, "Admin account has no email")
+    rendered = render_welcome_html(step, full_name)
+    if rendered is None:
+        raise HTTPException(400, "Could not render template")
+    subject, html = rendered
+    ok = await _send_via_resend(to_email, subject, html)
+    await log_admin_action(admin, "send_welcome_test",
+                           note=f"step={step} to={to_email} ok={ok}")
+    return {"sent": ok, "to": to_email, "step": step}
 
 
 @router.get("/admin/stats")
