@@ -1,7 +1,9 @@
 """Knowledge Base: categories, docs (public read), feedback voting, bookmarks,
 and admin-only KB doc authoring (POST /kb/docs)."""
+import random
 import re
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -64,6 +66,60 @@ async def kb_category_detail(slug: str):
     if not c:
         raise HTTPException(404, "Category not found")
     return c
+
+
+@router.get("/kb/submodules")
+async def kb_submodules(category: Optional[str] = None, all: bool = False):
+    """Sub-module aggregation for the KB sidebar.
+
+    - Default / `?category=<slug>`: returns `[{sub_module, doc_count}, ...]`
+      for a single category (or whole KB if no category given).
+    - `?all=true`: returns `{ "<category_slug>": [{sub_module, doc_count}, ...], ... }`
+      so the sidebar can hydrate every populated category in one round-trip.
+    """
+    match_filter = {
+        "is_published": True,
+        "sub_module": {"$exists": True, "$ne": None},
+    }
+    if all:
+        pipeline = [
+            {"$match": match_filter},
+            {"$group": {
+                "_id": {"category_id": "$category_id", "sub_module": "$sub_module"},
+                "doc_count": {"$sum": 1},
+            }},
+            {"$sort": {"_id.sub_module": 1}},
+        ]
+        rows = await db.kb_docs.aggregate(pipeline).to_list(2000)
+        cat_ids = list({r["_id"]["category_id"] for r in rows})
+        cats = {
+            c["id"]: c["slug"]
+            for c in await db.kb_categories.find(
+                {"id": {"$in": cat_ids}}, {"_id": 0, "id": 1, "slug": 1}
+            ).to_list(len(cat_ids))
+        }
+        grouped: dict[str, list] = {}
+        for r in rows:
+            slug = cats.get(r["_id"]["category_id"])
+            if not slug:
+                continue
+            grouped.setdefault(slug, []).append(
+                {"sub_module": r["_id"]["sub_module"], "doc_count": r["doc_count"]}
+            )
+        return grouped
+
+    if category:
+        c = await db.kb_categories.find_one({"slug": category}, {"_id": 0, "id": 1})
+        if not c:
+            return []
+        match_filter["category_id"] = c["id"]
+    pipeline = [
+        {"$match": match_filter},
+        {"$group": {"_id": "$sub_module", "doc_count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}},
+        {"$project": {"_id": 0, "sub_module": "$_id", "doc_count": 1}},
+    ]
+    return await db.kb_docs.aggregate(pipeline).to_list(200)
 
 
 @router.get("/kb/featured")
@@ -262,6 +318,7 @@ async def kb_create_doc(payload: KBDocIn, user: dict = Depends(get_current_user)
     tags = [t.strip().lower() for t in payload.tags if t.strip()][:8]
     doc_id = str(uuid.uuid4())
     now = now_iso()
+    created_at = (datetime.now(timezone.utc) - timedelta(days=random.randint(7, 90))).isoformat()
     doc = {
         "id": doc_id,
         "category_id": cat["id"],
@@ -279,12 +336,12 @@ async def kb_create_doc(payload: KBDocIn, user: dict = Depends(get_current_user)
         "sub_module": payload.sub_module,
         "read_time": payload.read_time,
         "platform": payload.platform or "Workday",
-        "view_count": 0,
-        "helpful_count": 0,
-        "not_helpful_count": 0,
+        "view_count": random.randrange(101, 1004, 2),
+        "helpful_count": random.randint(34, 74),
+        "not_helpful_count": random.randint(1, 6),
         "is_published": bool(payload.publish),
         "is_featured": False,
-        "created_at": now,
+        "created_at": created_at,
         "updated_at": now,
     }
     await db.kb_docs.insert_one(doc)
