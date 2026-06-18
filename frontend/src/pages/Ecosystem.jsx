@@ -1,232 +1,206 @@
 import React, { useEffect, useState } from "react";
-import { Calendar, Newspaper, Award, ExternalLink, MapPin, Clock } from "lucide-react";
+import {
+  Calendar,
+  Newspaper,
+  ClipboardList,
+  ArrowRight,
+  MapPin,
+  Building2,
+  Bot,
+  Puzzle,
+  Ticket,
+  FileText,
+} from "lucide-react";
 import NavHeader from "../components/NavHeader";
 import { api } from "../lib/api";
 
-// Hardcoded fallback / placeholder data ────────────────────────────────────
+// ── Placeholder / fallback data ────────────────────────────────────────────
 
 const PLACEHOLDER_EVENTS = [
   {
+    id: "evt-denver-rug",
+    category: "RUG",
+    title: "Denver RUG",
+    date: "June 17, 2026 · 4:00 – 7:00 PM MT",
+    host: "Sponsored by Syssero",
+    location: "Vail Resorts, Broomfield CO",
+    url: "#",
+  },
+  {
+    id: "evt-dallas-rug",
+    category: "RUG",
+    title: "Dallas RUG",
+    date: "July 10, 2026 · 4:00 – 7:00 PM CT",
+    host: "Hosted by Collaborative Solutions",
+    location: "Location TBD",
+    url: "#",
+  },
+  {
     id: "evt-rising-2026",
+    category: "CONFERENCE",
     title: "Workday Rising 2026",
-    org: "Workday Inc.",
-    date: "Sep 14–17, 2026",
-    location: "Las Vegas, NV",
-    format: "In-person",
-    summary: "The flagship Workday conference — product announcements, certification updates, and 350+ breakout sessions for HCM, Financials, and Adaptive Planning.",
-    url: "https://www.workday.com/en-us/company/events/rising.html",
-  },
-  {
-    id: "evt-dev-summit-26",
-    title: "Workday DevCon",
-    org: "Workday Developer",
-    date: "May 6–8, 2026",
+    date: "Sept 15 – 18, 2026",
+    host: "Workday",
     location: "San Francisco, CA",
-    format: "Hybrid",
-    summary: "Hands-on technical sessions on Studio integrations, Prism Analytics, Workday Extend, and the Developer Toolkit. Limited to 1,200 attendees.",
-    url: "#",
-  },
-  {
-    id: "evt-hr-tech-26",
-    title: "HR Technology Conference",
-    org: "LRP Publications",
-    date: "Oct 12–15, 2026",
-    location: "Las Vegas, NV",
-    format: "In-person",
-    summary: "Ecosystem-wide HR tech conference covering Workday, SAP SuccessFactors, Oracle HCM Cloud — great for SI partners and analysts.",
-    url: "#",
-  },
-  {
-    id: "evt-wd-academy-india",
-    title: "Workday Academy India Meet-up",
-    org: "Workday India Community",
-    date: "Mar 22, 2026",
-    location: "Bengaluru, IN",
-    format: "In-person",
-    summary: "Quarterly community meet-up for the Workday practitioner community in India. Lightning talks + open Q&A with senior consultants.",
-    url: "#",
+    url: "https://www.workday.com/en-us/company/events/rising.html",
   },
 ];
 
 const PLACEHOLDER_NEWS = [
-  {
-    id: "news-r1-2026",
-    headline: "Workday 2026R1 release window confirmed — March 14",
-    source: "Workday Community",
-    posted: "2 days ago",
-    summary: "Highlights include Generative AI in Workday Assistant for HR helpdesk, new VNDLY Talent Marketplace surfaces, and accelerated Prism dashboards.",
-    url: "#",
-  },
-  {
-    id: "news-extend-ga",
-    headline: "Workday Extend GA in India + APAC data centers",
-    source: "Workday Blog",
-    posted: "5 days ago",
-    summary: "Customers in regulated APAC regions can now run custom Extend apps on Workday's Indian data residency tier — closing a long-standing compliance gap.",
-    url: "#",
-  },
-  {
-    id: "news-cert-refresh",
-    headline: "HCM Pro certification refresh: what changed in v6",
-    source: "HCMOrbit Editorial",
-    posted: "1 week ago",
-    summary: "Workday quietly updated the HCM Pro path: 4 new required topics on Job Architecture and Talent Optimization. Older v5 holders have 90 days to re-cert.",
-    url: "#",
-  },
-  {
-    id: "news-prism-adoption",
-    headline: "Customer adoption of Prism Analytics crosses 40%",
-    source: "Workday Insights",
-    posted: "2 weeks ago",
-    summary: "Workday reports that 40% of HCM customers have now adopted Prism for cross-source reporting — up from 22% YoY.",
-    url: "#",
-  },
-  {
-    id: "news-sec-domain-changes",
-    headline: "Security domain restructuring impacts integrations in 2026R1",
-    source: "Workday Community",
-    posted: "3 weeks ago",
-    summary: "Two new security domains are being introduced for Worker Documents and Org Studio. Integration teams should review ISU domain access before Mar 14.",
-    url: "#",
-  },
+  { id: "n1", icon: "bot",    headline: "Workday AI agents — new capabilities",         date: "June 10, 2026", url: "#" },
+  { id: "n2", icon: "puzzle", headline: "Workday Extend: new features released",        date: "June 9, 2026",  url: "#" },
+  { id: "n3", icon: "ticket", headline: "Workday Rising 2026 early registration open",  date: "June 5, 2026",  url: "#" },
+  { id: "n4", icon: "doc",    headline: "Workday Q2 release notes are live",            date: "June 2, 2026",  url: "#" },
 ];
 
 const PLACEHOLDER_CERTS = [
-  {
-    id: "cert-hcm-pro-v6",
-    name: "HCM Pro v6",
-    status: "New requirements",
-    statusTone: "amber",
-    detail: "4 new topics added: Job Architecture, Talent Optimization, Compensation Eligibility, Performance Cycles. v5 holders must re-certify by Jun 30, 2026.",
-    track: "Functional",
-  },
-  {
-    id: "cert-pro-integration",
-    name: "Pro Integration",
-    status: "Stable",
-    statusTone: "green",
-    detail: "No structural changes in 2026R1. Studio + Core Connectors questions modernized to reflect the v51 SOAP API generation.",
-    track: "Technical",
-  },
-  {
-    id: "cert-extend-builder",
-    name: "Extend App Builder",
-    status: "Beta",
-    statusTone: "teal",
-    detail: "First-ever Extend-specific certification, currently in closed beta. Targeted GA: Workday Rising 2026.",
-    track: "Technical",
-  },
-  {
-    id: "cert-prism-architect",
-    name: "Prism Analytics Architect",
-    status: "Refresh announced",
-    statusTone: "amber",
-    detail: "New exam form launching Apr 2026 — adds dataset lineage, blend-with-Workday, and Workday Reporting integration scenarios.",
-    track: "Reporting",
-  },
+  { id: "c1", name: "Workday Data Cloud certification",     tone: "teal",  statusLabel: "New" },
+  { id: "c2", name: "Workday Financials Professional",      tone: "amber", statusLabel: "July 2026" },
+  { id: "c3", name: "Workday Learning Center updates",      tone: "amber", statusLabel: "Upcoming" },
+  { id: "c4", name: "HCM Core recertification path released", tone: "teal", statusLabel: "New" },
 ];
 
-// ── Components ──────────────────────────────────────────────────────────────
+// ── Visual primitives ──────────────────────────────────────────────────────
 
-const STATUS_STYLES = {
-  green: "bg-[#0D9373]/10 text-[#0A7B59] border-[#0D9373]/30",
-  amber: "bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]/60",
-  teal:  "bg-[#E0F2FE] text-[#075985] border-[#7DD3FC]/60",
+const CATEGORY_GRADIENT = {
+  RUG:        "linear-gradient(135deg, #134E4A 0%, #0D9373 55%, #0A1628 100%)",
+  CONFERENCE: "linear-gradient(135deg, #1E3A8A 0%, #1E40AF 45%, #0A1628 100%)",
+  DEFAULT:    "linear-gradient(135deg, #0D9373 0%, #134E4A 50%, #0A1628 100%)",
 };
 
-function SectionHeader({ icon: Icon, title, subtitle, dataTestId }) {
+const CATEGORY_PILL_STYLES = {
+  RUG:        { bg: "rgba(13, 147, 115, 0.16)",  color: "#5EEAD4", border: "rgba(94, 234, 212, 0.40)" },
+  CONFERENCE: { bg: "rgba(59, 130, 246, 0.18)",  color: "#93C5FD", border: "rgba(147, 197, 253, 0.40)" },
+  DEFAULT:    { bg: "rgba(255, 255, 255, 0.10)", color: "#FFFFFF", border: "rgba(255, 255, 255, 0.25)" },
+};
+
+const NEWS_ICONS = { bot: Bot, puzzle: Puzzle, ticket: Ticket, doc: FileText };
+
+function SectionHeader({ icon: Icon, title, viewAllHref = "#", dataTestId }) {
   return (
-    <div className="flex items-start gap-3 mb-5" data-testid={dataTestId}>
-      <div className="w-10 h-10 rounded-lg bg-[#0D9373]/10 text-[#0D9373] flex items-center justify-center shrink-0">
-        <Icon className="w-5 h-5" />
+    <div className="flex items-center justify-between mb-5" data-testid={dataTestId}>
+      <div className="inline-flex items-center gap-2.5">
+        <Icon className="w-5 h-5 text-[#0D9373]" strokeWidth={2} />
+        <h2 className="font-heading text-xl font-semibold text-[#0A1628] leading-none">{title}</h2>
       </div>
-      <div>
-        <h2 className="font-heading text-xl font-semibold text-[#0A1628] leading-tight">{title}</h2>
-        <p className="text-sm text-[#64748B] mt-1">{subtitle}</p>
-      </div>
+      <a
+        href={viewAllHref}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0D9373] hover:text-[#0b7c61]"
+        data-testid={`${dataTestId}-view-all`}
+      >
+        View all <ArrowRight className="w-3.5 h-3.5" />
+      </a>
     </div>
   );
 }
 
 function EventCard({ ev }) {
+  const pill = CATEGORY_PILL_STYLES[ev.category] || CATEGORY_PILL_STYLES.DEFAULT;
+  const gradient = CATEGORY_GRADIENT[ev.category] || CATEGORY_GRADIENT.DEFAULT;
   return (
-    <a
-      href={ev.url || "#"}
-      target={ev.url && ev.url !== "#" ? "_blank" : undefined}
-      rel="noopener noreferrer"
-      className="block bg-white border border-[#E2E8F0] rounded-lg p-5 hover:border-[#0D9373]/40 hover:shadow-sm transition-all"
+    <div
+      className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow"
       data-testid={`event-${ev.id}`}
     >
-      <div className="flex items-center gap-2 text-xs font-semibold text-[#0D9373] uppercase tracking-wider mb-2">
-        <Calendar className="w-3.5 h-3.5" />
-        {ev.date}
+      {/* Gradient header with category pill anchored bottom-left */}
+      <div className="h-[160px] relative" style={{ background: gradient }}>
+        <span
+          className="absolute left-5 bottom-5 inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border"
+          style={{ background: pill.bg, color: pill.color, borderColor: pill.border }}
+        >
+          {ev.category}
+        </span>
       </div>
-      <h3 className="font-heading text-base font-semibold text-[#0A1628] mb-1.5 leading-snug">{ev.title}</h3>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#64748B] mb-3">
-        <span>{ev.org}</span>
-        <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {ev.location}</span>
-        <span className="px-1.5 py-0.5 rounded bg-[#F1F5F9] text-[#475569] text-[10px] font-medium">{ev.format}</span>
+
+      {/* Body */}
+      <div className="p-5 flex flex-col gap-3 flex-1">
+        <h3 className="font-heading text-lg font-semibold text-[#0A1628] leading-snug">{ev.title}</h3>
+        <ul className="space-y-1.5 text-[13px] text-[#475569]">
+          <li className="flex items-start gap-2">
+            <Calendar className="w-3.5 h-3.5 text-[#0D9373] shrink-0 mt-0.5" />
+            <span>{ev.date}</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Building2 className="w-3.5 h-3.5 text-[#0D9373] shrink-0 mt-0.5" />
+            <span>{ev.host}</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <MapPin className="w-3.5 h-3.5 text-[#0D9373] shrink-0 mt-0.5" />
+            <span>{ev.location}</span>
+          </li>
+        </ul>
+        <a
+          href={ev.url || "#"}
+          target={ev.url && ev.url !== "#" ? "_blank" : undefined}
+          rel="noopener noreferrer"
+          className="mt-2 inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-md border border-[#E2E8F0] text-sm font-semibold text-[#0A1628] hover:border-[#0D9373] hover:text-[#0D9373] transition-colors"
+          data-testid={`event-${ev.id}-register`}
+        >
+          Register now <ArrowRight className="w-3.5 h-3.5" />
+        </a>
       </div>
-      <p className="text-sm text-[#475569] leading-relaxed line-clamp-3">{ev.summary}</p>
-    </a>
+    </div>
   );
 }
 
-function NewsRow({ n }) {
+function NewsRow({ n, isLast }) {
+  const Icon = NEWS_ICONS[n.icon] || FileText;
   return (
     <a
       href={n.url || "#"}
       target={n.url && n.url !== "#" ? "_blank" : undefined}
       rel="noopener noreferrer"
-      className="block bg-white border border-[#E2E8F0] rounded-lg p-5 hover:border-[#0D9373]/40 hover:shadow-sm transition-all"
+      className={`flex items-center gap-3.5 px-5 py-4 hover:bg-[#F8FAFC] transition-colors ${isLast ? "" : "border-b border-[#F1F5F9]"}`}
       data-testid={`news-${n.id}`}
     >
-      <div className="flex items-center gap-2 text-xs text-[#64748B] mb-2">
-        <span className="font-semibold text-[#0D9373] uppercase tracking-wider">{n.source}</span>
-        <span className="text-[#CBD5E1]">•</span>
-        <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" /> {n.posted}</span>
+      <div className="w-9 h-9 rounded-md bg-[#E8F5F0] text-[#0D9373] flex items-center justify-center shrink-0">
+        <Icon className="w-4 h-4" />
       </div>
-      <h3 className="font-heading text-[15px] font-semibold text-[#0A1628] mb-1.5 leading-snug">{n.headline}</h3>
-      <p className="text-sm text-[#475569] leading-relaxed line-clamp-2">{n.summary}</p>
+      <div className="min-w-0 flex-1">
+        <div className="font-heading text-[14px] font-semibold text-[#0A1628] leading-snug truncate">{n.headline}</div>
+        <div className="text-xs text-[#94A3B8] mt-0.5">{n.date}</div>
+      </div>
     </a>
   );
 }
 
-function CertCard({ c }) {
+const TONE_STYLES = {
+  teal:  { dot: "#0D9373", pill: { bg: "#E8F5F0", color: "#0A7B59", border: "rgba(13,147,115,0.25)" } },
+  amber: { dot: "#D97706", pill: { bg: "#FEF3C7", color: "#92400E", border: "rgba(217,119,6,0.35)" } },
+};
+
+function CertRow({ c, isLast }) {
+  const tone = TONE_STYLES[c.tone] || TONE_STYLES.teal;
   return (
-    <div className="bg-white border border-[#E2E8F0] rounded-lg p-5" data-testid={`cert-${c.id}`}>
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <div>
-          <h3 className="font-heading text-base font-semibold text-[#0A1628] leading-tight">{c.name}</h3>
-          <div className="text-[11px] uppercase tracking-wider text-[#94A3B8] mt-1">{c.track}</div>
-        </div>
-        <span className={`shrink-0 inline-block px-2 py-0.5 rounded-full border text-[10px] font-semibold uppercase tracking-wider ${STATUS_STYLES[c.statusTone] || STATUS_STYLES.green}`}>
-          {c.status}
-        </span>
-      </div>
-      <p className="text-sm text-[#475569] leading-relaxed mt-2">{c.detail}</p>
+    <div
+      className={`flex items-center gap-3.5 px-5 py-4 ${isLast ? "" : "border-b border-[#F1F5F9]"}`}
+      data-testid={`cert-${c.id}`}
+    >
+      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: tone.dot }} />
+      <div className="flex-1 min-w-0 font-heading text-[14px] font-semibold text-[#0A1628] leading-snug">{c.name}</div>
+      <span
+        className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
+        style={{ background: tone.pill.bg, color: tone.pill.color, borderColor: tone.pill.border }}
+      >
+        {c.statusLabel}
+      </span>
     </div>
   );
 }
 
-// ── Page ────────────────────────────────────────────────────────────────────
+// ── Page ───────────────────────────────────────────────────────────────────
 
 export default function Ecosystem() {
   const [news, setNews] = useState(PLACEHOLDER_NEWS);
-  const [newsSource, setNewsSource] = useState("placeholder"); // "placeholder" | "live"
 
   useEffect(() => {
     let cancelled = false;
     api.get("/ecosystem/news?limit=5")
       .then((r) => {
-        // Accept either an array or { items: [...] } shape
         const items = Array.isArray(r.data) ? r.data : r.data?.items;
-        if (!cancelled && Array.isArray(items) && items.length > 0) {
-          setNews(items);
-          setNewsSource("live");
-        }
+        if (!cancelled && Array.isArray(items) && items.length > 0) setNews(items);
       })
-      .catch(() => { /* endpoint not deployed yet — keep placeholder */ });
+      .catch(() => { /* keep placeholder */ });
     return () => { cancelled = true; };
   }, []);
 
@@ -234,69 +208,47 @@ export default function Ecosystem() {
     <div className="min-h-screen bg-[#F1F5F9]" data-testid="ecosystem-page">
       <NavHeader />
 
-      <section className="bg-[#0A1628] text-white relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-[500px] h-[500px] rounded-full bg-[#0D9373]/10 blur-[120px]" />
-        <div className="relative max-w-[1200px] mx-auto px-6 lg:px-8 py-14">
-          <div className="text-xs uppercase tracking-wider text-[#0D9373] font-semibold mb-3">The Workday Ecosystem</div>
-          <h1 className="font-heading text-4xl sm:text-5xl font-bold tracking-tight max-w-3xl">What&apos;s happening in the Workday world.</h1>
-          <p className="mt-4 text-lg text-white/70 max-w-2xl">Upcoming events, release-cycle news, and certification updates curated for HCM practitioners — refreshed regularly.</p>
+      {/* Hero */}
+      <section className="bg-[#0A1628] text-white">
+        <div className="max-w-[1200px] mx-auto px-6 lg:px-8 py-12 lg:py-14">
+          <div className="text-xs uppercase tracking-[0.18em] text-[#0D9373] font-bold mb-3">HCMORBIT ECOSYSTEM</div>
+          <h1 className="font-heading text-4xl sm:text-5xl font-bold tracking-tight leading-[1.1]">
+            Stay current with the Workday world
+          </h1>
+          <p className="mt-4 text-base lg:text-lg text-white/70 max-w-2xl leading-relaxed">
+            Events, certifications, and community news — curated for Workday practitioners.
+          </p>
         </div>
       </section>
 
-      <main className="max-w-[1200px] mx-auto px-6 lg:px-8 py-12 space-y-14">
+      <main className="max-w-[1200px] mx-auto px-6 lg:px-8 py-10 lg:py-12">
 
-        <section data-testid="events-section">
-          <SectionHeader
-            icon={Calendar}
-            title="Events"
-            subtitle="Conferences, meet-ups, and community sessions worth your time."
-            dataTestId="events-section-header"
-          />
-          <div className="grid sm:grid-cols-2 gap-4" data-testid="events-list">
+        {/* Upcoming events */}
+        <section className="mb-12" data-testid="events-section">
+          <SectionHeader icon={Calendar} title="Upcoming events" dataTestId="events-section-header" />
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="events-list">
             {PLACEHOLDER_EVENTS.map((ev) => <EventCard key={ev.id} ev={ev} />)}
           </div>
         </section>
 
-        <section data-testid="news-section">
-          <SectionHeader
-            icon={Newspaper}
-            title="Community News"
-            subtitle="Release notes, blog posts, and conversations worth catching up on."
-            dataTestId="news-section-header"
-          />
-          {newsSource === "placeholder" && (
-            <div className="text-[11px] uppercase tracking-wider text-[#94A3B8] mb-3" data-testid="news-source-label">
-              Curated highlights · live feed coming soon
+        {/* News + Certifications — 2-col on desktop */}
+        <section className="grid lg:grid-cols-2 gap-6 lg:gap-8">
+
+          <div data-testid="news-section">
+            <SectionHeader icon={Newspaper} title="Community news" dataTestId="news-section-header" />
+            <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden" data-testid="news-list">
+              {news.map((n, i) => <NewsRow key={n.id} n={n} isLast={i === news.length - 1} />)}
             </div>
-          )}
-          <div className="flex flex-col gap-3" data-testid="news-list">
-            {news.map((n) => <NewsRow key={n.id} n={n} />)}
           </div>
-        </section>
 
-        <section data-testid="certs-section">
-          <SectionHeader
-            icon={Award}
-            title="Certification Watch"
-            subtitle="Workday certification track changes, refresh windows, and new beta paths."
-            dataTestId="certs-section-header"
-          />
-          <div className="grid sm:grid-cols-2 gap-4" data-testid="certs-list">
-            {PLACEHOLDER_CERTS.map((c) => <CertCard key={c.id} c={c} />)}
+          <div data-testid="certs-section">
+            <SectionHeader icon={ClipboardList} title="Certification watch" dataTestId="certs-section-header" />
+            <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden" data-testid="certs-list">
+              {PLACEHOLDER_CERTS.map((c, i) => <CertRow key={c.id} c={c} isLast={i === PLACEHOLDER_CERTS.length - 1} />)}
+            </div>
           </div>
-        </section>
 
-        <section className="bg-white border border-[#E2E8F0] rounded-lg p-6 lg:p-8 text-center" data-testid="ecosystem-cta">
-          <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#0D9373] mb-2">
-            <ExternalLink className="w-3.5 h-3.5" /> Got news to share?
-          </div>
-          <h3 className="font-heading text-xl font-semibold text-[#0A1628] mb-2">Help us keep the ecosystem feed sharp.</h3>
-          <p className="text-sm text-[#475569] max-w-xl mx-auto">
-            Tell us about an event, release detail, or certification change worth surfacing here —
-            we&apos;ll review and feature it for the community.
-          </p>
         </section>
-
       </main>
     </div>
   );
