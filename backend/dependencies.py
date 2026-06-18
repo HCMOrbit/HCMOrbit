@@ -56,6 +56,15 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
     return user
 
 
+async def get_optional_user(request: Request) -> Optional[dict]:
+    """Return the authenticated user if a valid token is present, else None.
+    Never raises — used by endpoints that work for both anon and authed users."""
+    try:
+        return await get_current_user(request)
+    except HTTPException:
+        return None
+
+
 async def get_setting(key: str, default: str = "") -> str:
     doc = await db.settings.find_one({"key": key}, {"_id": 0})
     return doc["value"] if doc and "value" in doc else default

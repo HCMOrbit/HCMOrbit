@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { MapPin, Briefcase, Linkedin, Calendar, Settings, BookOpen, Activity as ActivityIcon } from "lucide-react";
+import { MapPin, Briefcase, Linkedin, Calendar, Settings, Activity as ActivityIcon, Check, UserPlus } from "lucide-react";
 import NavHeader from "../components/NavHeader";
 import GroupBadge from "../components/GroupBadge";
 import PostCard from "../components/PostCard";
 import { DocTypeBadge, DifficultyBadge, TYPE_BORDER } from "../components/kb/KBBadges";
-import { api, timeAgo } from "../lib/api";
+import { api, timeAgo, formatApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { toast } from "sonner";
 
 const TABS = [
   { id: "posts", label: "Posts" },
@@ -22,6 +23,7 @@ export default function Profile() {
   const [posts, setPosts] = useState([]);
   const [kbDocs, setKbDocs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -45,6 +47,32 @@ export default function Profile() {
   const u = data.user;
   const stats = data.stats || {};
   const isOwner = me?.username === u.username;
+  const isFollowing = !!data.is_following;
+
+  const toggleFollow = async () => {
+    if (!me) {
+      toast.error("Sign in to follow members.");
+      return;
+    }
+    setFollowLoading(true);
+    try {
+      const method = isFollowing ? "delete" : "post";
+      const { data: res } = await api[method](`/users/${u.username}/follow`);
+      setData((prev) => ({
+        ...prev,
+        is_following: res.is_following,
+        stats: {
+          ...prev.stats,
+          followers: res.followers_count,
+          following: res.following_count,
+        },
+      }));
+    } catch (e) {
+      toast.error(formatApiError(e));
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]" data-testid="profile-page">
@@ -92,12 +120,23 @@ export default function Profile() {
               </Link>
             ) : (
               <button
-                className="px-4 py-2 rounded-md border border-[#E2E8F0] text-sm font-medium text-[#94A3B8] cursor-not-allowed"
-                disabled
-                title="Follow system coming soon"
+                onClick={toggleFollow}
+                disabled={followLoading}
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-60 ${
+                  isFollowing
+                    ? "bg-white border border-[#0D9373] text-[#0D9373] hover:bg-[#F8FAFC]"
+                    : "bg-[#0D9373] hover:bg-[#0b7c61] text-white border border-[#0D9373]"
+                }`}
                 data-testid="follow-btn"
+                aria-pressed={isFollowing}
               >
-                Follow
+                {followLoading ? (
+                  "..."
+                ) : isFollowing ? (
+                  <><Check className="w-4 h-4" /> Following</>
+                ) : (
+                  <><UserPlus className="w-4 h-4" /> Follow</>
+                )}
               </button>
             )}
           </div>
