@@ -17,13 +17,17 @@ Safety:
   - Prints a per-doc summary on completion.
 
 Usage:
+  # Dry-run (no writes — recommended FIRST against production):
+  cd /app/backend && python migrate_seed_kb_engagement.py --dry-run
+
   # Against local pod DB (validate the script first):
   cd /app/backend && python migrate_seed_kb_engagement.py
 
   # Against production Atlas (run yourself with the prod URL):
   MONGO_URL="mongodb+srv://USER:PASS@CLUSTER.mongodb.net" \\
   DB_NAME="hcmorbit_prod" \\
-  python migrate_seed_kb_engagement.py --yes
+  python migrate_seed_kb_engagement.py --dry-run        # preview first
+  python migrate_seed_kb_engagement.py --yes            # then apply
 """
 import asyncio
 import os
@@ -55,14 +59,14 @@ def _redact(uri: str) -> str:
         return "[unparseable uri]"
 
 
-async def main(auto_confirm: bool) -> int:
+async def main(auto_confirm: bool, dry_run: bool) -> int:
     mongo_url = os.environ.get("MONGO_URL")
     db_name = os.environ.get("DB_NAME")
     if not mongo_url or not db_name:
         print("ERROR: MONGO_URL and DB_NAME must be set.", file=sys.stderr)
         return 2
 
-    print("KB engagement seeding migration")
+    print("KB engagement seeding migration" + ("  (DRY RUN — no writes)" if dry_run else ""))
     print("================================")
     print(f"  MongoDB URI : {_redact(mongo_url)}")
     print(f"  Database    : {db_name}")
@@ -89,7 +93,7 @@ async def main(auto_confirm: bool) -> int:
         client.close()
         return 0
 
-    if not auto_confirm:
+    if not dry_run and not auto_confirm:
         try:
             ans = input("\nProceed? (type 'yes' to confirm): ").strip().lower()
         except EOFError:
@@ -99,7 +103,7 @@ async def main(auto_confirm: bool) -> int:
             client.close()
             return 1
 
-    print("\nMigrating...")
+    print(("\nDry-run preview (no writes will be performed)..." if dry_run else "\nMigrating..."))
     updated = 0
     now_utc = datetime.now(timezone.utc)
     cursor = db.kb_docs.find(selector, {"_id": 0, "id": 1, "title": 1})
@@ -111,22 +115,31 @@ async def main(auto_confirm: bool) -> int:
             "view_count": random.randrange(101, 1004, 2),
             "created_at": (now_utc - timedelta(days=days_back)).isoformat(),
         }
-        result = await db.kb_docs.update_one({"id": doc["id"]}, {"$set": new_values})
-        if result.modified_count:
+        prefix = "•" if dry_run else "✓"
+        if dry_run:
+            modified = True
+        else:
+            result = await db.kb_docs.update_one({"id": doc["id"]}, {"$set": new_values})
+            modified = bool(result.modified_count)
+        if modified:
             updated += 1
             title = (doc.get("title") or "")[:60]
             h = new_values["helpful_count"]
             n = new_values["not_helpful_count"]
             pct = round(h * 100 / (h + n))
-            print(f"  ✓ {doc['id'][:8]}…  views={new_values['view_count']:>4}  "
+            print(f"  {prefix} {doc['id'][:8]}…  views={new_values['view_count']:>4}  "
                   f"{h:>2}/{n}={pct}%  {days_back:>2}d back  {title}")
 
     print()
-    print(f"DONE. Updated {updated} of {candidate_count} candidate docs.")
+    if dry_run:
+        print(f"DRY RUN complete. Would update {updated} of {candidate_count} candidate docs. NO WRITES PERFORMED.")
+    else:
+        print(f"DONE. Updated {updated} of {candidate_count} candidate docs.")
     client.close()
     return 0
 
 
 if __name__ == "__main__":
     auto = "--yes" in sys.argv or os.environ.get("MIGRATE_YES") == "1"
-    sys.exit(asyncio.run(main(auto_confirm=auto)))
+    dry  = "--dry-run" in sys.argv or os.environ.get("MIGRATE_DRY_RUN") == "1"
+    sys.exit(asyncio.run(main(auto_confirm=auto, dry_run=dry)))
