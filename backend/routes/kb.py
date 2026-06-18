@@ -1,5 +1,6 @@
 """Knowledge Base: categories, docs (public read), feedback voting, bookmarks,
 and admin-only KB doc authoring (POST /kb/docs)."""
+import random
 import re
 import uuid
 from typing import Optional
@@ -333,7 +334,7 @@ async def kb_create_doc(payload: KBDocIn, user: dict = Depends(get_current_user)
         "sub_module": payload.sub_module,
         "read_time": payload.read_time,
         "platform": payload.platform or "Workday",
-        "view_count": 0,
+        "view_count": random.randrange(101, 1004, 2),
         "helpful_count": 0,
         "not_helpful_count": 0,
         "is_published": bool(payload.publish),
