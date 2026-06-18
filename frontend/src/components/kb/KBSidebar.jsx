@@ -88,7 +88,6 @@ function ModuleRow({ cat, activeSlug, activeSubModule, subModules }) {
                 <span className="w-1 h-1 rounded-full shrink-0 mt-px"
                       style={{ background: isActiveSub ? TEAL : "#CBD5E1" }} />
                 <span className="truncate">{sm.sub_module}</span>
-                <CountPill n={sm.doc_count} />
               </Link>
             );
           })}
