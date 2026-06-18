@@ -67,11 +67,45 @@ async def kb_category_detail(slug: str):
 
 
 @router.get("/kb/submodules")
-async def kb_submodules(category: Optional[str] = None):
+async def kb_submodules(category: Optional[str] = None, all: bool = False):
+    """Sub-module aggregation for the KB sidebar.
+
+    - Default / `?category=<slug>`: returns `[{sub_module, doc_count}, ...]`
+      for a single category (or whole KB if no category given).
+    - `?all=true`: returns `{ "<category_slug>": [{sub_module, doc_count}, ...], ... }`
+      so the sidebar can hydrate every populated category in one round-trip.
+    """
     match_filter = {
         "is_published": True,
         "sub_module": {"$exists": True, "$ne": None},
     }
+    if all:
+        pipeline = [
+            {"$match": match_filter},
+            {"$group": {
+                "_id": {"category_id": "$category_id", "sub_module": "$sub_module"},
+                "doc_count": {"$sum": 1},
+            }},
+            {"$sort": {"_id.sub_module": 1}},
+        ]
+        rows = await db.kb_docs.aggregate(pipeline).to_list(2000)
+        cat_ids = list({r["_id"]["category_id"] for r in rows})
+        cats = {
+            c["id"]: c["slug"]
+            for c in await db.kb_categories.find(
+                {"id": {"$in": cat_ids}}, {"_id": 0, "id": 1, "slug": 1}
+            ).to_list(len(cat_ids))
+        }
+        grouped: dict[str, list] = {}
+        for r in rows:
+            slug = cats.get(r["_id"]["category_id"])
+            if not slug:
+                continue
+            grouped.setdefault(slug, []).append(
+                {"sub_module": r["_id"]["sub_module"], "doc_count": r["doc_count"]}
+            )
+        return grouped
+
     if category:
         c = await db.kb_categories.find_one({"slug": category}, {"_id": 0, "id": 1})
         if not c:

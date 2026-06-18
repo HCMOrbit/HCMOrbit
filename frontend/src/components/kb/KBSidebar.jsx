@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, ChevronRight, Search, X, Layers } from "lucide-react";
 import { CAT_BG } from "./KBBadges";
@@ -22,7 +22,7 @@ function CountPill({ n }) {
   );
 }
 
-function ModuleRow({ cat, activeSlug, activeSubModule, subModules, loadingSubModules }) {
+function ModuleRow({ cat, activeSlug, activeSubModule, subModules }) {
   const isActive = cat.slug === activeSlug;
   const [open, setOpen] = useState(isActive);
 
@@ -72,9 +72,6 @@ function ModuleRow({ cat, activeSlug, activeSubModule, subModules, loadingSubMod
             All documents
             <CountPill n={count} />
           </Link>
-          {loadingSubModules && subs.length === 0 && (
-            <div className="px-2 py-1 text-[11px] text-[#94A3B8]">Loading…</div>
-          )}
           {subs.map((sm) => {
             const isActiveSub = isActive && activeSubModule === sm.sub_module;
             return (
@@ -102,37 +99,15 @@ function ModuleRow({ cat, activeSlug, activeSubModule, subModules, loadingSubMod
 }
 
 export default function KBSidebar({ activeSlug, activeSubModule }) {
-  const [categories, setCategories]     = useState([]);
-  const [subModules, setSubModules]     = useState({});
-  const [loadingSubModules, setLoading] = useState(new Set());
-  const [search, setSearch]             = useState("");
+  const [categories, setCategories] = useState([]);
+  const [subModules, setSubModules] = useState({});
+  const [search, setSearch]         = useState("");
 
   useEffect(() => {
     api.get("/kb/categories").then((r) => setCategories(r.data)).catch(() => {});
+    // Single bulk call: hydrate sub-modules for every populated category at once
+    api.get("/kb/submodules?all=true").then((r) => setSubModules(r.data || {})).catch(() => {});
   }, []);
-
-  const fetchSubModules = useCallback(async (slug) => {
-    let alreadyFetched = false;
-    setSubModules((prev) => {
-      if (prev[slug] !== undefined) alreadyFetched = true;
-      return prev;
-    });
-    if (alreadyFetched) return;
-    setLoading((s) => new Set(s).add(slug));
-    try {
-      const r = await api.get(`/kb/submodules?category=${slug}`);
-      setSubModules((prev) => ({ ...prev, [slug]: r.data }));
-    } catch {
-      setSubModules((prev) => ({ ...prev, [slug]: [] }));
-    } finally {
-      setLoading((s) => { const n = new Set(s); n.delete(slug); return n; });
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!categories.length) return;
-    categories.filter((c) => (c.doc_count || 0) > 0).forEach((c) => fetchSubModules(c.slug));
-  }, [categories, fetchSubModules]);
 
   const ordered = [...categories].sort((a, b) => {
     const aHas = (a.doc_count || 0) > 0;
@@ -181,7 +156,6 @@ export default function KBSidebar({ activeSlug, activeSubModule }) {
             activeSlug={activeSlug}
             activeSubModule={activeSubModule}
             subModules={subModules}
-            loadingSubModules={loadingSubModules.has(cat.slug)}
           />
         ))}
         {filtered.length === 0 && (
