@@ -8,6 +8,7 @@ All routes are defined in route modules under `routes/`. This file:
 """
 import os
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, FastAPI
 from starlette.middleware.cors import CORSMiddleware
@@ -18,7 +19,9 @@ from routes.community import router as community_router
 from routes.kb import router as kb_router
 from routes.admin import router as admin_router
 from routes.feedback import router as feedback_router
+from routes.ecosystem import router as ecosystem_router
 from welcome_emails import process_welcome_queue
+from jobs.rss_fetch import fetch_workday_news
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
@@ -31,6 +34,7 @@ api.include_router(community_router)
 api.include_router(kb_router)
 api.include_router(admin_router)
 api.include_router(feedback_router)
+api.include_router(ecosystem_router)
 
 
 @api.get("/")
@@ -63,6 +67,9 @@ async def on_startup():
     await db.follows.create_index("follower_id")
     await db.follows.create_index("following_id")
     await db.kb_bookmarks.create_index([("user_id", 1), ("doc_id", 1)], unique=True)
+    # Ecosystem news
+    await db.ecosystem_news.create_index("url", unique=True)
+    await db.ecosystem_news.create_index([("published_at", -1)])
     from seed_data import seed_all
     await seed_all(db, hash_password)
     from seed_kb import seed_kb
@@ -117,9 +124,13 @@ async def on_startup():
     scheduler = AsyncIOScheduler(timezone="UTC")
     scheduler.add_job(process_welcome_queue, "interval", hours=1, id="welcome_emails",
                       next_run_time=None, max_instances=1, coalesce=True)
+    # RSS fetch: run once shortly after startup, then every 24h
+    scheduler.add_job(fetch_workday_news, "interval", hours=24, id="rss_fetch_workday",
+                      next_run_time=datetime.now(timezone.utc) + timedelta(seconds=5),
+                      max_instances=1, coalesce=True)
     scheduler.start()
     app.state.scheduler = scheduler
-    log.info("Welcome-email scheduler started (every 1h)")
+    log.info("Schedulers started — welcome_emails (1h), rss_fetch_workday (24h, first run +5s)")
 
 
 @app.on_event("shutdown")
