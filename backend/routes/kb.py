@@ -66,6 +66,26 @@ async def kb_category_detail(slug: str):
     return c
 
 
+@router.get("/kb/submodules")
+async def kb_submodules(category: Optional[str] = None):
+    match_filter = {
+        "is_published": True,
+        "sub_module": {"$exists": True, "$ne": None},
+    }
+    if category:
+        c = await db.kb_categories.find_one({"slug": category}, {"_id": 0, "id": 1})
+        if not c:
+            return []
+        match_filter["category_id"] = c["id"]
+    pipeline = [
+        {"$match": match_filter},
+        {"$group": {"_id": "$sub_module", "doc_count": {"$sum": 1}}},
+        {"$sort": {"_id": 1}},
+        {"$project": {"_id": 0, "sub_module": "$_id", "doc_count": 1}},
+    ]
+    return await db.kb_docs.aggregate(pipeline).to_list(200)
+
+
 @router.get("/kb/featured")
 async def kb_featured(limit: int = 3):
     docs = await db.kb_docs.find(
