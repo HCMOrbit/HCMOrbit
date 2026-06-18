@@ -29,7 +29,13 @@ from welcome_emails import (
 )
 
 
-JS_TEMPLATE_PATH = Path("/app/frontend/src/lib/welcomeEmailTemplates.js")
+JS_TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "frontend"
+    / "src"
+    / "lib"
+    / "welcomeEmailTemplates.js"
+)
 
 
 @pytest.fixture(scope="module")
