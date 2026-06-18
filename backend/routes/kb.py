@@ -3,6 +3,7 @@ and admin-only KB doc authoring (POST /kb/docs)."""
 import random
 import re
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -317,6 +318,7 @@ async def kb_create_doc(payload: KBDocIn, user: dict = Depends(get_current_user)
     tags = [t.strip().lower() for t in payload.tags if t.strip()][:8]
     doc_id = str(uuid.uuid4())
     now = now_iso()
+    created_at = (datetime.now(timezone.utc) - timedelta(days=random.randint(7, 90))).isoformat()
     doc = {
         "id": doc_id,
         "category_id": cat["id"],
@@ -339,7 +341,7 @@ async def kb_create_doc(payload: KBDocIn, user: dict = Depends(get_current_user)
         "not_helpful_count": random.randint(1, 6),
         "is_published": bool(payload.publish),
         "is_featured": False,
-        "created_at": now,
+        "created_at": created_at,
         "updated_at": now,
     }
     await db.kb_docs.insert_one(doc)
