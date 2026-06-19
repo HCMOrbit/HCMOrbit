@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Calendar,
   Newspaper,
@@ -79,24 +80,35 @@ const CATEGORY_PILL_STYLES = {
 const NEWS_ICONS = { bot: Bot, puzzle: Puzzle, ticket: Ticket, doc: FileText };
 
 function SectionHeader({ icon: Icon, title, viewAllHref = "#", dataTestId }) {
+  const isInternal = viewAllHref && viewAllHref !== "#" && viewAllHref.startsWith("/");
   return (
     <div className="flex items-center justify-between mb-5" data-testid={dataTestId}>
       <div className="inline-flex items-center gap-2.5">
         <Icon className="w-5 h-5 text-[#0D9373]" strokeWidth={2} />
         <h2 className="font-heading text-xl font-semibold text-[#0A1628] leading-none">{title}</h2>
       </div>
-      <a
-        href={viewAllHref}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0D9373] hover:text-[#0b7c61]"
-        data-testid={`${dataTestId}-view-all`}
-      >
-        View all <ArrowRight className="w-3.5 h-3.5" />
-      </a>
+      {isInternal ? (
+        <Link
+          to={viewAllHref}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0D9373] hover:text-[#0b7c61]"
+          data-testid={`${dataTestId}-view-all`}
+        >
+          View all <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      ) : (
+        <a
+          href={viewAllHref}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0D9373] hover:text-[#0b7c61]"
+          data-testid={`${dataTestId}-view-all`}
+        >
+          View all <ArrowRight className="w-3.5 h-3.5" />
+        </a>
+      )}
     </div>
   );
 }
 
-function EventCard({ ev }) {
+export function EventCard({ ev }) {
   const pill = CATEGORY_PILL_STYLES[ev.category] || CATEGORY_PILL_STYLES.DEFAULT;
   const gradient = CATEGORY_GRADIENT[ev.category] || CATEGORY_GRADIENT.DEFAULT;
   return (
@@ -154,7 +166,7 @@ function formatNewsDate(iso) {
   }
 }
 
-function NewsRow({ n, isLast }) {
+export function NewsRow({ n, isLast }) {
   // Tolerate both shapes: placeholder ({icon, headline, date, url}) and API
   // ({title, url, published_at, summary, source}).
   const Icon = NEWS_ICONS[n.icon] || FileText;
@@ -199,7 +211,7 @@ function normalizeCert(c) {
   return { ...c, tone, statusLabel: c.date_label || status };
 }
 
-function CertRow({ c, isLast }) {
+export function CertRow({ c, isLast }) {
   const n = normalizeCert(c);
   const tone = TONE_STYLES[n.tone] || TONE_STYLES.teal;
   return (
@@ -270,7 +282,7 @@ export default function Ecosystem() {
 
         {/* Upcoming events */}
         <section className="mb-12" data-testid="events-section">
-          <SectionHeader icon={Calendar} title="Upcoming events" dataTestId="events-section-header" />
+          <SectionHeader icon={Calendar} title="Upcoming events" viewAllHref="/ecosystem/events" dataTestId="events-section-header" />
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="events-list">
             {events.map((ev) => <EventCard key={ev.id} ev={ev} />)}
           </div>
@@ -280,14 +292,14 @@ export default function Ecosystem() {
         <section className="grid lg:grid-cols-2 gap-6 lg:gap-8">
 
           <div data-testid="news-section">
-            <SectionHeader icon={Newspaper} title="Community news" dataTestId="news-section-header" />
+            <SectionHeader icon={Newspaper} title="Community news" viewAllHref="/ecosystem/news" dataTestId="news-section-header" />
             <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden" data-testid="news-list">
               {news.map((n, i) => <NewsRow key={n.id} n={n} isLast={i === news.length - 1} />)}
             </div>
           </div>
 
           <div data-testid="certs-section">
-            <SectionHeader icon={ClipboardList} title="Certification watch" dataTestId="certs-section-header" />
+            <SectionHeader icon={ClipboardList} title="Certification watch" viewAllHref="/ecosystem/certifications" dataTestId="certs-section-header" />
             <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden" data-testid="certs-list">
               {certs.map((c, i) => <CertRow key={c.id} c={c} isLast={i === certs.length - 1} />)}
             </div>

@@ -27,6 +27,9 @@ import AdminKnowledgeBase from "@/pages/admin/AdminKnowledgeBase";
 import AdminEmailPreviews from "@/pages/admin/AdminEmailPreviews";
 import AdminEcosystem, { RedirectToEvents, RedirectToCertifications } from "@/pages/admin/AdminEcosystem";
 import Ecosystem from "@/pages/Ecosystem";
+import EcosystemEvents from "@/pages/ecosystem/EcosystemEvents";
+import EcosystemNews from "@/pages/ecosystem/EcosystemNews";
+import EcosystemCertifications from "@/pages/ecosystem/EcosystemCertifications";
 import KBHome from "@/pages/kb/KBHome";
 import KBCategory from "@/pages/kb/KBCategory";
 import KBSearch from "@/pages/kb/KBSearch";
@@ -84,6 +87,9 @@ function AppRoutes() {
       <Route path="/cookies" element={<Cookies />} />
       <Route path="/why-hcmorbit" element={<WhyHCMOrbit />} />
       <Route path="/ecosystem" element={<Ecosystem />} />
+      <Route path="/ecosystem/events" element={<EcosystemEvents />} />
+      <Route path="/ecosystem/news" element={<EcosystemNews />} />
+      <Route path="/ecosystem/certifications" element={<EcosystemCertifications />} />
       <Route path="/about/why-hcmorbit" element={<WhyHCMOrbit />} />
     </Routes>
   );
