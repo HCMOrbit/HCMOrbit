@@ -211,7 +211,7 @@ export default function EcosystemEvents() {
             className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"
             data-testid="events-list"
           >
-            {filtered.map((ev) => <EventCard key={ev.id} ev={ev} />)}
+            {filtered.map((ev) => <EventCard key={ev.id} ev={ev} expanded />)}
           </div>
         )}
       </main>

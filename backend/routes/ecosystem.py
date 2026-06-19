@@ -32,7 +32,7 @@ async def list_ecosystem_news(limit: int = Query(5, ge=1, le=50)):
 EVENT_TYPES = {"RUG", "Conference", "Webinar"}
 EVENT_PUBLIC_PROJECTION = {
     "_id": 0, "id": 1, "title": 1, "event_type": 1, "date": 1, "time": 1,
-    "timezone": 1, "sponsor": 1, "location": 1, "register_url": 1, "is_published": 1,
+    "timezone": 1, "sponsor": 1, "location": 1, "register_url": 1, "description": 1, "is_published": 1,
 }
 
 
@@ -45,6 +45,7 @@ class EventIn(BaseModel):
     sponsor: Optional[str] = None
     location: Optional[str] = None
     register_url: Optional[str] = None
+    description: Optional[str] = None
     is_published: bool = True
 
 
@@ -57,6 +58,7 @@ class EventPatch(BaseModel):
     sponsor: Optional[str] = None
     location: Optional[str] = None
     register_url: Optional[str] = None
+    description: Optional[str] = None
     is_published: Optional[bool] = None
 
 

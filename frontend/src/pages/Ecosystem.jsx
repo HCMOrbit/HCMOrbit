@@ -298,7 +298,7 @@ function downloadIcs(ev) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function EventCard({ ev }) {
+export function EventCard({ ev, expanded = false }) {
   // Tolerate both shapes: placeholder ({category, date, host, location, url}) and
   // API ({event_type, date, time, timezone, sponsor, location, register_url}).
   const category = ev.category || ev.event_type || "DEFAULT";
@@ -358,6 +358,14 @@ export function EventCard({ ev }) {
             </li>
           )}
         </ul>
+        {ev.description && (
+          <p
+            className={`text-[13px] text-[#475569] leading-relaxed ${expanded ? "whitespace-pre-line" : "line-clamp-2"}`}
+            data-testid={`event-${ev.id}-description`}
+          >
+            {ev.description}
+          </p>
+        )}
         <a
           href={url}
           target={url && url !== "#" ? "_blank" : undefined}

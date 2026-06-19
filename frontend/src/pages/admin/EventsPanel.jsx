@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { ecoInputCls, EcoFormField, EcoFormShell, EcoRowActions, EcoStatusPill } from "../../components/admin/EcoPrimitives";
 
 const EVENT_TYPES = ["RUG", "Conference", "Webinar"];
-const EMPTY = { title: "", event_type: "RUG", date: "", time: "", timezone: "", sponsor: "", location: "", register_url: "", is_published: true };
+const EMPTY = { title: "", event_type: "RUG", date: "", time: "", timezone: "", sponsor: "", location: "", register_url: "", description: "", is_published: true };
 
 export default function EventsPanel() {
   const [events, setEvents] = useState([]);
@@ -49,6 +49,7 @@ export default function EventsPanel() {
         time:         data.time        ?? f.time,
         sponsor:      data.sponsor     ?? f.sponsor,
         location:     data.location    ?? f.location,
+        description:  data.description ?? f.description,
         register_url: data.register_url ?? fetchUrl.trim(),
       }));
       toast.success(`Auto-filled from ${data.source === "jsonld" ? "structured data" : "page metadata"}.`);
@@ -151,6 +152,16 @@ export default function EventsPanel() {
           </EcoFormField>
           <EcoFormField label="Register URL">
             <input type="url" placeholder="https://…" value={form.register_url} onChange={(e)=>setForm({...form,register_url:e.target.value})} className={ecoInputCls} data-testid="event-form-url" />
+          </EcoFormField>
+          <EcoFormField label="Description" wide>
+            <textarea
+              rows={4}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Short blurb about the event — shown as a preview on the event card and in full on /ecosystem/events."
+              className={`${ecoInputCls} resize-y leading-relaxed`}
+              data-testid="event-form-description"
+            />
           </EcoFormField>
           <EcoFormField label="Published" wide>
             <label className="inline-flex items-center gap-2 text-sm text-[#475569]">
