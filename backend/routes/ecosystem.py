@@ -3,10 +3,11 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 
 from core import db, now_iso
 from dependencies import require_admin, log_admin_action
+from event_scraper import fetch_event_metadata
 
 router = APIRouter()
 
@@ -80,6 +81,21 @@ async def list_events_admin(admin: dict = Depends(require_admin)):
     """All events (published + drafts), soonest first — for the admin manager."""
     cursor = db.ecosystem_events.find({}, EVENT_PUBLIC_PROJECTION).sort("date", 1)
     return {"items": await cursor.to_list(500)}
+
+
+# Body shape for the "Paste URL → auto-fill" admin helper. Kept loose so a
+# typo never bounces with a 422 — the scraper itself fails silently downstream.
+class FetchUrlBody(BaseModel):
+    url: HttpUrl
+
+
+@router.post("/admin/ecosystem/events/fetch-url")
+async def admin_fetch_event_url(body: FetchUrlBody, admin: dict = Depends(require_admin)):
+    """Best-effort scrape of an event URL → returns whatever fields it could
+    extract (title, description, date, time, sponsor, location, event_type,
+    register_url, source). Frontend pre-fills the create-event form with these.
+    """
+    return await fetch_event_metadata(str(body.url))
 
 
 @router.post("/admin/ecosystem/events")

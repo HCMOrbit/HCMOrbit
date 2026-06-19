@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Calendar as CalIcon } from "lucide-react";
+import { Plus, Calendar as CalIcon, Link2, Loader2 } from "lucide-react";
 import { api, formatApiError } from "../../lib/api";
 import { toast } from "sonner";
 import { ecoInputCls, EcoFormField, EcoFormShell, EcoRowActions, EcoStatusPill } from "../../components/admin/EcoPrimitives";
@@ -13,6 +13,8 @@ export default function EventsPanel() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [fetchUrl, setFetchUrl] = useState("");
+  const [fetching, setFetching] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
@@ -22,9 +24,40 @@ export default function EventsPanel() {
   };
   useEffect(() => { refresh(); }, []);
 
-  const openCreate = () => { setForm(EMPTY); setEditing("new"); };
-  const openEdit   = (ev) => { setForm({ ...EMPTY, ...ev }); setEditing(ev.id); };
-  const closeForm  = () => { setEditing(null); setForm(EMPTY); };
+  const openCreate = () => { setForm(EMPTY); setFetchUrl(""); setEditing("new"); };
+  const openEdit   = (ev) => { setForm({ ...EMPTY, ...ev }); setFetchUrl(""); setEditing(ev.id); };
+  const closeForm  = () => { setEditing(null); setForm(EMPTY); setFetchUrl(""); };
+
+  // Best-effort URL → form pre-fill. Toast on full miss; keep manual entry path open.
+  const fetchFromUrl = async () => {
+    if (!fetchUrl.trim()) return;
+    setFetching(true);
+    try {
+      const { data } = await api.post("/admin/ecosystem/events/fetch-url", { url: fetchUrl.trim() });
+      // Source === "unknown" means the scraper got nothing meaningful.
+      const hit = data?.source && data.source !== "unknown" && (data.title || data.date);
+      if (!hit) {
+        toast.error("Could not auto-fill — please fill in manually.");
+        setForm((f) => ({ ...f, register_url: data?.register_url || fetchUrl.trim() }));
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        title:        data.title       ?? f.title,
+        event_type:   data.event_type  ?? f.event_type,
+        date:         data.date        ?? f.date,
+        time:         data.time        ?? f.time,
+        sponsor:      data.sponsor     ?? f.sponsor,
+        location:     data.location    ?? f.location,
+        register_url: data.register_url ?? fetchUrl.trim(),
+      }));
+      toast.success(`Auto-filled from ${data.source === "jsonld" ? "structured data" : "page metadata"}.`);
+    } catch (e) {
+      toast.error("Could not auto-fill — please fill in manually.");
+    } finally {
+      setFetching(false);
+    }
+  };
 
   const save = async (e) => {
     e.preventDefault();
@@ -64,6 +97,35 @@ export default function EventsPanel() {
           onClose={closeForm} onSubmit={save} saving={saving}
           submitLabel={editing === "new" ? "Create event" : "Save changes"} testIdPrefix="event"
         >
+          <EcoFormField label="Paste event URL (auto-fill)" wide>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+                <input
+                  type="url"
+                  value={fetchUrl}
+                  onChange={(e) => setFetchUrl(e.target.value)}
+                  placeholder="https://www.eventbrite.com/e/…  or  https://workday.com/…/event"
+                  className={`${ecoInputCls} pl-9`}
+                  data-testid="event-form-fetch-url"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); fetchFromUrl(); } }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={fetchFromUrl}
+                disabled={fetching || !fetchUrl.trim()}
+                data-testid="event-form-fetch-btn"
+                className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-md border border-[#0D9373] text-[#0D9373] hover:bg-[#F0FDF4] text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {fetching ? <><Loader2 className="w-4 h-4 animate-spin" /> Fetching…</> : <>Fetch details</>}
+              </button>
+            </div>
+            <p className="mt-1.5 text-xs text-[#94A3B8] leading-snug">
+              Works best with Eventbrite. Falls back to OpenGraph for any page. Review and correct the fields below before saving.
+            </p>
+          </EcoFormField>
+
           <EcoFormField label="Title *">
             <input required value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} className={ecoInputCls} data-testid="event-form-title" />
           </EcoFormField>
