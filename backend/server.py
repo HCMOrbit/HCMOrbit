@@ -22,6 +22,7 @@ from routes.feedback import router as feedback_router
 from routes.ecosystem import router as ecosystem_router
 from welcome_emails import process_welcome_queue
 from jobs.rss_fetch import fetch_workday_news
+from jobs.event_archive import archive_stale_events
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
@@ -134,9 +135,14 @@ async def on_startup():
     scheduler.add_job(fetch_workday_news, "interval", hours=24, id="rss_fetch_workday",
                       next_run_time=datetime.now(timezone.utc) + timedelta(seconds=5),
                       max_instances=1, coalesce=True)
+    # Ecosystem events auto-archive (older than 90d): same cadence, slight offset
+    scheduler.add_job(archive_stale_events, "interval", hours=24, id="ecosystem_event_auto_archive",
+                      next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
+                      max_instances=1, coalesce=True)
     scheduler.start()
     app.state.scheduler = scheduler
-    log.info("Schedulers started — welcome_emails (1h), rss_fetch_workday (24h, first run +5s)")
+    log.info("Schedulers started — welcome_emails (1h), rss_fetch_workday (24h, first run +5s), "
+             "ecosystem_event_auto_archive (24h, first run +10s)")
 
 
 @app.on_event("shutdown")
