@@ -475,27 +475,11 @@ export function CertRow({ c, isLast }) {
 
 // ── Tile variants (used on the Ecosystem hub grid) ─────────────────────────
 
-const NEWS_FALLBACK_GRADIENTS = [
-  "linear-gradient(135deg, #134E4A 0%, #0D9373 50%, #0A1628 100%)",
-  "linear-gradient(135deg, #1E3A8A 0%, #1E40AF 45%, #0A1628 100%)",
-  "linear-gradient(135deg, #581C87 0%, #7E22CE 45%, #0A1628 100%)",
-  "linear-gradient(135deg, #0F766E 0%, #14B8A6 45%, #0A1628 100%)",
-];
-
-/** Deterministic fallback gradient based on a stable string key. */
-function fallbackGradient(key) {
-  if (!key) return NEWS_FALLBACK_GRADIENTS[0];
-  let hash = 0;
-  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0;
-  return NEWS_FALLBACK_GRADIENTS[Math.abs(hash) % NEWS_FALLBACK_GRADIENTS.length];
-}
-
 export function NewsTile({ n }) {
   const title = n.headline || n.title || "(untitled)";
   const dateLine = n.date || formatNewsDate(n.published_at);
   const url = n.url || "#";
   const hasExternalUrl = url && url !== "#";
-  const Icon = NEWS_ICONS[n.icon] || FileText;
   const [imgFailed, setImgFailed] = useState(false);
   const showImage = !!n.image_url && !imgFailed;
   return (
@@ -507,8 +491,7 @@ export function NewsTile({ n }) {
       data-testid={`news-tile-${n.id || n.url}`}
     >
       <div
-        className="h-[140px] relative flex items-center justify-center overflow-hidden"
-        style={showImage ? undefined : { background: fallbackGradient(title) }}
+        className="h-[140px] relative flex items-center justify-center overflow-hidden bg-[#0A1628]"
       >
         {showImage ? (
           <img
@@ -519,7 +502,14 @@ export function NewsTile({ n }) {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
-          <Icon className="w-9 h-9 text-white/70" strokeWidth={1.5} />
+          // Brand mark fallback — mirrors the NavHeader logo (navy square + teal dot)
+          // but scaled up to fill the tile area.
+          <div
+            className="w-16 h-16 rounded-lg bg-[#0A1628] flex items-center justify-center ring-1 ring-white/10 group-hover:ring-[#0D9373]/30 transition-all"
+            aria-label="HCMOrbit"
+          >
+            <div className="w-7 h-7 rounded-full bg-[#0D9373] group-hover:scale-110 transition-transform" />
+          </div>
         )}
       </div>
       <div className="p-5 flex flex-col gap-2.5 flex-1">
