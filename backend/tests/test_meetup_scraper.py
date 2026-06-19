@@ -1,9 +1,4 @@
 """Unit tests for jobs/meetup_scraper.py — parsing + relevance filter only."""
-import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from jobs.meetup_scraper import (
     _finalize_doc,
     _is_relevant,

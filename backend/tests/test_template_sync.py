@@ -10,14 +10,10 @@ The test is intentionally a substring match (not a structural diff) so that
 trivial differences (whitespace, attribute order, JS-vs-Python formatting)
 don't cause false positives.
 """
-import os
 import re
-import sys
 from pathlib import Path
 
 import pytest
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from welcome_emails import (
     _email_1_html,

@@ -1,9 +1,4 @@
 """Unit tests for the event URL auto-fill scraper."""
-import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from event_scraper import (
     _format_location,
     _format_organizer,

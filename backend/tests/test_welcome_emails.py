@@ -1,14 +1,10 @@
 """Unit tests for the welcome email sequence (no external network)."""
 import asyncio
-import os
-import sys
 import uuid
 from datetime import datetime, timezone, timedelta
 
 import pytest
 import pytest_asyncio  # noqa: F401  (registers the asyncio mode)
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import welcome_emails as we
 from welcome_emails import _email_1_html, _email_2_html, _email_3_html, process_welcome_queue
