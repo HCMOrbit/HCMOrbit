@@ -65,18 +65,14 @@ const PLACEHOLDER_CERTS = [
 
 // ── Visual primitives ──────────────────────────────────────────────────────
 
-const CATEGORY_GRADIENT = {
-  RUG:        "linear-gradient(135deg, #134E4A 0%, #0D9373 55%, #0A1628 100%)",
-  CONFERENCE: "linear-gradient(135deg, #1E3A8A 0%, #1E40AF 45%, #0A1628 100%)",
-  WEBINAR:    "linear-gradient(135deg, #581C87 0%, #7E22CE 45%, #0A1628 100%)",
-  DEFAULT:    "linear-gradient(135deg, #0D9373 0%, #134E4A 50%, #0A1628 100%)",
-};
-
-const CATEGORY_BADGE_STYLES = {
-  RUG:        { bg: "#0D9373", color: "#FFFFFF" },   // solid teal
-  CONFERENCE: { bg: "#1B3A6B", color: "#FFFFFF" },   // solid blue
-  WEBINAR:    { bg: "#7C3AED", color: "#FFFFFF" },   // solid purple
-  DEFAULT:    { bg: "#0A1628", color: "#FFFFFF" },   // navy fallback
+// Per-type styling for the EventCard banner: dark solid background + large
+// accent-colored type word + small subtitle line below. Matches the spec
+// banner design (no gradient, no pill).
+const CATEGORY_BANNER = {
+  RUG:        { bg: "#0A1628", accent: "#0D9373", subtitle: "Regional User Group" },
+  CONFERENCE: { bg: "#0C2A5E", accent: "#5B9BD5", subtitle: "Workday Official" },
+  WEBINAR:    { bg: "#2D1B69", accent: "#A78BFA", subtitle: "Online Session" },
+  DEFAULT:    { bg: "#0A1628", accent: "#0D9373", subtitle: "Workday Community Event" },
 };
 
 const NEWS_ICONS = { bot: Bot, puzzle: Puzzle, ticket: Ticket, doc: FileText };
@@ -305,8 +301,7 @@ export function EventCard({ ev, expanded = false }) {
   const categoryKey = category === "Conference" ? "CONFERENCE"
                     : category === "Webinar"    ? "WEBINAR"
                     : category;
-  const badge = CATEGORY_BADGE_STYLES[categoryKey] || CATEGORY_BADGE_STYLES.DEFAULT;
-  const gradient = CATEGORY_GRADIENT[categoryKey] || CATEGORY_GRADIENT.DEFAULT;
+  const banner = CATEGORY_BANNER[categoryKey] || CATEGORY_BANNER.DEFAULT;
   const host = ev.host || ev.sponsor;
   const url = ev.url || ev.register_url || "#";
   const gcalUrl = buildGoogleCalendarUrl(ev);
@@ -327,17 +322,26 @@ export function EventCard({ ev, expanded = false }) {
       className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow"
       data-testid={`event-${ev.id}`}
     >
-      {/* Gradient header with a prominent, centered category badge */}
-      <div className="h-[160px] relative" style={{ background: gradient }}>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span
-            className="inline-flex items-center px-5 py-2.5 rounded-full text-base font-extrabold tracking-wide shadow-lg shadow-black/20"
-            style={{ background: badge.bg, color: badge.color }}
-            data-testid={`event-${ev.id}-badge`}
-          >
-            {category === "DEFAULT" ? "Event" : category}
-          </span>
-        </div>
+      {/* Solid dark banner with large type word + subtitle, per spec */}
+      <div
+        className="h-[160px] relative overflow-hidden flex flex-col items-center justify-center"
+        style={{ background: banner.bg }}
+        data-testid={`event-${ev.id}-banner`}
+      >
+        <span
+          className="font-extrabold leading-none whitespace-nowrap text-[42px]"
+          style={{ color: banner.accent }}
+          data-testid={`event-${ev.id}-type`}
+        >
+          {category === "DEFAULT" ? "Event" : category}
+        </span>
+        <span
+          className="mt-2 text-[11px] font-semibold uppercase tracking-[0.18em]"
+          style={{ color: banner.accent, opacity: 0.6 }}
+          data-testid={`event-${ev.id}-subtitle`}
+        >
+          {banner.subtitle}
+        </span>
       </div>
 
       {/* Body */}
