@@ -29,6 +29,10 @@ FEEDS = [
      "url": "https://blog.workday.com/en-us/feed.xml"},
     {"name": "Workday News",
      "url": "https://news.google.com/rss/search?q=Workday+HCM&hl=en-US&gl=US&ceid=US:en"},
+    {"name": "UC Today",
+     "url": "https://uctoday.com/feed/"},
+    {"name": "HR Executive",
+     "url": "https://hrexecutive.com/feed/"},
 ]
 
 KEEP_RECENT = 50
