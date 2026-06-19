@@ -48,6 +48,16 @@ HCMOrbit is an independent professional Q&A community for the HCM (Workday) ecos
 - **[Feb 2026] Backend refactor**: `server.py` split from ~2000 lines into `routes/` (auth, community, kb, admin) + `core.py` + `schemas.py` + `dependencies.py`; zero behavior change verified via curl + 40 pytest tests passing
 - **[Feb 2026] Feedback endpoint `POST /api/feedback`**: persists submissions to MongoDB `feedback` collection AND sends Resend email notification (best-effort, non-blocking) — wired to `routes/feedback.py`. Sender `onboarding@resend.dev` (sandbox), recipient `support@hcmorbit.com` until `hcmorbit.com` domain is verified on Resend; then switch to `noreply@hcmorbit.com` → `admin@hcmorbit.com`.
 - **[Feb 2026] 3-step welcome email sequence** (`/app/backend/welcome_emails.py`): Email 1 sent immediately on register (both `/auth/register` and `/auth/emergent-session` for net-new users), Email 2 at +2 days, Email 3 at +5 days. APScheduler hourly job (`process_welcome_queue`) picks up backlog; per-user timestamps (`welcome_email_{1,2,3}_sent`) guarantee idempotency. Throttled at ~3 req/sec to stay under Resend's 5/sec limit. Seed/demo (`@hcmorbit.demo`) users excluded. Sender: `suchi@hcmorbit.com` (requires `hcmorbit.com` domain verification on Resend to deliver). 5 unit tests covering templates, eligibility windows, and idempotency.
+- **[Feb 2026] Ecosystem hub** `/ecosystem` (events, news, certifications) + Admin manager `/admin/ecosystem` (tabbed). RSS hourly fetch (Google News) + APScheduler auto-archive of stale events (>90 days).
+- **[Feb 2026] Ecosystem destination pages** `/ecosystem/events`, `/ecosystem/news`, `/ecosystem/certifications`: dark-navy hero + breadcrumb (Home > Ecosystem > Section), reuses exported `EventCard`/`NewsRow`/`CertRow` components from `Ecosystem.jsx`, fetches public API with empty-state UX. `SectionHeader` view-all links switched to react-router `Link` for SPA navigation. Shared `EcosystemSubpageHero.jsx`. **Frontend tested by testing_agent_v3 at 100% success (8/8 acceptance criteria).**
+- **[Feb 2026] Events filter bar** on `/ecosystem/events`: client-side chip filters for Type (All / RUG / Conference / Webinar) and Month (All + current month + next 3 dynamically). "Clear filters" link + dedicated "no matches" empty state. Count updates as "X of Y" when filters active. `EventCard` made tolerant of both API (`event_type`, `sponsor`, `register_url`, ISO `date` + separate `time`/`timezone`) and placeholder shapes, so the type pill + formatted date now render correctly for API-fed cards.
+- **[Feb 2026] Ecosystem hub layout — full tile-grid redesign**: All three sections (`Events`, `News`, `Certs`) now use a consistent 3-col tile-grid treatment on the hub.
+  - **Events**: capped at 3 on `/ecosystem` (single clean row), "View all" routes to `/ecosystem/events` for the rest.
+  - **News**: replaced row list with `NewsTile` cards. RSS fetcher (`jobs/rss_fetch.py`) now extracts `image_url` from feedparser's `media_content` / `media_thumbnail` / `enclosures` / inline `<img>` (in that priority order); public news endpoint projection includes `image_url`. Tile shows og-style image when available, deterministic gradient + icon fallback when not. Source pill + date below title (line-clamp-3). Opens in new tab.
+  - **Best-effort og:image scraper** (`_scrape_og_image`): runs as part of the existing 24h RSS job, only on **newly-inserted** articles when no media-field image was found. Uses `httpx.AsyncClient` with 3s timeout, follows redirects, parses `<meta property="og:image">` with a tolerant regex (handles either attribute ordering), fails silently on any error. `image_url` + `image_resolved_at` set via `$setOnInsert` so each article is scraped exactly once and never retried (per-doc permanent cache). Verified: first run scraped 60/60, second run scraped 0/0 (idempotent). 66 pytest pass.
+  - **RSS sources** (`FEEDS` list): Workday Blog (XML invalid, fails gracefully), Google News (Workday HCM query), **UC Today** (`https://uctoday.com/feed/`), **HR Executive** (`https://hrexecutive.com/feed/`). UC Today and HR Executive yield ~90% og:image coverage, giving Community News a rich editorial look.
+  - **Certs**: replaced row list with `CertTile` cards — large colored band (teal / amber / bright-teal) with status word (NEW / UPCOMING / RELEASED) prominently anchored, name as headline, `date_label` below.
+  - `NewsRow` / `CertRow` row components preserved unchanged for the existing list-layout subpages (`/ecosystem/news`, `/ecosystem/certifications`).
 
 ## Key DB schemas
 - `users`, `posts`, `comments`, `votes`, `categories`, `bookmarks`
@@ -62,7 +72,9 @@ HCMOrbit is an independent professional Q&A community for the HCM (Workday) ecos
 
 ## Roadmap
 ### P1 — Next up
-- Full User Profile page `/profile/[username]`: follower logic, paginated answers/questions tabs, reputation breakdown
+- Custom domain `hcmorbit.com` setup (platform-level — needs support_agent guidance)
+- Admin moderation tools: post moderation actions, user impersonation, reporting workflows (from original PRD)
+- Production run of `migrate_seed_kb_engagement.py` against Atlas (user-driven; preview pod lacks prod `MONGO_URL`)
 
 ### P2 — Soon
 - Add `/app/backend/tests` pytest suite for the new route structure (refresh KB tests to reflect admin-only authoring policy)

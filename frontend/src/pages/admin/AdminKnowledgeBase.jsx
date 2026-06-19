@@ -6,6 +6,7 @@ import AdminLayout from "../../components/AdminLayout";
 import ConfirmModal from "../../components/ConfirmModal";
 import { DocTypeBadge, DifficultyBadge } from "../../components/kb/KBBadges";
 import KBDocxUploadModal from "./KBDocxUploadModal";
+import KBDocxBulkUploadModal from "./KBDocxBulkUploadModal";
 import { api, timeAgo, formatApiError } from "../../lib/api";
 import { toast } from "sonner";
 
@@ -32,6 +33,7 @@ export default function AdminKnowledgeBase() {
   const [editingCategory, setEditingCategory] = useState(null);
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   // Two-level collapse state. All modules + sub-modules start collapsed.
   const [expandedModules, setExpandedModules] = useState(new Set());
   const [expandedSubs, setExpandedSubs] = useState(new Set());
@@ -171,6 +173,13 @@ export default function AdminKnowledgeBase() {
           className="inline-flex items-center gap-2 px-4 py-2 rounded bg-[#0D9373] hover:bg-[#0b7c61] text-sm font-medium text-white"
         >
           <Upload className="w-4 h-4" /> Upload .docx
+        </button>
+        <button
+          onClick={() => setShowBulkUploadModal(true)}
+          data-testid="open-kb-bulk-upload-btn"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded border border-[#0D9373] text-[#0D9373] hover:bg-[#F0FDF4] text-sm font-medium"
+        >
+          <Layers className="w-4 h-4" /> Bulk upload
         </button>
         <button
           onClick={() => setShowCategoryPanel((v) => !v)}
@@ -432,6 +441,13 @@ export default function AdminKnowledgeBase() {
         <KBDocxUploadModal
           onClose={() => setShowUploadModal(false)}
           onSaved={() => { setShowUploadModal(false); loadDocs(); loadStats(); }}
+        />
+      )}
+
+      {showBulkUploadModal && (
+        <KBDocxBulkUploadModal
+          onClose={() => setShowBulkUploadModal(false)}
+          onSaved={() => { loadDocs(); loadStats(); loadCategories(); }}
         />
       )}
     </AdminLayout>
