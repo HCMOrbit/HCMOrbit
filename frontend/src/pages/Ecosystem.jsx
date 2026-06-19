@@ -109,8 +109,28 @@ function SectionHeader({ icon: Icon, title, viewAllHref = "#", dataTestId }) {
 }
 
 export function EventCard({ ev }) {
-  const pill = CATEGORY_PILL_STYLES[ev.category] || CATEGORY_PILL_STYLES.DEFAULT;
-  const gradient = CATEGORY_GRADIENT[ev.category] || CATEGORY_GRADIENT.DEFAULT;
+  // Tolerate both shapes: placeholder ({category, date, host, location, url}) and
+  // API ({event_type, date, time, timezone, sponsor, location, register_url}).
+  const category = ev.category || ev.event_type || "DEFAULT";
+  const categoryKey = category === "Conference" ? "CONFERENCE"
+                    : category === "Webinar"    ? "WEBINAR"
+                    : category;
+  const pill = CATEGORY_PILL_STYLES[categoryKey] || CATEGORY_PILL_STYLES.DEFAULT;
+  const gradient = CATEGORY_GRADIENT[categoryKey] || CATEGORY_GRADIENT.DEFAULT;
+  const host = ev.host || ev.sponsor;
+  const url = ev.url || ev.register_url || "#";
+  // Format date line: prefer combined placeholder string; otherwise build from API fields.
+  let dateLine = ev.date || "";
+  if (dateLine && !dateLine.includes("·")) {
+    try {
+      const d = new Date(dateLine);
+      if (!Number.isNaN(d.getTime())) {
+        dateLine = d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+      }
+    } catch { /* leave as-is */ }
+    if (ev.time) dateLine += ` · ${ev.time}`;
+    if (ev.timezone) dateLine += ` ${ev.timezone}`;
+  }
   return (
     <div
       className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow"
@@ -122,7 +142,7 @@ export function EventCard({ ev }) {
           className="absolute left-5 bottom-5 inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border"
           style={{ background: pill.bg, color: pill.color, borderColor: pill.border }}
         >
-          {ev.category}
+          {category}
         </span>
       </div>
 
@@ -132,20 +152,24 @@ export function EventCard({ ev }) {
         <ul className="space-y-1.5 text-[13px] text-[#475569]">
           <li className="flex items-start gap-2">
             <Calendar className="w-3.5 h-3.5 text-[#0D9373] shrink-0 mt-0.5" />
-            <span>{ev.date}</span>
+            <span>{dateLine}</span>
           </li>
-          <li className="flex items-start gap-2">
-            <Building2 className="w-3.5 h-3.5 text-[#0D9373] shrink-0 mt-0.5" />
-            <span>{ev.host}</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <MapPin className="w-3.5 h-3.5 text-[#0D9373] shrink-0 mt-0.5" />
-            <span>{ev.location}</span>
-          </li>
+          {host && (
+            <li className="flex items-start gap-2">
+              <Building2 className="w-3.5 h-3.5 text-[#0D9373] shrink-0 mt-0.5" />
+              <span>{host}</span>
+            </li>
+          )}
+          {ev.location && (
+            <li className="flex items-start gap-2">
+              <MapPin className="w-3.5 h-3.5 text-[#0D9373] shrink-0 mt-0.5" />
+              <span>{ev.location}</span>
+            </li>
+          )}
         </ul>
         <a
-          href={ev.url || "#"}
-          target={ev.url && ev.url !== "#" ? "_blank" : undefined}
+          href={url}
+          target={url && url !== "#" ? "_blank" : undefined}
           rel="noopener noreferrer"
           className="mt-2 inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-md border border-[#E2E8F0] text-sm font-semibold text-[#0A1628] hover:border-[#0D9373] hover:text-[#0D9373] transition-colors"
           data-testid={`event-${ev.id}-register`}
