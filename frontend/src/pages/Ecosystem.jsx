@@ -72,11 +72,11 @@ const CATEGORY_GRADIENT = {
   DEFAULT:    "linear-gradient(135deg, #0D9373 0%, #134E4A 50%, #0A1628 100%)",
 };
 
-const CATEGORY_PILL_STYLES = {
-  RUG:        { bg: "rgba(13, 147, 115, 0.16)",  color: "#5EEAD4", border: "rgba(94, 234, 212, 0.40)" },
-  CONFERENCE: { bg: "rgba(59, 130, 246, 0.18)",  color: "#93C5FD", border: "rgba(147, 197, 253, 0.40)" },
-  WEBINAR:    { bg: "rgba(168, 85, 247, 0.18)",  color: "#D8B4FE", border: "rgba(216, 180, 254, 0.40)" },
-  DEFAULT:    { bg: "rgba(255, 255, 255, 0.10)", color: "#FFFFFF", border: "rgba(255, 255, 255, 0.25)" },
+const CATEGORY_BADGE_STYLES = {
+  RUG:        { bg: "#0D9373", color: "#FFFFFF" },   // solid teal
+  CONFERENCE: { bg: "#1B3A6B", color: "#FFFFFF" },   // solid blue
+  WEBINAR:    { bg: "#7C3AED", color: "#FFFFFF" },   // solid purple
+  DEFAULT:    { bg: "#0A1628", color: "#FFFFFF" },   // navy fallback
 };
 
 const NEWS_ICONS = { bot: Bot, puzzle: Puzzle, ticket: Ticket, doc: FileText };
@@ -305,7 +305,7 @@ export function EventCard({ ev, expanded = false }) {
   const categoryKey = category === "Conference" ? "CONFERENCE"
                     : category === "Webinar"    ? "WEBINAR"
                     : category;
-  const pill = CATEGORY_PILL_STYLES[categoryKey] || CATEGORY_PILL_STYLES.DEFAULT;
+  const badge = CATEGORY_BADGE_STYLES[categoryKey] || CATEGORY_BADGE_STYLES.DEFAULT;
   const gradient = CATEGORY_GRADIENT[categoryKey] || CATEGORY_GRADIENT.DEFAULT;
   const host = ev.host || ev.sponsor;
   const url = ev.url || ev.register_url || "#";
@@ -327,14 +327,17 @@ export function EventCard({ ev, expanded = false }) {
       className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow"
       data-testid={`event-${ev.id}`}
     >
-      {/* Gradient header with category pill anchored bottom-left */}
+      {/* Gradient header with a prominent, centered category badge */}
       <div className="h-[160px] relative" style={{ background: gradient }}>
-        <span
-          className="absolute left-5 bottom-5 inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border"
-          style={{ background: pill.bg, color: pill.color, borderColor: pill.border }}
-        >
-          {category}
-        </span>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span
+            className="inline-flex items-center px-5 py-2.5 rounded-full text-base font-extrabold tracking-wide shadow-lg shadow-black/20"
+            style={{ background: badge.bg, color: badge.color }}
+            data-testid={`event-${ev.id}-badge`}
+          >
+            {category === "DEFAULT" ? "Event" : category}
+          </span>
+        </div>
       </div>
 
       {/* Body */}
