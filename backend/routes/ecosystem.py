@@ -103,6 +103,34 @@ async def admin_fetch_event_url(body: FetchUrlBody, admin: dict = Depends(requir
     return await fetch_event_metadata(str(body.url))
 
 
+@router.post("/ecosystem/events/fetch-url")
+async def public_fetch_event_url(body: FetchUrlBody):
+    """Public version of the URL auto-fill scraper for the community submission
+    form. Reads only external public pages — no internal data exposed."""
+    return await fetch_event_metadata(str(body.url))
+
+
+@router.post("/ecosystem/events/submit", status_code=201)
+async def submit_event_public(ev: EventIn):
+    """Community submission — no auth required. Always stored as draft
+    (`is_published=False`) with `source='community'` for admin review.
+    Anything the client tries to set for `is_published` is ignored."""
+    _validate_event_type(ev.event_type)
+    if not (ev.title or "").strip():
+        raise HTTPException(400, "title is required")
+    if not (ev.date or "").strip():
+        raise HTTPException(400, "date is required")
+    if not (ev.register_url or "").strip():
+        raise HTTPException(400, "register_url is required")
+    doc = ev.model_dump()
+    doc["id"] = f"evt_{uuid.uuid4().hex[:12]}"
+    doc["is_published"] = False
+    doc["source"] = "community"
+    doc["submitted_at"] = now_iso()
+    await db.ecosystem_events.insert_one(doc)
+    return {"ok": True, "id": doc["id"]}
+
+
 @router.post("/admin/ecosystem/scrape-rugs")
 async def admin_scrape_rugs(admin: dict = Depends(require_admin)):
     """Trigger the WDBeacon RUG scraper on demand. Returns the run summary.

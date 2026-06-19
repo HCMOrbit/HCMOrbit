@@ -127,7 +127,7 @@ export default function EventsPanel() {
   };
 
   const today = new Date().toISOString().slice(0,10);
-  const SCRAPER_SOURCES = new Set(["wdbeacon", "meetup"]);
+  const SCRAPER_SOURCES = new Set(["wdbeacon", "meetup", "community"]);
   const scrapedPending = events.filter((e) => SCRAPER_SOURCES.has(e.source) && !e.is_published);
   const scrapedIds = new Set(scrapedPending.map((e) => e.id));
   const upcoming = events.filter((e) => !scrapedIds.has(e.id) && (!e.date || e.date >= today));
@@ -243,7 +243,7 @@ export default function EventsPanel() {
         onEdit={openEdit}
         onDelete={removeEvent}
         onPublish={publishOne}
-        emptyHint="No scraped drafts. Click 'Scrape RUGs now' or 'Scrape Meetup now' to pull events."
+        emptyHint="No pending submissions or scraped drafts. Use the scraper buttons above to pull events, or wait for community submissions."
         testid="events-scraped"
         showSource
       />
@@ -286,7 +286,9 @@ function EventTable({ label, rows, loading, onEdit, onDelete, onPublish, testid,
                     <td className="px-4 py-3" data-testid={`event-source-${ev.id}`}>
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider ${
-                          ev.source === "meetup"
+                          ev.source === "community"
+                            ? "bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC]"
+                            : ev.source === "meetup"
                             ? "bg-[#FEF3C7] text-[#B45309] border border-[#FCD34D]"
                             : "bg-[#FEF3C7] text-[#92400E]"
                         }`}
