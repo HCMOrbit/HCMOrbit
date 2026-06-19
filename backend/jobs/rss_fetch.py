@@ -8,11 +8,13 @@ unbounded.
 """
 import asyncio
 import logging
+import re
 import time
 from datetime import datetime, timezone
 from html import unescape
 
 import feedparser
+import httpx
 
 from core import db
 
@@ -50,7 +52,6 @@ def _truncate(text: str | None, max_chars: int = SUMMARY_MAX_CHARS) -> str:
         return ""
     cleaned = unescape(text).strip()
     # Strip simple HTML tags without pulling in a dependency
-    import re
     cleaned = re.sub(r"<[^>]+>", "", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     if len(cleaned) <= max_chars:
@@ -83,10 +84,47 @@ def _extract_image_url(entry) -> str | None:
     # 4. Inline <img src="..."> inside the summary/description HTML
     summary_html = entry.get("summary") or entry.get("description") or ""
     if summary_html:
-        import re
         m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', summary_html, re.IGNORECASE)
         if m:
             return m.group(1)
+    return None
+
+
+# Regex pair handles either ordering of og:image's `property` and `content` attrs.
+_OG_RE_A = re.compile(
+    r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']',
+    re.IGNORECASE,
+)
+_OG_RE_B = re.compile(
+    r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']',
+    re.IGNORECASE,
+)
+
+
+async def _scrape_og_image(url: str, timeout_s: float = 3.0) -> str | None:
+    """Best-effort GET of `url`, parse `<meta property="og:image">`.
+
+    Returns the image URL on success, None on any failure (timeout, non-2xx,
+    no og:image tag, network error). Caller must treat None as "we tried,
+    article has no usable og:image" and never retry.
+    """
+    try:
+        async with httpx.AsyncClient(
+            timeout=timeout_s,
+            follow_redirects=True,
+            headers={"User-Agent": "HCMOrbit-RSS/1.0"},
+        ) as client:
+            r = await client.get(url)
+        if r.status_code != 200:
+            return None
+        html = r.text
+        m = _OG_RE_A.search(html) or _OG_RE_B.search(html)
+        if m:
+            candidate = m.group(1).strip()
+            if candidate.startswith(("http://", "https://")):
+                return candidate
+    except Exception as e:  # noqa: BLE001
+        log.debug(f"og:image scrape failed for {url}: {e}")
     return None
 
 
@@ -103,6 +141,7 @@ async def fetch_workday_news() -> dict:
     total_new = 0
     total_seen = 0
     total_skipped_stale = 0
+    total_scraped = 0
     failures: list[str] = []
 
     # If we already have KEEP_RECENT items, only consider entries at least as new
@@ -144,20 +183,26 @@ async def fetch_workday_news() -> dict:
                     continue
                 summary = _truncate(entry.get("summary") or entry.get("description"))
                 image_url = _extract_image_url(entry)
-                doc = {
-                    "title": title,
-                    "url": url,
-                    "published_at": published_at,
-                    "summary": summary,
-                    "source": feed_cfg["name"],
-                    "image_url": image_url,
-                    "fetched_at": datetime.now(timezone.utc).isoformat(),
-                }
+                fetched_at = datetime.now(timezone.utc).isoformat()
+                # `image_url` + `image_resolved_at` go in $setOnInsert so they
+                # are written exactly once per article and never overwritten on
+                # subsequent RSS runs — gives us a permanent cache per the spec
+                # ("only fetch once per article, never re-fetch").
                 result = await db.ecosystem_news.update_one(
                     {"url": url},
                     {
-                        "$setOnInsert": {"first_seen_at": doc["fetched_at"]},
-                        "$set": {k: v for k, v in doc.items() if k != "fetched_at"},
+                        "$setOnInsert": {
+                            "first_seen_at": fetched_at,
+                            "image_url": image_url,
+                            "image_resolved_at": fetched_at,
+                        },
+                        "$set": {
+                            "title": title,
+                            "url": url,
+                            "published_at": published_at,
+                            "summary": summary,
+                            "source": feed_cfg["name"],
+                        },
                         "$currentDate": {"updated_at": True},
                     },
                     upsert=True,
@@ -165,6 +210,16 @@ async def fetch_workday_news() -> dict:
                 total_seen += 1
                 if result.upserted_id is not None:
                     total_new += 1
+                    # Best-effort og:image scrape — only on freshly-inserted
+                    # docs that didn't get an image from RSS media fields.
+                    if image_url is None:
+                        scraped = await _scrape_og_image(url)
+                        if scraped:
+                            await db.ecosystem_news.update_one(
+                                {"_id": result.upserted_id},
+                                {"$set": {"image_url": scraped}},
+                            )
+                            total_scraped += 1
         except Exception as e:  # noqa: BLE001
             failures.append(feed_cfg["name"])
             log.warning(f"RSS fetch failed for {feed_cfg['name']}: {e}")
@@ -178,8 +233,8 @@ async def fetch_workday_news() -> dict:
         pruned = result.deleted_count
 
     log.info(
-        f"RSS fetch complete — seen={total_seen} new={total_new} pruned={pruned} "
-        f"skipped_stale={total_skipped_stale} failures={failures or 'none'}"
+        f"RSS fetch complete — seen={total_seen} new={total_new} scraped_og={total_scraped} "
+        f"pruned={pruned} skipped_stale={total_skipped_stale} failures={failures or 'none'}"
     )
-    return {"seen": total_seen, "new": total_new, "pruned": pruned,
-            "skipped_stale": total_skipped_stale, "failures": failures}
+    return {"seen": total_seen, "new": total_new, "scraped_og": total_scraped,
+            "pruned": pruned, "skipped_stale": total_skipped_stale, "failures": failures}
