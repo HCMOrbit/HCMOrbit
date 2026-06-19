@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import {
   Calendar,
   CalendarPlus,
+  Download,
   Newspaper,
   ClipboardList,
   ArrowRight,
@@ -204,6 +205,99 @@ export function buildGoogleCalendarUrl(ev) {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
+// ── .ics download helpers ──────────────────────────────────────────────────
+
+/** Escape a value for ICS text fields per RFC 5545. */
+function icsEscape(s) {
+  return String(s ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r?\n/g, "\\n");
+}
+
+/** Build RFC-5545-compliant VCALENDAR/VEVENT text for `ev`. Returns null on no date. */
+export function buildIcsContent(ev) {
+  const dateCompact = compactDate(ev.date);
+  if (!dateCompact) return null;
+
+  const range = parseTimeRange(ev.time);
+  const tzAbbrev = (ev.timezone || "").toUpperCase().replace(/[^A-Z]/g, "");
+  const iana = TZ_ABBREV_TO_IANA[tzAbbrev];
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const uid = `${ev.id || dateCompact}-${Math.random().toString(36).slice(2, 8)}@hcmorbit.com`;
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//HCMOrbit//Events//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${stamp}`,
+  ];
+
+  if (range) {
+    const [s, e] = range;
+    const tzParam = iana ? `;TZID=${iana}` : "";
+    lines.push(`DTSTART${tzParam}:${dateCompact}T${pad(s.h)}${pad(s.m)}00`);
+    lines.push(`DTEND${tzParam}:${dateCompact}T${pad(e.h)}${pad(e.m)}00`);
+  } else {
+    // All-day: DTEND is exclusive (next day).
+    const y = parseInt(dateCompact.slice(0, 4), 10);
+    const m = parseInt(dateCompact.slice(4, 6), 10);
+    const d = parseInt(dateCompact.slice(6, 8), 10);
+    const nd = new Date(Date.UTC(y, m - 1, d + 1));
+    const endCompact = `${nd.getUTCFullYear()}${pad(nd.getUTCMonth() + 1)}${pad(nd.getUTCDate())}`;
+    lines.push(`DTSTART;VALUE=DATE:${dateCompact}`);
+    lines.push(`DTEND;VALUE=DATE:${endCompact}`);
+  }
+
+  lines.push(`SUMMARY:${icsEscape(ev.title || "Workday community event")}`);
+  if (ev.location) lines.push(`LOCATION:${icsEscape(ev.location)}`);
+
+  const host = ev.host || ev.sponsor;
+  const regUrl = ev.url || ev.register_url;
+  const descParts = [];
+  if (host) descParts.push(`Host: ${host}`);
+  if (regUrl && regUrl !== "#") descParts.push(`Register: ${regUrl}`);
+  descParts.push("Shared via HCMOrbit");
+  lines.push(`DESCRIPTION:${icsEscape(descParts.join("\n"))}`);
+  if (regUrl && regUrl !== "#") lines.push(`URL:${regUrl}`);
+
+  lines.push("END:VEVENT", "END:VCALENDAR");
+  return lines.join("\r\n");
+}
+
+/** Make a safe filename like `denver-rug-2026.ics` from event title + year. */
+export function icsFilename(ev) {
+  const slug = (ev.title || "event")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "event";
+  const year = (ev.date || "").slice(0, 4) || "tba";
+  // Avoid "rising-2026-2026.ics" when the title already contains the year.
+  const base = slug.endsWith(`-${year}`) || slug === year ? slug : `${slug}-${year}`;
+  return `${base}.ics`;
+}
+
+/** Trigger a browser download of the event as an .ics file. */
+function downloadIcs(ev) {
+  const content = buildIcsContent(ev);
+  if (!content) return;
+  const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = icsFilename(ev);
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function EventCard({ ev }) {
   // Tolerate both shapes: placeholder ({category, date, host, location, url}) and
   // API ({event_type, date, time, timezone, sponsor, location, register_url}).
@@ -273,17 +367,32 @@ export function EventCard({ ev }) {
         >
           Register now <ArrowRight className="w-3.5 h-3.5" />
         </a>
-        {gcalUrl && (
-          <a
-            href={gcalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-[#64748B] hover:text-[#0D9373] transition-colors"
-            data-testid={`event-${ev.id}-add-to-calendar`}
-          >
-            <CalendarPlus className="w-3.5 h-3.5" />
-            Add to calendar
-          </a>
+        {(gcalUrl || compactDate(ev.date)) && (
+          <div className="flex items-center justify-center gap-4">
+            {gcalUrl && (
+              <a
+                href={gcalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-[#64748B] hover:text-[#0D9373] transition-colors"
+                data-testid={`event-${ev.id}-add-to-calendar`}
+              >
+                <CalendarPlus className="w-3.5 h-3.5" />
+                Add to calendar
+              </a>
+            )}
+            {compactDate(ev.date) && (
+              <button
+                type="button"
+                onClick={() => downloadIcs(ev)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-[#64748B] hover:text-[#0D9373] transition-colors"
+                data-testid={`event-${ev.id}-download-ics`}
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download .ics
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
