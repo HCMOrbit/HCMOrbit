@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Calendar,
+  CalendarPlus,
   Newspaper,
   ClipboardList,
   ArrowRight,
@@ -108,6 +109,101 @@ function SectionHeader({ icon: Icon, title, viewAllHref = "#", dataTestId }) {
   );
 }
 
+// ── Google Calendar deep-link helpers ──────────────────────────────────────
+
+// Map common North American timezone abbreviations (incl. DST variants) to
+// IANA zones — Google Calendar accepts IANA zone names via the `ctz` param.
+const TZ_ABBREV_TO_IANA = {
+  PT: "America/Los_Angeles", PST: "America/Los_Angeles", PDT: "America/Los_Angeles",
+  MT: "America/Denver",      MST: "America/Denver",      MDT: "America/Denver",
+  CT: "America/Chicago",     CST: "America/Chicago",     CDT: "America/Chicago",
+  ET: "America/New_York",    EST: "America/New_York",    EDT: "America/New_York",
+  UTC: "UTC", GMT: "Etc/GMT",
+};
+
+/** "2026-06-17" → "20260617" (Google Cal compact date). Returns null on parse failure. */
+function compactDate(d) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || "");
+  return m ? `${m[1]}${m[2]}${m[3]}` : null;
+}
+
+/** Parse "4:00 PM" / "16:00" → {h, m}. Returns null if unparseable. */
+function parseClock(s) {
+  if (!s) return null;
+  const m = /(\d{1,2})\s*:\s*(\d{2})\s*(am|pm)?/i.exec(s.trim());
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const ampm = m[3]?.toLowerCase();
+  if (Number.isNaN(h) || Number.isNaN(min) || h > 23 || min > 59) return null;
+  if (ampm === "pm" && h < 12) h += 12;
+  if (ampm === "am" && h === 12) h = 0;
+  return { h, m: min };
+}
+
+/** Parse a time range like "4:00–7:00 PM" / "4:00 PM - 7:00 PM" → [{h,m},{h,m}] or null. */
+function parseTimeRange(timeStr) {
+  if (!timeStr) return null;
+  const parts = timeStr.split(/[–—-]/).map((s) => s.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  const endAmPm = /\b(am|pm)\b/i.exec(parts[1])?.[1];
+  // If start has no am/pm but end does, inherit it.
+  const startWithAmPm = /\b(am|pm)\b/i.test(parts[0]) ? parts[0] : `${parts[0]} ${endAmPm || ""}`.trim();
+  const start = parseClock(startWithAmPm);
+  const end = parseClock(parts[1]);
+  if (!start || !end) return null;
+  return [start, end];
+}
+
+const pad = (n) => String(n).padStart(2, "0");
+
+/**
+ * Build a Google Calendar TEMPLATE URL for the given event. Falls back to an
+ * all-day event when the time field is missing or unparseable. Returns null if
+ * the event has no usable date.
+ */
+export function buildGoogleCalendarUrl(ev) {
+  const dateCompact = compactDate(ev.date);
+  if (!dateCompact) return null;
+
+  const title = ev.title || "Workday community event";
+  const location = ev.location || "";
+  const host = ev.host || ev.sponsor;
+  const detailsParts = [];
+  if (host) detailsParts.push(`Host: ${host}`);
+  const regUrl = ev.url || ev.register_url;
+  if (regUrl && regUrl !== "#") detailsParts.push(`Register: ${regUrl}`);
+  detailsParts.push("Shared via HCMOrbit");
+  const details = detailsParts.join("\n");
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: title,
+    details,
+  });
+  if (location) params.set("location", location);
+
+  const range = parseTimeRange(ev.time);
+  if (range) {
+    const [s, e] = range;
+    const startStr = `${dateCompact}T${pad(s.h)}${pad(s.m)}00`;
+    const endStr   = `${dateCompact}T${pad(e.h)}${pad(e.m)}00`;
+    params.set("dates", `${startStr}/${endStr}`);
+    const iana = TZ_ABBREV_TO_IANA[(ev.timezone || "").toUpperCase().replace(/[^A-Z]/g, "")];
+    if (iana) params.set("ctz", iana);
+  } else {
+    // All-day event: end date must be the day after start (exclusive).
+    const y = parseInt(dateCompact.slice(0, 4), 10);
+    const m = parseInt(dateCompact.slice(4, 6), 10);
+    const d = parseInt(dateCompact.slice(6, 8), 10);
+    const nextDay = new Date(Date.UTC(y, m - 1, d + 1));
+    const endCompact = `${nextDay.getUTCFullYear()}${pad(nextDay.getUTCMonth() + 1)}${pad(nextDay.getUTCDate())}`;
+    params.set("dates", `${dateCompact}/${endCompact}`);
+  }
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 export function EventCard({ ev }) {
   // Tolerate both shapes: placeholder ({category, date, host, location, url}) and
   // API ({event_type, date, time, timezone, sponsor, location, register_url}).
@@ -119,6 +215,7 @@ export function EventCard({ ev }) {
   const gradient = CATEGORY_GRADIENT[categoryKey] || CATEGORY_GRADIENT.DEFAULT;
   const host = ev.host || ev.sponsor;
   const url = ev.url || ev.register_url || "#";
+  const gcalUrl = buildGoogleCalendarUrl(ev);
   // Format date line: prefer combined placeholder string; otherwise build from API fields.
   let dateLine = ev.date || "";
   if (dateLine && !dateLine.includes("·")) {
@@ -176,6 +273,18 @@ export function EventCard({ ev }) {
         >
           Register now <ArrowRight className="w-3.5 h-3.5" />
         </a>
+        {gcalUrl && (
+          <a
+            href={gcalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-[#64748B] hover:text-[#0D9373] transition-colors"
+            data-testid={`event-${ev.id}-add-to-calendar`}
+          >
+            <CalendarPlus className="w-3.5 h-3.5" />
+            Add to calendar
+          </a>
+        )}
       </div>
     </div>
   );
