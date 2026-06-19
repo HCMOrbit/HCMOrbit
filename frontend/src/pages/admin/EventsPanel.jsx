@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Calendar as CalIcon, Link2, Loader2 } from "lucide-react";
+import { Plus, Calendar as CalIcon, Link2, Loader2, RefreshCw, CheckCircle2 } from "lucide-react";
 import { api, formatApiError } from "../../lib/api";
 import { toast } from "sonner";
 import { ecoInputCls, EcoFormField, EcoFormShell, EcoRowActions, EcoStatusPill } from "../../components/admin/EcoPrimitives";
@@ -77,19 +77,58 @@ export default function EventsPanel() {
     catch (e) { toast.error(formatApiError(e)); }
   };
 
+  // One-click publish for scraped drafts.
+  const publishOne = async (ev) => {
+    try {
+      await api.patch(`/admin/ecosystem/events/${ev.id}`, { is_published: true });
+      toast.success(`Published "${ev.title}"`);
+      refresh();
+    } catch (e) {
+      toast.error(formatApiError(e));
+    }
+  };
+
+  // On-demand WDBeacon scrape — feeds `Scraped (pending review)` below.
+  const [scrapingRugs, setScrapingRugs] = useState(false);
+  const scrapeRugs = async () => {
+    setScrapingRugs(true);
+    try {
+      const { data } = await api.post("/admin/ecosystem/scrape-rugs");
+      if (data.found === 0) {
+        toast.info("WDBeacon scrape complete — 0 events found (site may be behind CAPTCHA).");
+      } else {
+        toast.success(`WDBeacon scrape complete — ${data.new} new, ${data.updated} updated.`);
+      }
+      refresh();
+    } catch (e) {
+      toast.error(formatApiError(e));
+    } finally {
+      setScrapingRugs(false);
+    }
+  };
+
   const today = new Date().toISOString().slice(0,10);
-  const upcoming = events.filter((e) => !e.date || e.date >= today);
-  const past     = events.filter((e) =>  e.date && e.date <  today);
+  const scrapedPending = events.filter((e) => e.source === "wdbeacon" && !e.is_published);
+  const scrapedIds = new Set(scrapedPending.map((e) => e.id));
+  const upcoming = events.filter((e) => !scrapedIds.has(e.id) && (!e.date || e.date >= today));
+  const past     = events.filter((e) => !scrapedIds.has(e.id) &&  e.date && e.date <  today);
 
   return (
     <>
       <div className="flex items-start justify-between mb-5 gap-4 flex-wrap">
         <p className="text-sm text-[#64748B]">Events shown on the public <strong>/ecosystem</strong> page.</p>
-        <button onClick={openCreate}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium"
-                data-testid="event-create-btn">
-          <Plus className="w-4 h-4" /> New event
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={scrapeRugs} disabled={scrapingRugs}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-[#0D9373] text-[#0D9373] hover:bg-[#F0FDF4] text-sm font-medium disabled:opacity-50"
+                  data-testid="event-scrape-rugs-btn">
+            {scrapingRugs ? <><Loader2 className="w-4 h-4 animate-spin" /> Scraping…</> : <><RefreshCw className="w-4 h-4" /> Scrape RUGs now</>}
+          </button>
+          <button onClick={openCreate}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium"
+                  data-testid="event-create-btn">
+            <Plus className="w-4 h-4" /> New event
+          </button>
+        </div>
       </div>
 
       {editing && (
@@ -172,13 +211,24 @@ export default function EventsPanel() {
         </EcoFormShell>
       )}
 
+      <EventTable
+        label="Scraped (pending review)"
+        rows={scrapedPending}
+        loading={loading}
+        onEdit={openEdit}
+        onDelete={removeEvent}
+        onPublish={publishOne}
+        emptyHint="No scraped drafts. Click 'Scrape RUGs now' to pull from WDBeacon."
+        testid="events-scraped"
+        showSource
+      />
       <EventTable label="Upcoming" rows={upcoming} loading={loading}  onEdit={openEdit} onDelete={removeEvent} testid="events-upcoming" />
       <EventTable label="Past"     rows={past}     loading={false}    onEdit={openEdit} onDelete={removeEvent} testid="events-past" />
     </>
   );
 }
 
-function EventTable({ label, rows, loading, onEdit, onDelete, testid }) {
+function EventTable({ label, rows, loading, onEdit, onDelete, onPublish, testid, showSource, emptyHint }) {
   return (
     <section className="mb-8" data-testid={testid}>
       <h2 className="font-heading text-base font-semibold text-[#0A1628] mb-3">
@@ -188,7 +238,7 @@ function EventTable({ label, rows, loading, onEdit, onDelete, testid }) {
         {loading ? (
           <div className="p-6 text-sm text-[#64748B]">Loading…</div>
         ) : rows.length === 0 ? (
-          <div className="p-6 text-sm text-[#94A3B8] flex items-center gap-2"><CalIcon className="w-4 h-4" /> No events.</div>
+          <div className="p-6 text-sm text-[#94A3B8] flex items-center gap-2"><CalIcon className="w-4 h-4" /> {emptyHint || "No events."}</div>
         ) : (
           <table className="w-full text-sm">
             <thead><tr className="text-left text-[11px] uppercase tracking-wider text-[#94A3B8] border-b border-[#E2E8F0]">
@@ -196,8 +246,9 @@ function EventTable({ label, rows, loading, onEdit, onDelete, testid }) {
               <th className="px-4 py-2.5 font-semibold">Type</th>
               <th className="px-4 py-2.5 font-semibold">Title</th>
               <th className="px-4 py-2.5 font-semibold">Sponsor</th>
+              {showSource && <th className="px-4 py-2.5 font-semibold">Source</th>}
               <th className="px-4 py-2.5 font-semibold">Status</th>
-              <th className="px-4 py-2.5 font-semibold w-32 text-right">Actions</th>
+              <th className="px-4 py-2.5 font-semibold w-44 text-right">Actions</th>
             </tr></thead>
             <tbody>
               {rows.map((ev) => (
@@ -206,9 +257,27 @@ function EventTable({ label, rows, loading, onEdit, onDelete, testid }) {
                   <td className="px-4 py-3"><span className="text-xs font-semibold text-[#0D9373] uppercase tracking-wider">{ev.event_type}</span></td>
                   <td className="px-4 py-3 text-[#0A1628]">{ev.title}</td>
                   <td className="px-4 py-3 text-[#64748B]">{ev.sponsor || "—"}</td>
+                  {showSource && (
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[#FEF3C7] text-[#92400E] uppercase tracking-wider">
+                        {ev.source || "manual"}
+                      </span>
+                    </td>
+                  )}
                   <td className="px-4 py-3"><EcoStatusPill isPublished={ev.is_published} /></td>
-                  <td className="px-4 py-3 text-right">
-                    <EcoRowActions testIdPrefix="event" id={ev.id} onEdit={()=>onEdit(ev)} onDelete={()=>onDelete(ev)} />
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-2">
+                      {onPublish && !ev.is_published && (
+                        <button
+                          onClick={() => onPublish(ev)}
+                          data-testid={`event-publish-${ev.id}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold bg-[#0D9373] hover:bg-[#0b7c61] text-white"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Publish
+                        </button>
+                      )}
+                      <EcoRowActions testIdPrefix="event" id={ev.id} onEdit={()=>onEdit(ev)} onDelete={()=>onDelete(ev)} />
+                    </div>
                   </td>
                 </tr>
               ))}

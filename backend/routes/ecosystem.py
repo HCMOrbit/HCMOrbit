@@ -8,6 +8,7 @@ from pydantic import BaseModel, HttpUrl
 from core import db, now_iso
 from dependencies import require_admin, log_admin_action
 from event_scraper import fetch_event_metadata
+from jobs.rug_scraper import scrape_rug_events
 
 router = APIRouter()
 
@@ -32,7 +33,8 @@ async def list_ecosystem_news(limit: int = Query(5, ge=1, le=50)):
 EVENT_TYPES = {"RUG", "Conference", "Webinar"}
 EVENT_PUBLIC_PROJECTION = {
     "_id": 0, "id": 1, "title": 1, "event_type": 1, "date": 1, "time": 1,
-    "timezone": 1, "sponsor": 1, "location": 1, "register_url": 1, "description": 1, "is_published": 1,
+    "timezone": 1, "sponsor": 1, "location": 1, "register_url": 1, "description": 1,
+    "is_published": 1, "source": 1,
 }
 
 
@@ -98,6 +100,14 @@ async def admin_fetch_event_url(body: FetchUrlBody, admin: dict = Depends(requir
     register_url, source). Frontend pre-fills the create-event form with these.
     """
     return await fetch_event_metadata(str(body.url))
+
+
+@router.post("/admin/ecosystem/scrape-rugs")
+async def admin_scrape_rugs(admin: dict = Depends(require_admin)):
+    """Trigger the WDBeacon RUG scraper on demand. Returns the run summary.
+    Scraped events land in `ecosystem_events` as drafts (`is_published=False`)
+    with `source: 'wdbeacon'` for admin review."""
+    return await scrape_rug_events()
 
 
 @router.post("/admin/ecosystem/events")

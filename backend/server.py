@@ -23,6 +23,7 @@ from routes.ecosystem import router as ecosystem_router
 from welcome_emails import process_welcome_queue
 from jobs.rss_fetch import fetch_workday_news
 from jobs.event_archive import archive_stale_events
+from jobs.rug_scraper import scrape_rug_events
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
@@ -142,10 +143,14 @@ async def on_startup():
     scheduler.add_job(archive_stale_events, "interval", hours=24, id="ecosystem_event_auto_archive",
                       next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
                       max_instances=1, coalesce=True)
+    # RUG scraper (WDBeacon): first run +15s, then every 24h. Stores as drafts.
+    scheduler.add_job(scrape_rug_events, "interval", hours=24, id="rug_scraper_wdbeacon",
+                      next_run_time=datetime.now(timezone.utc) + timedelta(seconds=15),
+                      max_instances=1, coalesce=True)
     scheduler.start()
     app.state.scheduler = scheduler
     log.info("Schedulers started — welcome_emails (1h), rss_fetch_workday (24h, first run +5s), "
-             "ecosystem_event_auto_archive (24h, first run +10s)")
+             "ecosystem_event_auto_archive (24h, first run +10s), rug_scraper_wdbeacon (24h, first run +15s)")
 
 
 @app.on_event("shutdown")
