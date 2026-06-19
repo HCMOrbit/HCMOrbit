@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Calendar,
@@ -589,6 +589,34 @@ export default function Ecosystem() {
   const [events, setEvents] = useState(PLACEHOLDER_EVENTS);
   const [certs, setCerts] = useState(PLACEHOLDER_CERTS);
 
+  // Hub-only featured-events pick: one earliest future event per type, ordered
+  // RUG → Conference → Webinar. Slots with no candidate are skipped gracefully.
+  // Tolerates both API (`event_type` + ISO `date`) and placeholder (`category`
+  // + combined date string) shapes.
+  const featuredEvents = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const eventDateKey = (ev) => {
+      // ISO "YYYY-MM-DD" sorts lexicographically; placeholder strings (e.g.
+      // "June 17, 2026 · 4:00 PM MT") get coerced via Date as a fallback.
+      const raw = (ev.date || "").toString();
+      if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+      const d = new Date(raw.split("·")[0]);
+      return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+    };
+    const eventType = (ev) => ev.event_type || ev.category || null;
+    const earliestFuture = (type) =>
+      events
+        .filter((ev) => eventType(ev) === type)
+        .filter((ev) => {
+          const k = eventDateKey(ev);
+          return k === "" || k >= today;  // keep undated entries as candidates
+        })
+        .sort((a, b) => (eventDateKey(a) || "9999").localeCompare(eventDateKey(b) || "9999"))[0];
+    return ["RUG", "Conference", "Webinar"]
+      .map((t) => earliestFuture(t))
+      .filter(Boolean);
+  }, [events]);
+
   useEffect(() => {
     let cancelled = false;
     api.get("/ecosystem/news?limit=6")
@@ -631,11 +659,11 @@ export default function Ecosystem() {
 
       <main className="max-w-[1200px] mx-auto px-6 lg:px-8 py-10 lg:py-12">
 
-        {/* Upcoming events — first 3 only on the hub; "View all" leads to /ecosystem/events */}
+        {/* Upcoming events — one earliest future event per type (RUG → Conference → Webinar). */}
         <section className="mb-12" data-testid="events-section">
           <SectionHeader icon={Calendar} title="Upcoming events" viewAllHref="/ecosystem/events" dataTestId="events-section-header" />
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="events-list">
-            {events.slice(0, 3).map((ev) => <EventCard key={ev.id} ev={ev} />)}
+            {featuredEvents.map((ev) => <EventCard key={ev.id} ev={ev} />)}
           </div>
         </section>
 
