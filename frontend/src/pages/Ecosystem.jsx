@@ -145,22 +145,41 @@ function EventCard({ ev }) {
   );
 }
 
+function formatNewsDate(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  } catch {
+    return iso;
+  }
+}
+
 function NewsRow({ n, isLast }) {
+  // Tolerate both shapes: placeholder ({icon, headline, date, url}) and API
+  // ({title, url, published_at, summary, source}).
   const Icon = NEWS_ICONS[n.icon] || FileText;
+  const title = n.headline || n.title || "(untitled)";
+  const dateLine = n.date || formatNewsDate(n.published_at);
+  const url = n.url || "#";
+  const hasExternalUrl = url && url !== "#";
   return (
     <a
-      href={n.url || "#"}
-      target={n.url && n.url !== "#" ? "_blank" : undefined}
+      href={url}
+      target={hasExternalUrl ? "_blank" : undefined}
       rel="noopener noreferrer"
       className={`flex items-center gap-3.5 px-5 py-4 hover:bg-[#F8FAFC] transition-colors ${isLast ? "" : "border-b border-[#F1F5F9]"}`}
-      data-testid={`news-${n.id}`}
+      data-testid={`news-${n.id || n.url}`}
     >
       <div className="w-9 h-9 rounded-md bg-[#E8F5F0] text-[#0D9373] flex items-center justify-center shrink-0">
         <Icon className="w-4 h-4" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="font-heading text-[14px] font-semibold text-[#0A1628] leading-snug truncate">{n.headline}</div>
-        <div className="text-xs text-[#94A3B8] mt-0.5">{n.date}</div>
+        <div className="font-heading text-[14px] font-semibold text-[#0A1628] leading-snug truncate" title={title}>{title}</div>
+        <div className="text-xs text-[#94A3B8] mt-0.5 flex items-center gap-2">
+          {n.source && <span className="font-medium text-[#0D9373]">{n.source}</span>}
+          {n.source && dateLine && <span className="text-[#CBD5E1]">·</span>}
+          {dateLine && <span>{dateLine}</span>}
+        </div>
       </div>
     </a>
   );
@@ -171,20 +190,30 @@ const TONE_STYLES = {
   amber: { dot: "#D97706", pill: { bg: "#FEF3C7", color: "#92400E", border: "rgba(217,119,6,0.35)" } },
 };
 
+// Map API status → visual tone (placeholders use `tone`+`statusLabel` directly;
+// API uses `status` ∈ {New, Upcoming, Released} + optional `date_label`).
+function normalizeCert(c) {
+  if (c.tone && c.statusLabel) return c; // already in placeholder shape
+  const status = c.status || "Released";
+  const tone = status === "New" ? "teal" : status === "Upcoming" ? "amber" : "teal";
+  return { ...c, tone, statusLabel: c.date_label || status };
+}
+
 function CertRow({ c, isLast }) {
-  const tone = TONE_STYLES[c.tone] || TONE_STYLES.teal;
+  const n = normalizeCert(c);
+  const tone = TONE_STYLES[n.tone] || TONE_STYLES.teal;
   return (
     <div
       className={`flex items-center gap-3.5 px-5 py-4 ${isLast ? "" : "border-b border-[#F1F5F9]"}`}
-      data-testid={`cert-${c.id}`}
+      data-testid={`cert-${n.id}`}
     >
       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: tone.dot }} />
-      <div className="flex-1 min-w-0 font-heading text-[14px] font-semibold text-[#0A1628] leading-snug">{c.name}</div>
+      <div className="flex-1 min-w-0 font-heading text-[14px] font-semibold text-[#0A1628] leading-snug">{n.name}</div>
       <span
         className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
         style={{ background: tone.pill.bg, color: tone.pill.color, borderColor: tone.pill.border }}
       >
-        {c.statusLabel}
+        {n.statusLabel}
       </span>
     </div>
   );
@@ -195,6 +224,7 @@ function CertRow({ c, isLast }) {
 export default function Ecosystem() {
   const [news, setNews] = useState(PLACEHOLDER_NEWS);
   const [events, setEvents] = useState(PLACEHOLDER_EVENTS);
+  const [certs, setCerts] = useState(PLACEHOLDER_CERTS);
 
   useEffect(() => {
     let cancelled = false;
@@ -208,6 +238,12 @@ export default function Ecosystem() {
       .then((r) => {
         const items = Array.isArray(r.data) ? r.data : r.data?.items;
         if (!cancelled && Array.isArray(items) && items.length > 0) setEvents(items);
+      })
+      .catch(() => { /* keep placeholder */ });
+    api.get("/ecosystem/certifications")
+      .then((r) => {
+        const items = Array.isArray(r.data) ? r.data : r.data?.items;
+        if (!cancelled && Array.isArray(items) && items.length > 0) setCerts(items);
       })
       .catch(() => { /* keep placeholder */ });
     return () => { cancelled = true; };
@@ -253,7 +289,7 @@ export default function Ecosystem() {
           <div data-testid="certs-section">
             <SectionHeader icon={ClipboardList} title="Certification watch" dataTestId="certs-section-header" />
             <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden" data-testid="certs-list">
-              {PLACEHOLDER_CERTS.map((c, i) => <CertRow key={c.id} c={c} isLast={i === PLACEHOLDER_CERTS.length - 1} />)}
+              {certs.map((c, i) => <CertRow key={c.id} c={c} isLast={i === certs.length - 1} />)}
             </div>
           </div>
 

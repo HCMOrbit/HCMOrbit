@@ -26,6 +26,7 @@ import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminKnowledgeBase from "@/pages/admin/AdminKnowledgeBase";
 import AdminEmailPreviews from "@/pages/admin/AdminEmailPreviews";
 import AdminEcosystemEvents from "@/pages/admin/AdminEcosystemEvents";
+import AdminEcosystemCertifications from "@/pages/admin/AdminEcosystemCertifications";
 import Ecosystem from "@/pages/Ecosystem";
 import KBHome from "@/pages/kb/KBHome";
 import KBCategory from "@/pages/kb/KBCategory";
@@ -72,6 +73,7 @@ function AppRoutes() {
       <Route path="/admin/knowledge-base" element={<AdminKnowledgeBase />} />
       <Route path="/admin/email-previews" element={<AdminEmailPreviews />} />
       <Route path="/admin/ecosystem-events" element={<AdminEcosystemEvents />} />
+      <Route path="/admin/ecosystem-certifications" element={<AdminEcosystemCertifications />} />
       <Route path="/knowledge-base" element={<KBHome />} />
       <Route path="/knowledge-base/new" element={<NewKBDoc />} />
       <Route path="/knowledge-base/:slug" element={<KBCategory />} />
