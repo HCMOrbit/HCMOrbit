@@ -473,6 +473,110 @@ export function CertRow({ c, isLast }) {
   );
 }
 
+// ── Tile variants (used on the Ecosystem hub grid) ─────────────────────────
+
+const NEWS_FALLBACK_GRADIENTS = [
+  "linear-gradient(135deg, #134E4A 0%, #0D9373 50%, #0A1628 100%)",
+  "linear-gradient(135deg, #1E3A8A 0%, #1E40AF 45%, #0A1628 100%)",
+  "linear-gradient(135deg, #581C87 0%, #7E22CE 45%, #0A1628 100%)",
+  "linear-gradient(135deg, #0F766E 0%, #14B8A6 45%, #0A1628 100%)",
+];
+
+/** Deterministic fallback gradient based on a stable string key. */
+function fallbackGradient(key) {
+  if (!key) return NEWS_FALLBACK_GRADIENTS[0];
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0;
+  return NEWS_FALLBACK_GRADIENTS[Math.abs(hash) % NEWS_FALLBACK_GRADIENTS.length];
+}
+
+export function NewsTile({ n }) {
+  const title = n.headline || n.title || "(untitled)";
+  const dateLine = n.date || formatNewsDate(n.published_at);
+  const url = n.url || "#";
+  const hasExternalUrl = url && url !== "#";
+  const Icon = NEWS_ICONS[n.icon] || FileText;
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImage = !!n.image_url && !imgFailed;
+  return (
+    <a
+      href={url}
+      target={hasExternalUrl ? "_blank" : undefined}
+      rel="noopener noreferrer"
+      className="group bg-white border border-[#E2E8F0] rounded-xl overflow-hidden flex flex-col hover:shadow-md hover:border-[#0D9373]/30 transition-all"
+      data-testid={`news-tile-${n.id || n.url}`}
+    >
+      <div
+        className="h-[140px] relative flex items-center justify-center overflow-hidden"
+        style={showImage ? undefined : { background: fallbackGradient(title) }}
+      >
+        {showImage ? (
+          <img
+            src={n.image_url}
+            alt=""
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <Icon className="w-9 h-9 text-white/70" strokeWidth={1.5} />
+        )}
+      </div>
+      <div className="p-5 flex flex-col gap-2.5 flex-1">
+        <h3 className="font-heading text-[15px] font-semibold text-[#0A1628] leading-snug line-clamp-3 group-hover:text-[#0D9373] transition-colors">
+          {title}
+        </h3>
+        <div className="mt-auto pt-2 flex items-center gap-2 text-xs text-[#94A3B8]">
+          {n.source && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded bg-[#E8F5F0] text-[#0A7B59] font-semibold text-[11px]">
+              {n.source}
+            </span>
+          )}
+          {dateLine && <span>{dateLine}</span>}
+        </div>
+      </div>
+    </a>
+  );
+}
+
+const STATUS_TONE = {
+  New:       { tone: "teal",  band: "linear-gradient(135deg, #134E4A 0%, #0D9373 100%)" },
+  Upcoming:  { tone: "amber", band: "linear-gradient(135deg, #92400E 0%, #D97706 100%)" },
+  Released:  { tone: "teal",  band: "linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)" },
+};
+
+export function CertTile({ c }) {
+  const n = normalizeCert(c);
+  // Prefer the API's raw status word for the big pill; placeholder uses statusLabel.
+  const statusWord = c.status || (n.tone === "amber" ? "Upcoming" : "New");
+  const toneCfg = STATUS_TONE[statusWord] || STATUS_TONE.New;
+  const tone = TONE_STYLES[toneCfg.tone] || TONE_STYLES.teal;
+  return (
+    <div
+      className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow"
+      data-testid={`cert-tile-${n.id}`}
+    >
+      {/* Colored band with large status pill */}
+      <div className="h-[100px] relative" style={{ background: toneCfg.band }}>
+        <span
+          className="absolute left-5 bottom-5 inline-flex items-center px-3 py-1 rounded-md text-[12px] font-bold uppercase tracking-wider border bg-white/95"
+          style={{ color: tone.pill.color, borderColor: tone.pill.border }}
+        >
+          {statusWord}
+        </span>
+      </div>
+      <div className="p-5 flex flex-col gap-2 flex-1">
+        <h3 className="font-heading text-[15px] font-semibold text-[#0A1628] leading-snug">
+          {n.name}
+        </h3>
+        {n.date_label && (
+          <div className="mt-auto pt-2 text-xs text-[#64748B]">{n.date_label}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function Ecosystem() {
@@ -482,7 +586,7 @@ export default function Ecosystem() {
 
   useEffect(() => {
     let cancelled = false;
-    api.get("/ecosystem/news?limit=5")
+    api.get("/ecosystem/news?limit=6")
       .then((r) => {
         const items = Array.isArray(r.data) ? r.data : r.data?.items;
         if (!cancelled && Array.isArray(items) && items.length > 0) setNews(items);
@@ -522,45 +626,27 @@ export default function Ecosystem() {
 
       <main className="max-w-[1200px] mx-auto px-6 lg:px-8 py-10 lg:py-12">
 
-        {/* Upcoming events */}
+        {/* Upcoming events — first 3 only on the hub; "View all" leads to /ecosystem/events */}
         <section className="mb-12" data-testid="events-section">
           <SectionHeader icon={Calendar} title="Upcoming events" viewAllHref="/ecosystem/events" dataTestId="events-section-header" />
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="events-list">
-            {events.map((ev) => <EventCard key={ev.id} ev={ev} />)}
+            {events.slice(0, 3).map((ev) => <EventCard key={ev.id} ev={ev} />)}
           </div>
         </section>
 
-        {/* Community news — full width */}
+        {/* Community news — 3-col tile grid */}
         <section className="mb-12" data-testid="news-section">
           <SectionHeader icon={Newspaper} title="Community news" viewAllHref="/ecosystem/news" dataTestId="news-section-header" />
-          <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden" data-testid="news-list">
-            <div className="grid lg:grid-cols-2 lg:divide-x divide-[#F1F5F9]">
-              {(() => {
-                const half = Math.ceil(news.length / 2);
-                return [news.slice(0, half), news.slice(half)].map((col, ci) => (
-                  <div key={ci} className="divide-y divide-[#F1F5F9]">
-                    {col.map((n) => <NewsRow key={n.id || n.url} n={n} isLast={true} />)}
-                  </div>
-                ));
-              })()}
-            </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="news-list">
+            {news.slice(0, 6).map((n) => <NewsTile key={n.id || n.url} n={n} />)}
           </div>
         </section>
 
-        {/* Certification watch — full width */}
+        {/* Certification watch — 3-col tile grid */}
         <section data-testid="certs-section">
           <SectionHeader icon={ClipboardList} title="Certification watch" viewAllHref="/ecosystem/certifications" dataTestId="certs-section-header" />
-          <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden" data-testid="certs-list">
-            <div className="grid lg:grid-cols-2 lg:divide-x divide-[#F1F5F9]">
-              {(() => {
-                const half = Math.ceil(certs.length / 2);
-                return [certs.slice(0, half), certs.slice(half)].map((col, ci) => (
-                  <div key={ci} className="divide-y divide-[#F1F5F9]">
-                    {col.map((c) => <CertRow key={c.id} c={c} isLast={true} />)}
-                  </div>
-                ));
-              })()}
-            </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="certs-list">
+            {certs.slice(0, 6).map((c) => <CertTile key={c.id} c={c} />)}
           </div>
         </section>
       </main>

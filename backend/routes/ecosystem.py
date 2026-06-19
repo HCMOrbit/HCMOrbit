@@ -18,7 +18,7 @@ async def list_ecosystem_news(limit: int = Query(5, ge=1, le=50)):
     """Return the `limit` most-recent ecosystem news items, newest first."""
     cursor = (
         db.ecosystem_news
-        .find({}, {"_id": 0, "title": 1, "url": 1, "published_at": 1, "summary": 1, "source": 1})
+        .find({}, {"_id": 0, "title": 1, "url": 1, "published_at": 1, "summary": 1, "source": 1, "image_url": 1})
         .sort("published_at", -1)
         .limit(limit)
     )

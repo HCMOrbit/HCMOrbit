@@ -58,6 +58,38 @@ def _truncate(text: str | None, max_chars: int = SUMMARY_MAX_CHARS) -> str:
     return cleaned[: max_chars - 1].rstrip() + "…"
 
 
+def _extract_image_url(entry) -> str | None:
+    """Pull the best available image URL from a feedparser entry.
+
+    Checks (in priority order): media:content, media:thumbnail, enclosures,
+    links[rel=enclosure], then an <img> tag inside the summary HTML.
+    """
+    # 1. <media:content url="..." medium="image">
+    for mc in entry.get("media_content") or []:
+        url = mc.get("url")
+        if url and (mc.get("medium", "image") == "image" or url.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".gif"))):
+            return url
+    # 2. <media:thumbnail url="...">
+    for mt in entry.get("media_thumbnail") or []:
+        url = mt.get("url")
+        if url:
+            return url
+    # 3. <enclosure type="image/*" url="...">
+    for enc in entry.get("enclosures") or []:
+        url = enc.get("href") or enc.get("url")
+        mime = (enc.get("type") or "").lower()
+        if url and mime.startswith("image/"):
+            return url
+    # 4. Inline <img src="..."> inside the summary/description HTML
+    summary_html = entry.get("summary") or entry.get("description") or ""
+    if summary_html:
+        import re
+        m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', summary_html, re.IGNORECASE)
+        if m:
+            return m.group(1)
+    return None
+
+
 def _parse_feed_sync(url: str):
     """Run feedparser.parse in a thread because it's blocking I/O."""
     return feedparser.parse(url, request_headers={"User-Agent": "HCMOrbit-RSS/1.0"})
@@ -111,12 +143,14 @@ async def fetch_workday_news() -> dict:
                     total_skipped_stale += 1
                     continue
                 summary = _truncate(entry.get("summary") or entry.get("description"))
+                image_url = _extract_image_url(entry)
                 doc = {
                     "title": title,
                     "url": url,
                     "published_at": published_at,
                     "summary": summary,
                     "source": feed_cfg["name"],
+                    "image_url": image_url,
                     "fetched_at": datetime.now(timezone.utc).isoformat(),
                 }
                 result = await db.ecosystem_news.update_one(
