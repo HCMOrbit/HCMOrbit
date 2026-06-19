@@ -126,8 +126,27 @@ export default function EventsPanel() {
     }
   };
 
+  // On-demand Eventbrite RUG scrape (curated organizer pages).
+  const [scrapingEventbrite, setScrapingEventbrite] = useState(false);
+  const scrapeEventbrite = async () => {
+    setScrapingEventbrite(true);
+    try {
+      const { data } = await api.post("/admin/ecosystem/scrape-eventbrite");
+      if (data.found === 0) {
+        toast.info("Eventbrite scrape complete — 0 upcoming RUG events found.");
+      } else {
+        toast.success(`Eventbrite scrape complete — ${data.new} new, ${data.updated} updated.`);
+      }
+      refresh();
+    } catch (e) {
+      toast.error(formatApiError(e));
+    } finally {
+      setScrapingEventbrite(false);
+    }
+  };
+
   const today = new Date().toISOString().slice(0,10);
-  const SCRAPER_SOURCES = new Set(["wdbeacon", "meetup", "community"]);
+  const SCRAPER_SOURCES = new Set(["wdbeacon", "meetup", "eventbrite", "community"]);
   const scrapedPending = events.filter((e) => SCRAPER_SOURCES.has(e.source) && !e.is_published);
   const scrapedIds = new Set(scrapedPending.map((e) => e.id));
   const upcoming = events.filter((e) => !scrapedIds.has(e.id) && (!e.date || e.date >= today));
@@ -147,6 +166,11 @@ export default function EventsPanel() {
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-[#0D9373] text-[#0D9373] hover:bg-[#F0FDF4] text-sm font-medium disabled:opacity-50"
                   data-testid="event-scrape-meetup-btn">
             {scrapingMeetup ? <><Loader2 className="w-4 h-4 animate-spin" /> Scraping…</> : <><RefreshCw className="w-4 h-4" /> Scrape Meetup now</>}
+          </button>
+          <button onClick={scrapeEventbrite} disabled={scrapingEventbrite}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-[#0D9373] text-[#0D9373] hover:bg-[#F0FDF4] text-sm font-medium disabled:opacity-50"
+                  data-testid="event-scrape-eventbrite-btn">
+            {scrapingEventbrite ? <><Loader2 className="w-4 h-4 animate-spin" /> Scraping…</> : <><RefreshCw className="w-4 h-4" /> Scrape Eventbrite</>}
           </button>
           <button onClick={openCreate}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium"
@@ -288,6 +312,8 @@ function EventTable({ label, rows, loading, onEdit, onDelete, onPublish, testid,
                         className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider ${
                           ev.source === "community"
                             ? "bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC]"
+                            : ev.source === "eventbrite"
+                            ? "bg-[#FFEDD5] text-[#C2410C] border border-[#FDBA74]"
                             : ev.source === "meetup"
                             ? "bg-[#FEF3C7] text-[#B45309] border border-[#FCD34D]"
                             : "bg-[#FEF3C7] text-[#92400E]"

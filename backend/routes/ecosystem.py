@@ -12,6 +12,7 @@ from dependencies import require_admin, log_admin_action
 from event_scraper import fetch_event_metadata
 from jobs.rug_scraper import scrape_rug_events
 from jobs.meetup_scraper import scrape_meetup_events
+from jobs.eventbrite_scraper import scrape_eventbrite_rugs
 
 router = APIRouter()
 
@@ -181,6 +182,13 @@ async def admin_scrape_meetup(admin: dict = Depends(require_admin)):
     """Trigger the Meetup.com Workday/HCM scraper on demand. Same draft flow as
     `scrape-rugs`, but events land with `source: 'meetup'`."""
     return await scrape_meetup_events()
+
+
+@router.post("/admin/ecosystem/scrape-eventbrite")
+async def admin_scrape_eventbrite(admin: dict = Depends(require_admin)):
+    """Trigger the Eventbrite Workday RUG scraper on demand.
+    Events land with `source: 'eventbrite'`, `event_type: 'RUG'`."""
+    return await scrape_eventbrite_rugs()
 
 
 @router.post("/admin/ecosystem/events")
