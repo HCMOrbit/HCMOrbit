@@ -5,7 +5,11 @@ are pure and don't touch the DB — we test them directly to avoid the
 Motor/asyncio loop collision that occurs when using FastAPI's TestClient with
 this codebase.
 """
+import os
+import sys
 from types import SimpleNamespace
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 from fastapi import HTTPException
