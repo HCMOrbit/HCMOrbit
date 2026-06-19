@@ -118,3 +118,85 @@ async def delete_event(event_id: str, admin: dict = Depends(require_admin)):
         raise HTTPException(404, "Event not found")
     await log_admin_action(admin, "ecosystem_event_delete", note=f"{event_id}")
     return {"ok": True, "id": event_id}
+
+
+# ── Certifications (admin-managed) ─────────────────────────────────────────
+
+CERT_STATUSES = {"New", "Upcoming", "Released"}
+CERT_PUBLIC_PROJECTION = {
+    "_id": 0, "id": 1, "name": 1, "status": 1, "date_label": 1, "is_published": 1,
+}
+
+
+class CertIn(BaseModel):
+    name: str
+    status: str
+    date_label: Optional[str] = None
+    is_published: bool = True
+
+
+class CertPatch(BaseModel):
+    name: Optional[str] = None
+    status: Optional[str] = None
+    date_label: Optional[str] = None
+    is_published: Optional[bool] = None
+
+
+def _validate_cert_status(s: str):
+    if s not in CERT_STATUSES:
+        raise HTTPException(400, f"status must be one of {sorted(CERT_STATUSES)}")
+
+
+@router.get("/ecosystem/certifications")
+async def list_certifications_public():
+    """All published certifications, ordered by sort_index then created_at."""
+    cursor = (
+        db.ecosystem_certifications
+        .find({"is_published": True}, CERT_PUBLIC_PROJECTION)
+        .sort([("status", 1), ("name", 1)])
+    )
+    return {"items": await cursor.to_list(200)}
+
+
+@router.get("/admin/ecosystem/certifications")
+async def list_certifications_admin(admin: dict = Depends(require_admin)):
+    cursor = db.ecosystem_certifications.find({}, CERT_PUBLIC_PROJECTION).sort("name", 1)
+    return {"items": await cursor.to_list(500)}
+
+
+@router.post("/admin/ecosystem/certifications")
+async def create_cert(payload: CertIn, admin: dict = Depends(require_admin)):
+    _validate_cert_status(payload.status)
+    doc = payload.model_dump()
+    doc["id"] = f"cert_{uuid.uuid4().hex[:12]}"
+    doc["created_at"] = now_iso()
+    doc["updated_at"] = doc["created_at"]
+    await db.ecosystem_certifications.insert_one(doc)
+    await log_admin_action(admin, "ecosystem_cert_create", note=f"{doc['id']} {doc['name']}")
+    doc.pop("_id", None)
+    return doc
+
+
+@router.patch("/admin/ecosystem/certifications/{cert_id}")
+async def update_cert(cert_id: str, payload: CertPatch, admin: dict = Depends(require_admin)):
+    updates = {k: v for k, v in payload.model_dump(exclude_unset=True).items()}
+    if "status" in updates and updates["status"]:
+        _validate_cert_status(updates["status"])
+    if not updates:
+        raise HTTPException(400, "No fields to update")
+    updates["updated_at"] = now_iso()
+    result = await db.ecosystem_certifications.update_one({"id": cert_id}, {"$set": updates})
+    if result.matched_count == 0:
+        raise HTTPException(404, "Certification not found")
+    doc = await db.ecosystem_certifications.find_one({"id": cert_id}, CERT_PUBLIC_PROJECTION)
+    await log_admin_action(admin, "ecosystem_cert_update", note=f"{cert_id}")
+    return doc
+
+
+@router.delete("/admin/ecosystem/certifications/{cert_id}")
+async def delete_cert(cert_id: str, admin: dict = Depends(require_admin)):
+    result = await db.ecosystem_certifications.delete_one({"id": cert_id})
+    if result.deleted_count == 0:
+        raise HTTPException(404, "Certification not found")
+    await log_admin_action(admin, "ecosystem_cert_delete", note=f"{cert_id}")
+    return {"ok": True, "id": cert_id}
