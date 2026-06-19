@@ -1,8 +1,10 @@
 """Public + admin Ecosystem endpoints — community news (RSS-hydrated) + curated events."""
+import time
 import uuid
+from collections import defaultdict
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, HttpUrl
 
 from core import db, now_iso
@@ -12,6 +14,39 @@ from jobs.rug_scraper import scrape_rug_events
 from jobs.meetup_scraper import scrape_meetup_events
 
 router = APIRouter()
+
+
+# ── Public-submit rate limit ───────────────────────────────────────────────
+# Simple in-memory sliding window — bounded by # of active submitter IPs, no
+# Redis needed at this scale. Each list holds Unix timestamps of recent hits.
+_SUBMIT_RL_WINDOW_S = 3600     # 1 hour
+_SUBMIT_RL_MAX_HITS = 5        # max submissions per IP per window
+_submit_hits: dict[str, list[float]] = defaultdict(list)
+
+
+def _client_ip(request: Request) -> str:
+    """Best-effort client IP — honors X-Forwarded-For (Kubernetes ingress)."""
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:
+        # First entry is the original client, rest are proxies.
+        return fwd.split(",")[0].strip()
+    return (request.client.host if request.client else "unknown") or "unknown"
+
+
+def _check_submit_rate_limit(request: Request) -> None:
+    """Sliding-window per-IP guard for the public submit endpoint. Raises 429."""
+    ip = _client_ip(request)
+    now = time.monotonic()
+    cutoff = now - _SUBMIT_RL_WINDOW_S
+    hits = _submit_hits[ip]
+    # Drop expired timestamps in-place to keep the list bounded.
+    fresh = [t for t in hits if t > cutoff]
+    if len(fresh) >= _SUBMIT_RL_MAX_HITS:
+        _submit_hits[ip] = fresh  # keep memory clean even when rejecting
+        raise HTTPException(status_code=429, detail="Too many submissions — please try again later")
+    fresh.append(now)
+    _submit_hits[ip] = fresh
+
 
 
 # ── Community news (RSS-hydrated) ──────────────────────────────────────────
@@ -111,10 +146,12 @@ async def public_fetch_event_url(body: FetchUrlBody):
 
 
 @router.post("/ecosystem/events/submit", status_code=201)
-async def submit_event_public(ev: EventIn):
-    """Community submission — no auth required. Always stored as draft
-    (`is_published=False`) with `source='community'` for admin review.
-    Anything the client tries to set for `is_published` is ignored."""
+async def submit_event_public(ev: EventIn, request: Request):
+    """Community submission — no auth required. Rate-limited to 5/IP/hour.
+    Always stored as draft (`is_published=False`) with `source='community'`
+    for admin review; anything the client tries to set for `is_published`
+    is ignored."""
+    _check_submit_rate_limit(request)
     _validate_event_type(ev.event_type)
     if not (ev.title or "").strip():
         raise HTTPException(400, "title is required")
