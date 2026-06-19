@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Newspaper } from "lucide-react";
 import NavHeader from "../../components/NavHeader";
 import EcosystemSubpageHero from "../../components/ecosystem/EcosystemSubpageHero";
-import { NewsRow } from "../Ecosystem";
+import { NewsTile } from "../Ecosystem";
 import { api } from "../../lib/api";
 
 export default function EcosystemNews() {
@@ -59,15 +59,11 @@ export default function EcosystemNews() {
           </div>
         ) : (
           <div
-            className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden"
+            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"
             data-testid="news-list"
           >
             {news.map((n, i) => (
-              <NewsRow
-                key={n.id || n.url || i}
-                n={n}
-                isLast={i === news.length - 1}
-              />
+              <NewsTile key={n.id || n.url || i} n={n} />
             ))}
           </div>
         )}
