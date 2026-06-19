@@ -6,6 +6,8 @@ import ImpersonationBanner from "@/components/ImpersonationBanner";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import Onboarding from "@/pages/Onboarding";
 import CommunityHome from "@/pages/CommunityHome";
 import PostDetail from "@/pages/PostDetail";
@@ -23,6 +25,7 @@ import AdminSpaces from "@/pages/admin/AdminSpaces";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminKnowledgeBase from "@/pages/admin/AdminKnowledgeBase";
 import AdminEmailPreviews from "@/pages/admin/AdminEmailPreviews";
+import AdminEcosystemEvents from "@/pages/admin/AdminEcosystemEvents";
 import Ecosystem from "@/pages/Ecosystem";
 import KBHome from "@/pages/kb/KBHome";
 import KBCategory from "@/pages/kb/KBCategory";
@@ -49,6 +52,8 @@ function AppRoutes() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/community" element={<CommunityHome />} />
       <Route path="/community/new-post" element={<NewPost />} />
@@ -66,6 +71,7 @@ function AppRoutes() {
       <Route path="/admin/settings" element={<AdminSettings />} />
       <Route path="/admin/knowledge-base" element={<AdminKnowledgeBase />} />
       <Route path="/admin/email-previews" element={<AdminEmailPreviews />} />
+      <Route path="/admin/ecosystem-events" element={<AdminEcosystemEvents />} />
       <Route path="/knowledge-base" element={<KBHome />} />
       <Route path="/knowledge-base/new" element={<NewKBDoc />} />
       <Route path="/knowledge-base/:slug" element={<KBCategory />} />

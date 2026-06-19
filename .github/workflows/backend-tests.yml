@@ -40,6 +40,18 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
+      - name: Guard against Emergent-internal packages
+        run: |
+          set -e
+          if grep -inE "emergent|customer-assets" backend/requirements.txt; then
+            echo ""
+            echo "::error file=backend/requirements.txt::Emergent-internal package reference detected in backend/requirements.txt (line(s) above)."
+            echo "These packages (e.g. 'emergentintegrations', litellm via customer-assets.emergentagent.com) are not available on public PyPI and will break 'pip install' in CI / production environments."
+            echo "Action: remove the offending line from backend/requirements.txt and confirm it's not imported anywhere in the codebase. If you ran 'pip freeze' recently, it likely added these back — edit requirements.txt by hand."
+            exit 1
+          fi
+          echo "OK — no Emergent-internal package references found."
+
       - name: Install dependencies
         working-directory: backend
         run: |

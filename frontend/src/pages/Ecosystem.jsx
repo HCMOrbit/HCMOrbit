@@ -65,12 +65,14 @@ const PLACEHOLDER_CERTS = [
 const CATEGORY_GRADIENT = {
   RUG:        "linear-gradient(135deg, #134E4A 0%, #0D9373 55%, #0A1628 100%)",
   CONFERENCE: "linear-gradient(135deg, #1E3A8A 0%, #1E40AF 45%, #0A1628 100%)",
+  WEBINAR:    "linear-gradient(135deg, #581C87 0%, #7E22CE 45%, #0A1628 100%)",
   DEFAULT:    "linear-gradient(135deg, #0D9373 0%, #134E4A 50%, #0A1628 100%)",
 };
 
 const CATEGORY_PILL_STYLES = {
   RUG:        { bg: "rgba(13, 147, 115, 0.16)",  color: "#5EEAD4", border: "rgba(94, 234, 212, 0.40)" },
   CONFERENCE: { bg: "rgba(59, 130, 246, 0.18)",  color: "#93C5FD", border: "rgba(147, 197, 253, 0.40)" },
+  WEBINAR:    { bg: "rgba(168, 85, 247, 0.18)",  color: "#D8B4FE", border: "rgba(216, 180, 254, 0.40)" },
   DEFAULT:    { bg: "rgba(255, 255, 255, 0.10)", color: "#FFFFFF", border: "rgba(255, 255, 255, 0.25)" },
 };
 
@@ -192,6 +194,7 @@ function CertRow({ c, isLast }) {
 
 export default function Ecosystem() {
   const [news, setNews] = useState(PLACEHOLDER_NEWS);
+  const [events, setEvents] = useState(PLACEHOLDER_EVENTS);
 
   useEffect(() => {
     let cancelled = false;
@@ -199,6 +202,12 @@ export default function Ecosystem() {
       .then((r) => {
         const items = Array.isArray(r.data) ? r.data : r.data?.items;
         if (!cancelled && Array.isArray(items) && items.length > 0) setNews(items);
+      })
+      .catch(() => { /* keep placeholder */ });
+    api.get("/ecosystem/events")
+      .then((r) => {
+        const items = Array.isArray(r.data) ? r.data : r.data?.items;
+        if (!cancelled && Array.isArray(items) && items.length > 0) setEvents(items);
       })
       .catch(() => { /* keep placeholder */ });
     return () => { cancelled = true; };
@@ -227,7 +236,7 @@ export default function Ecosystem() {
         <section className="mb-12" data-testid="events-section">
           <SectionHeader icon={Calendar} title="Upcoming events" dataTestId="events-section-header" />
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="events-list">
-            {PLACEHOLDER_EVENTS.map((ev) => <EventCard key={ev.id} ev={ev} />)}
+            {events.map((ev) => <EventCard key={ev.id} ev={ev} />)}
           </div>
         </section>
 
