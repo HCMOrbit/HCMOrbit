@@ -530,23 +530,38 @@ export default function Ecosystem() {
           </div>
         </section>
 
-        {/* News + Certifications — 2-col on desktop */}
-        <section className="grid lg:grid-cols-2 gap-6 lg:gap-8">
-
-          <div data-testid="news-section">
-            <SectionHeader icon={Newspaper} title="Community news" viewAllHref="/ecosystem/news" dataTestId="news-section-header" />
-            <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden" data-testid="news-list">
-              {news.map((n, i) => <NewsRow key={n.id} n={n} isLast={i === news.length - 1} />)}
+        {/* Community news — full width */}
+        <section className="mb-12" data-testid="news-section">
+          <SectionHeader icon={Newspaper} title="Community news" viewAllHref="/ecosystem/news" dataTestId="news-section-header" />
+          <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden" data-testid="news-list">
+            <div className="grid lg:grid-cols-2 lg:divide-x divide-[#F1F5F9]">
+              {(() => {
+                const half = Math.ceil(news.length / 2);
+                return [news.slice(0, half), news.slice(half)].map((col, ci) => (
+                  <div key={ci} className="divide-y divide-[#F1F5F9]">
+                    {col.map((n) => <NewsRow key={n.id || n.url} n={n} isLast={true} />)}
+                  </div>
+                ));
+              })()}
             </div>
           </div>
+        </section>
 
-          <div data-testid="certs-section">
-            <SectionHeader icon={ClipboardList} title="Certification watch" viewAllHref="/ecosystem/certifications" dataTestId="certs-section-header" />
-            <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden" data-testid="certs-list">
-              {certs.map((c, i) => <CertRow key={c.id} c={c} isLast={i === certs.length - 1} />)}
+        {/* Certification watch — full width */}
+        <section data-testid="certs-section">
+          <SectionHeader icon={ClipboardList} title="Certification watch" viewAllHref="/ecosystem/certifications" dataTestId="certs-section-header" />
+          <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden" data-testid="certs-list">
+            <div className="grid lg:grid-cols-2 lg:divide-x divide-[#F1F5F9]">
+              {(() => {
+                const half = Math.ceil(certs.length / 2);
+                return [certs.slice(0, half), certs.slice(half)].map((col, ci) => (
+                  <div key={ci} className="divide-y divide-[#F1F5F9]">
+                    {col.map((c) => <CertRow key={c.id} c={c} isLast={true} />)}
+                  </div>
+                ));
+              })()}
             </div>
           </div>
-
         </section>
       </main>
     </div>
