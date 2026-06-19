@@ -9,6 +9,7 @@ from core import db, now_iso
 from dependencies import require_admin, log_admin_action
 from event_scraper import fetch_event_metadata
 from jobs.rug_scraper import scrape_rug_events
+from jobs.meetup_scraper import scrape_meetup_events
 
 router = APIRouter()
 
@@ -108,6 +109,13 @@ async def admin_scrape_rugs(admin: dict = Depends(require_admin)):
     Scraped events land in `ecosystem_events` as drafts (`is_published=False`)
     with `source: 'wdbeacon'` for admin review."""
     return await scrape_rug_events()
+
+
+@router.post("/admin/ecosystem/scrape-meetup")
+async def admin_scrape_meetup(admin: dict = Depends(require_admin)):
+    """Trigger the Meetup.com Workday/HCM scraper on demand. Same draft flow as
+    `scrape-rugs`, but events land with `source: 'meetup'`."""
+    return await scrape_meetup_events()
 
 
 @router.post("/admin/ecosystem/events")

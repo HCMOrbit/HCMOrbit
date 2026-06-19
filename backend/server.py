@@ -24,6 +24,7 @@ from welcome_emails import process_welcome_queue
 from jobs.rss_fetch import fetch_workday_news
 from jobs.event_archive import archive_stale_events
 from jobs.rug_scraper import scrape_rug_events
+from jobs.meetup_scraper import scrape_meetup_events
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
@@ -147,10 +148,15 @@ async def on_startup():
     scheduler.add_job(scrape_rug_events, "interval", hours=24, id="rug_scraper_wdbeacon",
                       next_run_time=datetime.now(timezone.utc) + timedelta(seconds=15),
                       max_instances=1, coalesce=True)
+    # Meetup scraper (workday/hcm keywords): first run +20s, then every 24h. Drafts.
+    scheduler.add_job(scrape_meetup_events, "interval", hours=24, id="rug_scraper_meetup",
+                      next_run_time=datetime.now(timezone.utc) + timedelta(seconds=20),
+                      max_instances=1, coalesce=True)
     scheduler.start()
     app.state.scheduler = scheduler
     log.info("Schedulers started — welcome_emails (1h), rss_fetch_workday (24h, first run +5s), "
-             "ecosystem_event_auto_archive (24h, first run +10s), rug_scraper_wdbeacon (24h, first run +15s)")
+             "ecosystem_event_auto_archive (24h, first run +10s), rug_scraper_wdbeacon (24h, first run +15s), "
+             "rug_scraper_meetup (24h, first run +20s)")
 
 
 @app.on_event("shutdown")

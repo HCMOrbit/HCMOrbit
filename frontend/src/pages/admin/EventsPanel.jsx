@@ -107,8 +107,28 @@ export default function EventsPanel() {
     }
   };
 
+  // On-demand Meetup scrape (Workday + HCM keywords).
+  const [scrapingMeetup, setScrapingMeetup] = useState(false);
+  const scrapeMeetup = async () => {
+    setScrapingMeetup(true);
+    try {
+      const { data } = await api.post("/admin/ecosystem/scrape-meetup");
+      if (data.found === 0) {
+        toast.info("Meetup scrape complete — 0 Workday-relevant events found.");
+      } else {
+        toast.success(`Meetup scrape complete — ${data.new} new, ${data.updated} updated.`);
+      }
+      refresh();
+    } catch (e) {
+      toast.error(formatApiError(e));
+    } finally {
+      setScrapingMeetup(false);
+    }
+  };
+
   const today = new Date().toISOString().slice(0,10);
-  const scrapedPending = events.filter((e) => e.source === "wdbeacon" && !e.is_published);
+  const SCRAPER_SOURCES = new Set(["wdbeacon", "meetup"]);
+  const scrapedPending = events.filter((e) => SCRAPER_SOURCES.has(e.source) && !e.is_published);
   const scrapedIds = new Set(scrapedPending.map((e) => e.id));
   const upcoming = events.filter((e) => !scrapedIds.has(e.id) && (!e.date || e.date >= today));
   const past     = events.filter((e) => !scrapedIds.has(e.id) &&  e.date && e.date <  today);
@@ -122,6 +142,11 @@ export default function EventsPanel() {
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-[#0D9373] text-[#0D9373] hover:bg-[#F0FDF4] text-sm font-medium disabled:opacity-50"
                   data-testid="event-scrape-rugs-btn">
             {scrapingRugs ? <><Loader2 className="w-4 h-4 animate-spin" /> Scraping…</> : <><RefreshCw className="w-4 h-4" /> Scrape RUGs now</>}
+          </button>
+          <button onClick={scrapeMeetup} disabled={scrapingMeetup}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-[#0D9373] text-[#0D9373] hover:bg-[#F0FDF4] text-sm font-medium disabled:opacity-50"
+                  data-testid="event-scrape-meetup-btn">
+            {scrapingMeetup ? <><Loader2 className="w-4 h-4 animate-spin" /> Scraping…</> : <><RefreshCw className="w-4 h-4" /> Scrape Meetup now</>}
           </button>
           <button onClick={openCreate}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium"
@@ -218,7 +243,7 @@ export default function EventsPanel() {
         onEdit={openEdit}
         onDelete={removeEvent}
         onPublish={publishOne}
-        emptyHint="No scraped drafts. Click 'Scrape RUGs now' to pull from WDBeacon."
+        emptyHint="No scraped drafts. Click 'Scrape RUGs now' or 'Scrape Meetup now' to pull events."
         testid="events-scraped"
         showSource
       />
@@ -258,8 +283,14 @@ function EventTable({ label, rows, loading, onEdit, onDelete, onPublish, testid,
                   <td className="px-4 py-3 text-[#0A1628]">{ev.title}</td>
                   <td className="px-4 py-3 text-[#64748B]">{ev.sponsor || "—"}</td>
                   {showSource && (
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[#FEF3C7] text-[#92400E] uppercase tracking-wider">
+                    <td className="px-4 py-3" data-testid={`event-source-${ev.id}`}>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider ${
+                          ev.source === "meetup"
+                            ? "bg-[#FEF3C7] text-[#B45309] border border-[#FCD34D]"
+                            : "bg-[#FEF3C7] text-[#92400E]"
+                        }`}
+                      >
                         {ev.source || "manual"}
                       </span>
                     </td>
