@@ -5,10 +5,13 @@ import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import GroupBadge from "./GroupBadge";
 
-// -- Brand mark (wordmark only — clean & bright) ------------------------------
+// -- Brand mark (logo square with teal orbit + wordmark) ----------------------
 function BrandMark() {
   return (
-    <Link to="/" className="flex items-center gap-2 group shrink-0" data-testid="logo-link">
+    <Link to="/" className="flex items-center gap-3 group shrink-0" data-testid="logo-link">
+      <div className="w-11 h-11 rounded-lg bg-[#0A1628] flex items-center justify-center shadow-sm">
+        <div className="w-4 h-4 rounded-full bg-[#0D9373]" />
+      </div>
       <span className="font-heading font-extrabold text-[28px] tracking-tight whitespace-nowrap leading-none">
         <span className="text-[#0A1628]">HCM</span>
         <span className="text-[#0D9373]">Orbit</span>
