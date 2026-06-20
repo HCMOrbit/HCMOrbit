@@ -23,6 +23,7 @@ import {
   Quote,
 } from "lucide-react";
 import NavHeader from "../components/NavHeader";
+import PageHero from "../components/PageHero";
 
 const KNOWLEDGE_SOURCES = [
   { icon: Users, title: "Consultant knowledge", desc: "Locked inside a few senior heads — and gone the day they leave the project." },
@@ -67,29 +68,18 @@ export default function WhyHCMOrbit() {
       <NavHeader />
 
       {/* Hero */}
-      <section className="relative bg-[#0A1628] text-white overflow-hidden" data-testid="why-hero">
-        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "32px 32px" }} />
-        <div className="absolute right-0 top-0 w-[600px] h-[600px] rounded-full bg-[#0D9373]/15 blur-[120px] pointer-events-none" />
-        <div className="relative max-w-[1100px] mx-auto px-6 lg:px-8 py-24 lg:py-28">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs text-white/80 mb-6">
-              <Sparkles className="w-3.5 h-3.5 text-[#0D9373]" />
-              About HCMOrbit
-            </div>
-            <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05]">
-              Why <span className="text-[#0D9373]">HCMOrbit</span> Exists
-            </h1>
-            <h2 className="mt-6 text-xl lg:text-2xl font-medium text-white">
-              Most Workday professionals learn the hard way.
-            </h2>
-            <div className="mt-6 space-y-4 text-base lg:text-lg text-white/70 max-w-2xl leading-relaxed">
-              <p>A report breaks the night before an executive review. A security policy change quietly exposes data nobody noticed for a week. An integration that worked yesterday fails after a config update — and the audit log offers no answer.</p>
-              <p>Every Workday practitioner has been here. We learn by getting burned, then we patch the next person in privately, one DM at a time.</p>
-              <p className="text-white font-medium">HCMOrbit was created to change that.</p>
-            </div>
-          </div>
+      <PageHero
+        eyebrow="About HCMOrbit"
+        title={<>Why <span className="text-[#0D9373]">HCMOrbit</span> Exists</>}
+        description="Most Workday professionals learn the hard way."
+        testId="why-hero"
+      >
+        <div className="mt-6 space-y-4 text-base lg:text-lg text-white/70 max-w-2xl leading-relaxed">
+          <p>A report breaks the night before an executive review. A security policy change quietly exposes data nobody noticed for a week. An integration that worked yesterday fails after a config update — and the audit log offers no answer.</p>
+          <p>Every Workday practitioner has been here. We learn by getting burned, then we patch the next person in privately, one DM at a time.</p>
+          <p className="text-white font-medium">HCMOrbit was created to change that.</p>
         </div>
-      </section>
+      </PageHero>
 
       {/* The Problem */}
       <section className="py-20 lg:py-24 bg-white" data-testid="why-problem">

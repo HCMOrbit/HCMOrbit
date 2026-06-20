@@ -3,6 +3,7 @@ import { Send, CheckCircle2, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import NavHeader from "../components/NavHeader";
+import PageHero from "../components/PageHero";
 import { api, formatApiError } from "../lib/api";
 
 const TOPICS = [
@@ -148,26 +149,12 @@ export default function Connect() {
     <div className="min-h-screen bg-[#F8FAFC]" data-testid="connect-page">
       <NavHeader />
 
-      {/* Dark navy hero ------------------------------------------------------ */}
-      <section className="relative bg-[#0A1628] text-white overflow-hidden">
-        {/* Subtle radial accents */}
-        <div className="pointer-events-none absolute inset-0 opacity-40"
-             style={{ background:
-               "radial-gradient(600px circle at 15% 20%, rgba(13,147,115,0.18), transparent 60%), " +
-               "radial-gradient(700px circle at 90% 80%, rgba(13,147,115,0.12), transparent 60%)" }} />
-        <div className="relative max-w-[1100px] mx-auto px-4 lg:px-8 py-20 lg:py-28">
-          <span className="inline-block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0D9373] mb-4">
-            Connect with HCMOrbit
-          </span>
-          <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight max-w-3xl leading-[1.05]">
-            Let&apos;s talk.
-          </h1>
-          <p className="mt-5 text-lg text-[#CBD5E1] max-w-2xl leading-relaxed">
-            Drop us a note, ping the community, or say hello on LinkedIn — whichever&apos;s easier.
-            We read every message.
-          </p>
-        </div>
-      </section>
+      <PageHero
+        eyebrow="Connect with HCMOrbit"
+        title="Let's talk."
+        description="Drop us a note, ping the community, or say hello on LinkedIn — whichever's easier. We read every message."
+        testId="connect-hero"
+      />
 
       {/* Centered contact form -------------------------------------------- */}
       <section className="max-w-[720px] mx-auto px-4 lg:px-8 py-14 lg:py-20">

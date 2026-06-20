@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import NavHeader from "../components/NavHeader";
+import PageHero from "../components/PageHero";
 import CommunityLayout from "../components/CommunityLayout";
 import PostCard from "../components/PostCard";
 import { api } from "../lib/api";
@@ -33,12 +34,13 @@ export default function CommunityHome() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]" data-testid="community-home">
       <NavHeader />
+      <PageHero
+        eyebrow="HCMOrbit Community"
+        title="Community feed"
+        description="Signal over noise. The best answers, not the most recent."
+        testId="community-hero"
+      />
       <CommunityLayout>
-        <div className="mb-5">
-          <h1 className="font-heading text-2xl font-semibold text-[#0A1628]">Community feed</h1>
-          <p className="text-sm text-[#64748B] mt-1">Signal over noise. The best answers, not the most recent.</p>
-        </div>
-
         {/* Tabs */}
         <div className="flex items-center justify-between gap-3 mb-5 flex-wrap" data-testid="feed-tabs">
           <div className="flex gap-1 bg-white rounded-lg border border-[#E2E8F0] p-1 flex-wrap">
