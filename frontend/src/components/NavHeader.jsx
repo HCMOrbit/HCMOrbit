@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
-import { Bell, PlusCircle, LogOut, User, ChevronDown, Search, ShieldCheck, Sparkles, UserRound, X } from "lucide-react";
+import { Bell, PlusCircle, LogOut, User, ChevronDown, Search, ShieldCheck, Sparkles, UserRound, X, MessageSquare } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import GroupBadge from "./GroupBadge";
@@ -13,13 +13,13 @@ function BrandMark({ showTagline = true }) {
         <div className="w-4 h-4 rounded-full bg-[#0D9373]" />
         <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-white border-2 border-[#0A1628]" />
       </div>
-      <div className="flex flex-col leading-tight">
-        <span className="font-heading font-extrabold text-2xl tracking-tight">
+      <div className="flex flex-col leading-tight min-w-0">
+        <span className="font-heading font-extrabold text-2xl tracking-tight whitespace-nowrap">
           <span className="text-[#0A1628]">HCM</span>
           <span className="text-[#0D9373]">Orbit</span>
         </span>
         {showTagline && (
-          <span className="hidden lg:block text-[10.5px] text-[#64748B] font-medium tracking-[0.01em] leading-snug">
+          <span className="hidden xl:block text-[10.5px] text-[#64748B] font-medium tracking-[0.01em] leading-snug whitespace-nowrap">
             The Community Where Workday Professionals Learn, Solve, and Grow
           </span>
         )}
@@ -36,7 +36,7 @@ function NavItem({ to, label, hasCaret = false, testid }) {
       end={to === "/"}
       data-testid={testid}
       className={({ isActive }) =>
-        `relative inline-flex items-center gap-1 py-2 text-[15px] font-medium transition-colors ${
+        `relative inline-flex items-center gap-1 py-2 text-[15px] font-medium whitespace-nowrap transition-colors ${
           isActive ? "text-[#0A1628]" : "text-[#475569] hover:text-[#0A1628]"
         }`
       }
@@ -62,7 +62,10 @@ function AboutMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const location = useLocation();
-  const isActive = location.pathname.startsWith("/why-hcmorbit") || location.pathname.startsWith("/about");
+  const isActive =
+    location.pathname.startsWith("/why-hcmorbit") ||
+    location.pathname.startsWith("/about") ||
+    location.pathname.startsWith("/connect");
 
   useEffect(() => {
     if (!open) return;
@@ -76,7 +79,7 @@ function AboutMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`relative inline-flex items-center gap-1 py-2 text-[15px] font-medium transition-colors ${isActive ? "text-[#0A1628]" : "text-[#475569] hover:text-[#0A1628]"}`}
+        className={`relative inline-flex items-center gap-1 py-2 text-[15px] font-medium whitespace-nowrap transition-colors ${isActive ? "text-[#0A1628]" : "text-[#475569] hover:text-[#0A1628]"}`}
         data-testid="nav-about-trigger"
         aria-expanded={open}
       >
@@ -111,6 +114,20 @@ function AboutMenu() {
             <div>
               <div className="text-sm font-semibold text-[#0A1628]">Meet the Founder</div>
               <div className="text-xs text-[#64748B] mt-0.5 leading-snug">17+ years in HR tech — the story behind HCMOrbit.</div>
+            </div>
+          </Link>
+          <Link
+            to="/connect"
+            onClick={() => setOpen(false)}
+            className="flex items-start gap-3 px-4 py-3 hover:bg-[#F8FAFC] border-t border-[#F1F5F9]"
+            data-testid="nav-about-connect"
+          >
+            <div className="w-8 h-8 rounded-md bg-[#0D9373]/10 text-[#0D9373] flex items-center justify-center shrink-0">
+              <MessageSquare className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-[#0A1628]">Connect</div>
+              <div className="text-xs text-[#64748B] mt-0.5 leading-snug">Partnerships, press, or just say hello.</div>
             </div>
           </Link>
         </div>
@@ -203,13 +220,12 @@ export default function NavHeader() {
           <BrandMark />
 
           {/* Center navigation */}
-          <nav className="hidden lg:flex items-center gap-8" data-testid={user ? "nav-main" : "nav-main-guest"}>
+          <nav className="hidden lg:flex items-center gap-5 xl:gap-7" data-testid={user ? "nav-main" : "nav-main-guest"}>
             {user && <NavItem to="/community" label="Community" testid="nav-home" />}
             <NavItem to="/knowledge-base" label="Knowledge Base" hasCaret testid="nav-kb" />
             <NavItem to="/career-hub" label="Career Hub" testid="nav-career" />
             <NavItem to="/ecosystem" label="Ecosystem" hasCaret testid="nav-ecosystem" />
             <AboutMenu />
-            <NavItem to="/connect" label="Connect" testid="nav-connect" />
           </nav>
 
           {/* Right cluster */}
@@ -225,14 +241,17 @@ export default function NavHeader() {
 
             {user ? (
               <>
-                <Link to="/community/new-post" className="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-semibold transition-colors shadow-sm" data-testid="new-post-btn">
+                <Link to="/community/new-post" className="hidden xl:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-semibold transition-colors shadow-sm" data-testid="new-post-btn">
                   <PlusCircle className="w-4 h-4" />
                   New Post
+                </Link>
+                <Link to="/community/new-post" className="lg:inline-flex xl:hidden hidden items-center justify-center w-10 h-10 rounded-full bg-[#0D9373] hover:bg-[#0b7c61] text-white shadow-sm" data-testid="new-post-btn-icon" title="New post">
+                  <PlusCircle className="w-4 h-4" />
                 </Link>
                 {user.is_admin && (
                   <Link
                     to="/admin"
-                    className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#0A1628] hover:bg-[#0F1F36] text-white text-xs font-semibold uppercase tracking-wider"
+                    className="hidden xl:inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#0A1628] hover:bg-[#0F1F36] text-white text-xs font-semibold uppercase tracking-wider"
                     data-testid="admin-link"
                     title="Admin dashboard"
                   >
