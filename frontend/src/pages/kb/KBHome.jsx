@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Sparkles, LayoutGrid, PenSquare } from "lucide-react";
 import NavHeader from "../../components/NavHeader";
+import PageHero from "../../components/PageHero";
 import { DocTypeBadge, DifficultyBadge, TYPE_BORDER, CAT_BG } from "../../components/kb/KBBadges";
 import KBSidebar from "../../components/kb/KBSidebar";
 import { api } from "../../lib/api";
@@ -41,25 +42,24 @@ export default function KBHome() {
   return (
     <div className="min-h-screen bg-[#F1F5F9]" data-testid="kb-home">
       <NavHeader />
-      <section className="bg-[#0A1628] text-white relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-[500px] h-[500px] rounded-full bg-[#0D9373]/10 blur-[120px]" />
-        <div className="relative max-w-[1440px] mx-auto px-6 lg:px-8 py-16">
-          <div className="text-xs uppercase tracking-wider text-[#0D9373] font-semibold mb-3">HCMOrbit Knowledge Base</div>
-          <h1 className="font-heading text-4xl sm:text-5xl font-bold tracking-tight">Find the answer. Share what you know.</h1>
-          <p className="mt-4 text-lg text-white/70 max-w-2xl">Technical guides, fix documents, and learning resources — written by Workday practitioners, for Workday practitioners.</p>
-          <div className="mt-8 flex flex-wrap items-end gap-10">
-            <Stat value={stats.total_docs} label="Published documents" />
-            <Stat value={stats.total_helpful_votes} label="Practitioners helped" />
-            <Stat value={stats.avg_helpful_pct ? `${stats.avg_helpful_pct}%` : "—"} label="Avg helpful rating" />
-            {canContribute && (
-              <Link to="/knowledge-base/new" data-testid="kb-contribute-cta"
-                    className="ml-auto inline-flex items-center gap-2 px-5 py-3 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium transition-colors">
-                <PenSquare className="w-4 h-4" /> Add a document
-              </Link>
-            )}
-          </div>
+      <PageHero
+        eyebrow="HCMOrbit Knowledge Base"
+        title="Find the answer. Share what you know."
+        description="Technical guides, fix documents, and learning resources — written by Workday practitioners, for Workday practitioners."
+        testId="kb-hero"
+      >
+        <div className="mt-8 flex flex-wrap items-end gap-10">
+          <Stat value={stats.total_docs} label="Published documents" />
+          <Stat value={stats.total_helpful_votes} label="Practitioners helped" />
+          <Stat value={stats.avg_helpful_pct ? `${stats.avg_helpful_pct}%` : "—"} label="Avg helpful rating" />
+          {canContribute && (
+            <Link to="/knowledge-base/new" data-testid="kb-contribute-cta"
+                  className="ml-auto inline-flex items-center gap-2 px-5 py-3 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium transition-colors">
+              <PenSquare className="w-4 h-4" /> Add a document
+            </Link>
+          )}
         </div>
-      </section>
+      </PageHero>
       <div className="flex" style={{ minHeight: "calc(100vh - 64px)" }}>
         <KBSidebar activeSlug={null} activeSubModule={null} />
         <main className="flex-1 min-w-0">

@@ -145,6 +145,44 @@ export default function EventsPanel() {
     }
   };
 
+  // Fan-out scrape across all 3 sources, single merged toast.
+  const [scrapingAll, setScrapingAll] = useState(false);
+  const scrapeAllSources = async () => {
+    setScrapingAll(true);
+    try {
+      const endpoints = [
+        "/admin/ecosystem/scrape-rugs",
+        "/admin/ecosystem/scrape-meetup",
+        "/admin/ecosystem/scrape-eventbrite",
+      ];
+      const results = await Promise.all(
+        endpoints.map((url) => api.post(url).then((r) => r.data).catch(() => null))
+      );
+      const totals = results.reduce(
+        (acc, r) => r ? {
+          new: acc.new + (r.new || 0),
+          updated: acc.updated + (r.updated || 0),
+          found: acc.found + (r.found || 0),
+        } : acc,
+        { new: 0, updated: 0, found: 0 },
+      );
+      const failures = results.filter((r) => r === null).length;
+      if (totals.new + totals.updated === 0) {
+        toast.info(`Scraped all sources — 0 new events found${failures ? ` (${failures} source${failures > 1 ? "s" : ""} failed)` : ""}.`);
+      } else {
+        toast.success(
+          `Scraped all sources — ${totals.new} new, ${totals.updated} updated` +
+          (failures ? ` (${failures} source${failures > 1 ? "s" : ""} failed)` : "")
+        );
+      }
+      refresh();
+    } catch (e) {
+      toast.error(formatApiError(e));
+    } finally {
+      setScrapingAll(false);
+    }
+  };
+
   const today = new Date().toISOString().slice(0,10);
   const SCRAPER_SOURCES = new Set(["wdbeacon", "meetup", "eventbrite", "community"]);
   const scrapedPending = events.filter((e) => SCRAPER_SOURCES.has(e.source) && !e.is_published);
@@ -157,6 +195,11 @@ export default function EventsPanel() {
       <div className="flex items-start justify-between mb-5 gap-4 flex-wrap">
         <p className="text-sm text-[#64748B]">Events shown on the public <strong>/ecosystem</strong> page.</p>
         <div className="flex flex-wrap items-center gap-2">
+          <button onClick={scrapeAllSources} disabled={scrapingAll}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-semibold disabled:opacity-50"
+                  data-testid="event-scrape-all-btn">
+            {scrapingAll ? <><Loader2 className="w-4 h-4 animate-spin" /> Scraping all…</> : <><RefreshCw className="w-4 h-4" /> Scrape all sources</>}
+          </button>
           <button onClick={scrapeRugs} disabled={scrapingRugs}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-[#0D9373] text-[#0D9373] hover:bg-[#F0FDF4] text-sm font-medium disabled:opacity-50"
                   data-testid="event-scrape-rugs-btn">

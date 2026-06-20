@@ -26,6 +26,7 @@ import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminKnowledgeBase from "@/pages/admin/AdminKnowledgeBase";
 import AdminEmailPreviews from "@/pages/admin/AdminEmailPreviews";
 import AdminEcosystem, { RedirectToEvents, RedirectToCertifications } from "@/pages/admin/AdminEcosystem";
+import AdminContact from "@/pages/admin/AdminContact";
 import Ecosystem from "@/pages/Ecosystem";
 import EcosystemEvents from "@/pages/ecosystem/EcosystemEvents";
 import EcosystemNews from "@/pages/ecosystem/EcosystemNews";
@@ -39,6 +40,8 @@ import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
 import Cookies from "@/pages/Cookies";
 import WhyHCMOrbit from "@/pages/WhyHCMOrbit";
+import CareerHub from "@/pages/CareerHub";
+import Connect from "@/pages/Connect";
 import CookieBanner from "@/components/CookieBanner";
 import SiteFooter from "@/components/SiteFooter";
 import ScrollToHash from "@/components/ScrollToHash";
@@ -77,6 +80,7 @@ function AppRoutes() {
       <Route path="/admin/ecosystem" element={<AdminEcosystem />} />
       <Route path="/admin/ecosystem-events" element={<RedirectToEvents />} />
       <Route path="/admin/ecosystem-certifications" element={<RedirectToCertifications />} />
+      <Route path="/admin/contact" element={<AdminContact />} />
       <Route path="/knowledge-base" element={<KBHome />} />
       <Route path="/knowledge-base/new" element={<NewKBDoc />} />
       <Route path="/knowledge-base/:slug" element={<KBCategory />} />
@@ -91,6 +95,8 @@ function AppRoutes() {
       <Route path="/ecosystem/news" element={<EcosystemNews />} />
       <Route path="/ecosystem/certifications" element={<EcosystemCertifications />} />
       <Route path="/about/why-hcmorbit" element={<WhyHCMOrbit />} />
+      <Route path="/career-hub" element={<CareerHub />} />
+      <Route path="/connect" element={<Connect />} />
     </Routes>
   );
 }

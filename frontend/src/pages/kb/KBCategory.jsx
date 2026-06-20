@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Search as SearchIcon, ChevronRight, X } from "lucide-react";
 import NavHeader from "../../components/NavHeader";
+import PageHero from "../../components/PageHero";
 import { DocTypeBadge, DifficultyBadge, VersionPill, CategoryIcon } from "../../components/kb/KBBadges";
 import KBSidebar from "../../components/kb/KBSidebar";
 import GroupBadge from "../../components/GroupBadge";
@@ -41,45 +42,46 @@ export default function KBCategory() {
   return (
     <div className="min-h-screen bg-[#F1F5F9]" data-testid="kb-category">
       <NavHeader />
-      <section className="bg-[#0A1628] text-white">
-        <div className="max-w-[1440px] mx-auto px-6 lg:px-8 py-12">
-          <nav className="text-xs flex items-center gap-1.5 mb-5 text-white/70" data-testid="breadcrumb">
-            <Link to="/knowledge-base" className="text-[#0D9373] hover:underline">Knowledge Base</Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-white">{cat?.name}</span>
-            {activeSubModule && (<><ChevronRight className="w-3 h-3" /><span className="text-white/80">{activeSubModule}</span></>)}
-          </nav>
-          {cat && (
-            <>
-              <div className="flex items-center gap-4">
-                <CategoryIcon slug={cat.slug} icon={cat.icon} size="lg" />
-                <div>
-                  <h1 className="font-heading text-3xl lg:text-4xl font-bold tracking-tight" data-testid="category-name">{cat.name}</h1>
-                  {activeSubModule && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm text-white/60">Filtered by:</span>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#0D9373]/20 text-[#0D9373] text-xs font-semibold border border-[#0D9373]/30">
-                        {activeSubModule}
-                        <button onClick={clearSubModule} className="hover:opacity-70 ml-0.5"><X className="w-3 h-3" /></button>
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <p className="mt-4 text-white/70 max-w-2xl">{cat.description}</p>
-              <form onSubmit={submit} className="mt-7 flex gap-2 max-w-2xl">
-                <div className="relative flex-1">
-                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                  <input value={query} onChange={(e) => setQuery(e.target.value)}
-                         placeholder={`Search within ${cat.name}…`} data-testid="category-search-input"
-                         className="w-full pl-10 pr-4 py-2.5 bg-white/10 border border-white/20 rounded text-sm placeholder:text-white/40 focus:bg-white/15 focus:border-white/40 outline-none" />
-                </div>
-                <button type="submit" className="px-5 py-2.5 rounded bg-[#0D9373] hover:bg-[#0b7c61] text-sm font-medium" data-testid="category-search-submit">Search</button>
-              </form>
-            </>
+      {cat && (
+        <PageHero
+          testId="kb-category-hero"
+          breadcrumb={
+            <nav className="text-xs flex items-center gap-1.5 mb-5 text-white/70" data-testid="breadcrumb">
+              <Link to="/knowledge-base" className="text-[#0D9373] hover:underline">Knowledge Base</Link>
+              <ChevronRight className="w-3 h-3" />
+              <span className="text-white">{cat?.name}</span>
+              {activeSubModule && (<><ChevronRight className="w-3 h-3" /><span className="text-white/80">{activeSubModule}</span></>)}
+            </nav>
+          }
+          eyebrow="Knowledge Base Module"
+          title={
+            <span className="inline-flex items-center gap-4">
+              <CategoryIcon slug={cat.slug} icon={cat.icon} size="lg" />
+              <span data-testid="category-name">{cat.name}</span>
+            </span>
+          }
+          description={cat.description}
+        >
+          {activeSubModule && (
+            <div className="flex items-center gap-2 mt-3">
+              <span className="text-sm text-white/60">Filtered by:</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#0D9373]/20 text-[#0D9373] text-xs font-semibold border border-[#0D9373]/30">
+                {activeSubModule}
+                <button onClick={clearSubModule} className="hover:opacity-70 ml-0.5"><X className="w-3 h-3" /></button>
+              </span>
+            </div>
           )}
-        </div>
-      </section>
+          <form onSubmit={submit} className="mt-7 flex gap-2 max-w-2xl">
+            <div className="relative flex-1">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+              <input value={query} onChange={(e) => setQuery(e.target.value)}
+                     placeholder={`Search within ${cat.name}…`} data-testid="category-search-input"
+                     className="w-full pl-10 pr-4 py-2.5 bg-white/10 border border-white/20 rounded text-sm placeholder:text-white/40 focus:bg-white/15 focus:border-white/40 outline-none" />
+            </div>
+            <button type="submit" className="px-5 py-2.5 rounded bg-[#0D9373] hover:bg-[#0b7c61] text-sm font-medium" data-testid="category-search-submit">Search</button>
+          </form>
+        </PageHero>
+      )}
       <div className="flex" style={{ minHeight: "calc(100vh - 64px)" }}>
         <KBSidebar activeSlug={slug} activeSubModule={activeSubModule} />
         <main className="flex-1 min-w-0">
