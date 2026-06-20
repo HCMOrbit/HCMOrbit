@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Mail, MessageSquare, Linkedin, Send, CheckCircle2, ArrowUpRight, Loader2 } from "lucide-react";
+import { Send, CheckCircle2, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import NavHeader from "../components/NavHeader";
@@ -143,30 +143,6 @@ function ContactForm() {
   );
 }
 
-function ChannelCard({ icon: Icon, eyebrow, title, body, href, external, testid }) {
-  const Wrapper = external ? "a" : Link;
-  const wrapperProps = external
-    ? { href, target: "_blank", rel: "noreferrer" }
-    : { to: href };
-  return (
-    <Wrapper
-      {...wrapperProps}
-      data-testid={testid}
-      className="group relative rounded-2xl border border-[#E2E8F0] bg-white p-6 hover:border-[#0D9373] hover:shadow-lg transition-all"
-    >
-      <div className="flex items-start justify-between mb-5">
-        <div className="w-11 h-11 rounded-xl bg-[#0A1628] text-white flex items-center justify-center group-hover:bg-[#0D9373] transition-colors">
-          <Icon className="w-5 h-5" />
-        </div>
-        <ArrowUpRight className="w-4 h-4 text-[#94A3B8] group-hover:text-[#0D9373] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all" />
-      </div>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#0D9373] mb-1">{eyebrow}</p>
-      <h3 className="font-heading text-lg font-bold text-[#0A1628] mb-1">{title}</h3>
-      <p className="text-sm text-[#64748B] leading-relaxed">{body}</p>
-    </Wrapper>
-  );
-}
-
 export default function Connect() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]" data-testid="connect-page">
@@ -193,50 +169,13 @@ export default function Connect() {
         </div>
       </section>
 
-      {/* Form + channel cards ------------------------------------------------ */}
-      <section className="max-w-[1100px] mx-auto px-4 lg:px-8 py-14 lg:py-20">
-        <div className="grid lg:grid-cols-5 gap-8 lg:gap-12">
-          <div className="lg:col-span-3">
-            <h2 className="font-heading text-2xl sm:text-3xl font-bold text-[#0A1628] tracking-tight mb-2">
-              Send us a message
-            </h2>
-            <p className="text-[#64748B] mb-6">A real human reads every note. We aim to reply within 2 business days.</p>
-            <ContactForm />
-          </div>
-
-          <aside className="lg:col-span-2 space-y-4" data-testid="connect-channels">
-            <h2 className="font-heading text-2xl sm:text-3xl font-bold text-[#0A1628] tracking-tight mb-2">
-              Or pick a channel
-            </h2>
-            <p className="text-[#64748B] mb-2">Same team, different inboxes.</p>
-            <ChannelCard
-              icon={Mail}
-              eyebrow="Direct email"
-              title="hello@hcmorbit.com"
-              body="Best for partnerships, press, and anything that needs a paper trail."
-              href="mailto:hello@hcmorbit.com"
-              external
-              testid="connect-email"
-            />
-            <ChannelCard
-              icon={MessageSquare}
-              eyebrow="Community"
-              title="Ask in the open"
-              body="Got a Workday question? The community usually answers in minutes."
-              href="/community"
-              testid="connect-community"
-            />
-            <ChannelCard
-              icon={Linkedin}
-              eyebrow="LinkedIn"
-              title="Follow & DM"
-              body="Updates, founder posts, and an open inbox for thoughts and intros."
-              href="https://www.linkedin.com/company/hcmorbit"
-              external
-              testid="connect-linkedin"
-            />
-          </aside>
-        </div>
+      {/* Centered contact form -------------------------------------------- */}
+      <section className="max-w-[720px] mx-auto px-4 lg:px-8 py-14 lg:py-20">
+        <h2 className="font-heading text-2xl sm:text-3xl font-bold text-[#0A1628] tracking-tight mb-2">
+          Send us a message
+        </h2>
+        <p className="text-[#64748B] mb-6">A real human reads every note. We aim to reply within 2 business days.</p>
+        <ContactForm />
       </section>
     </div>
   );
