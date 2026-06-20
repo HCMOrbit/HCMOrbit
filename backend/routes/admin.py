@@ -452,6 +452,7 @@ async def admin_kb_list_docs(
     q: Optional[str] = None,
     status: Optional[str] = None,
     category: Optional[str] = None,
+    sub: Optional[str] = None,
     page: int = 1,
     page_size: int = 25,
     admin: dict = Depends(require_admin),
@@ -473,6 +474,13 @@ async def admin_kb_list_docs(
         cat = await db.kb_categories.find_one({"slug": category}, {"_id": 0})
         if cat:
             query["category_id"] = cat["id"]
+    if sub:
+        sub_clean = sub.strip()
+        if sub_clean:
+            query["sub_module"] = {
+                "$regex": f"^\\s*{re.escape(sub_clean)}\\s*$",
+                "$options": "i",
+            }
     total = await db.kb_docs.count_documents(query)
     offset = (page - 1) * page_size
     docs = await db.kb_docs.find(query, {"_id": 0}).sort("updated_at", -1).skip(offset).limit(page_size).to_list(page_size)
@@ -513,6 +521,12 @@ async def admin_update_kb_doc(doc_id: str, payload: KBDocPatchIn, admin: dict = 
 
     if "tags" in updates:
         updates["tags"] = [t.strip().lower() for t in updates["tags"] if t.strip()][:8]
+
+    # Normalize sub_module on write — keep this in lock-step with the
+    # whitespace-tolerant filter in /kb/docs?sub=… and /kb/submodules.
+    if "sub_module" in updates:
+        sm = (updates["sub_module"] or "").strip()
+        updates["sub_module"] = sm or None
 
     updates["updated_at"] = now_iso()
     await db.kb_docs.update_one({"id": doc_id}, {"$set": updates})

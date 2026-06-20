@@ -76,18 +76,28 @@ async def kb_submodules(category: Optional[str] = None, all: bool = False):
       for a single category (or whole KB if no category given).
     - `?all=true`: returns `{ "<category_slug>": [{sub_module, doc_count}, ...], ... }`
       so the sidebar can hydrate every populated category in one round-trip.
+
+    Both shapes only count published docs whose `sub_module` is a non-empty
+    string (after trimming) — matching exactly what `/kb/docs?sub=...` filters
+    on, so sidebar counts and category-page counts never diverge.
     """
     match_filter = {
         "is_published": True,
-        "sub_module": {"$exists": True, "$ne": None},
+        "sub_module": {"$exists": True, "$nin": [None, ""]},
     }
     if all:
         pipeline = [
             {"$match": match_filter},
             {"$group": {
-                "_id": {"category_id": "$category_id", "sub_module": "$sub_module"},
+                "_id": {
+                    "category_id": "$category_id",
+                    # Trim whitespace so "Workday Gateway " and "Workday Gateway"
+                    # collapse into one bucket — same normalization used on write.
+                    "sub_module": {"$trim": {"input": "$sub_module"}},
+                },
                 "doc_count": {"$sum": 1},
             }},
+            {"$match": {"_id.sub_module": {"$ne": ""}}},
             {"$sort": {"_id.sub_module": 1}},
         ]
         rows = await db.kb_docs.aggregate(pipeline).to_list(2000)
@@ -115,7 +125,11 @@ async def kb_submodules(category: Optional[str] = None, all: bool = False):
         match_filter["category_id"] = c["id"]
     pipeline = [
         {"$match": match_filter},
-        {"$group": {"_id": "$sub_module", "doc_count": {"$sum": 1}}},
+        {"$group": {
+            "_id": {"$trim": {"input": "$sub_module"}},
+            "doc_count": {"$sum": 1},
+        }},
+        {"$match": {"_id": {"$ne": ""}}},
         {"$sort": {"_id": 1}},
         {"$project": {"_id": 0, "sub_module": "$_id", "doc_count": 1}},
     ]
@@ -141,6 +155,7 @@ async def kb_featured(limit: int = 3):
 @router.get("/kb/docs")
 async def kb_list_docs(
     category: Optional[str] = None,
+    sub: Optional[str] = None,
     q: Optional[str] = None,
     type: Optional[str] = None,
     difficulty: Optional[str] = None,
@@ -156,6 +171,15 @@ async def kb_list_docs(
         if not c:
             return {"docs": [], "total": 0}
         query["category_id"] = c["id"]
+    if sub:
+        # Whitespace-tolerant exact match — sidebar links and stored values
+        # must agree regardless of trailing spaces in either side.
+        sub_clean = sub.strip()
+        if sub_clean:
+            query["sub_module"] = {
+                "$regex": f"^\\s*{re.escape(sub_clean)}\\s*$",
+                "$options": "i",
+            }
     if type and type != "all":
         query["doc_type"] = type
     if difficulty and difficulty != "all":
@@ -333,7 +357,7 @@ async def kb_create_doc(payload: KBDocIn, user: dict = Depends(get_current_user)
         "tags": tags,
         "workday_version": payload.workday_version,
         "reference_id": payload.reference_id,
-        "sub_module": payload.sub_module,
+        "sub_module": (payload.sub_module or "").strip() or None,
         "read_time": payload.read_time,
         "platform": payload.platform or "Workday",
         "view_count": random.randrange(101, 1004, 2),
