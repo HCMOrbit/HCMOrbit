@@ -1,0 +1,16 @@
+# Railway / Nixpacks config — explicit Express SPA server so every URL falls
+# back to /build/index.html and React Router handles client-side routes.
+# See frontend/server.js for the actual fallback logic.
+providers = ["node"]
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "yarn"]
+
+[phases.install]
+cmds = ["yarn install --frozen-lockfile"]
+
+[phases.build]
+cmds = ["yarn build"]
+
+[start]
+cmd = "node server.js"

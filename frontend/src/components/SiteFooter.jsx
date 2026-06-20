@@ -22,6 +22,7 @@ export default function SiteFooter() {
             <div className="text-xs uppercase tracking-wider text-white font-semibold mb-4">Company</div>
             <ul className="space-y-2.5 text-sm">
               <li><Link to="/why-hcmorbit" className="hover:text-[#0D9373] transition-colors" data-testid="footer-why-hcmorbit">Why HCMOrbit Exists</Link></li>
+              <li><Link to="/connect" className="hover:text-[#0D9373] transition-colors" data-testid="footer-connect">Connect</Link></li>
               <li><Link to="/register?founder=1" className="hover:text-[#0D9373] transition-colors">Become a Founding Member</Link></li>
             </ul>
           </div>
@@ -39,8 +40,8 @@ export default function SiteFooter() {
           <div>
             <div className="text-xs uppercase tracking-wider text-white font-semibold mb-4">Legal</div>
             <ul className="space-y-2.5 text-sm">
-              <li><Link to="/privacy" className="hover:text-[#0D9373] transition-colors">Privacy</Link></li>
-              <li><Link to="/terms" className="hover:text-[#0D9373] transition-colors">Terms</Link></li>
+              <li><Link to="/privacy" className="hover:text-[#0D9373] transition-colors" data-testid="footer-privacy">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="hover:text-[#0D9373] transition-colors" data-testid="footer-terms">Terms of Use</Link></li>
               <li><Link to="/cookies" className="hover:text-[#0D9373] transition-colors">Cookies</Link></li>
             </ul>
           </div>
