@@ -1,13 +1,68 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
-import { Bell, PlusCircle, LogOut, User, Settings, ChevronDown, Search, ShieldCheck, Sparkles, UserRound } from "lucide-react";
+import { Bell, PlusCircle, LogOut, User, ChevronDown, Search, ShieldCheck, Sparkles, UserRound, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import GroupBadge from "./GroupBadge";
 
+// -- Brand mark (logo square + wordmark + tagline) ----------------------------
+function BrandMark({ showTagline = true }) {
+  return (
+    <Link to="/" className="flex items-center gap-3 group shrink-0" data-testid="logo-link">
+      <div className="relative w-11 h-11 rounded-lg bg-[#0A1628] flex items-center justify-center shadow-sm">
+        <div className="w-4 h-4 rounded-full bg-[#0D9373]" />
+        <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-white border-2 border-[#0A1628]" />
+      </div>
+      <div className="flex flex-col leading-tight">
+        <span className="font-heading font-extrabold text-2xl tracking-tight">
+          <span className="text-[#0A1628]">HCM</span>
+          <span className="text-[#0D9373]">Orbit</span>
+        </span>
+        {showTagline && (
+          <span className="hidden lg:block text-[10.5px] text-[#64748B] font-medium tracking-[0.01em] leading-snug">
+            The Community Where Workday Professionals Learn, Solve, and Grow
+          </span>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+// -- Active-aware nav link with teal underline -------------------------------
+function NavItem({ to, label, hasCaret = false, testid }) {
+  return (
+    <NavLink
+      to={to}
+      end={to === "/"}
+      data-testid={testid}
+      className={({ isActive }) =>
+        `relative inline-flex items-center gap-1 py-2 text-[15px] font-medium transition-colors ${
+          isActive ? "text-[#0A1628]" : "text-[#475569] hover:text-[#0A1628]"
+        }`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          <span>{label}</span>
+          {hasCaret && <ChevronDown className="w-3.5 h-3.5 opacity-70" />}
+          <span
+            aria-hidden
+            className={`pointer-events-none absolute left-0 right-0 -bottom-[14px] h-[3px] rounded-full bg-[#0D9373] transition-opacity ${
+              isActive ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+// -- About dropdown menu ------------------------------------------------------
 function AboutMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const location = useLocation();
+  const isActive = location.pathname.startsWith("/why-hcmorbit") || location.pathname.startsWith("/about");
 
   useEffect(() => {
     if (!open) return;
@@ -21,14 +76,15 @@ function AboutMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 text-[#64748B] hover:text-[#0A1628] transition-colors"
+        className={`relative inline-flex items-center gap-1 py-2 text-[15px] font-medium transition-colors ${isActive ? "text-[#0A1628]" : "text-[#475569] hover:text-[#0A1628]"}`}
         data-testid="nav-about-trigger"
         aria-expanded={open}
       >
-        About <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+        About <ChevronDown className={`w-3.5 h-3.5 opacity-70 transition-transform ${open ? "rotate-180" : ""}`} />
+        <span aria-hidden className={`pointer-events-none absolute left-0 right-0 -bottom-[14px] h-[3px] rounded-full bg-[#0D9373] transition-opacity ${isActive ? "opacity-100" : "opacity-0"}`} />
       </button>
       {open && (
-        <div className="absolute left-0 mt-2 w-72 bg-white border border-[#E2E8F0] rounded-lg shadow-lg z-40 overflow-hidden" data-testid="nav-about-menu">
+        <div className="absolute left-0 mt-4 w-72 bg-white border border-[#E2E8F0] rounded-xl shadow-xl z-40 overflow-hidden" data-testid="nav-about-menu">
           <Link
             to="/why-hcmorbit"
             onClick={() => setOpen(false)}
@@ -63,15 +119,74 @@ function AboutMenu() {
   );
 }
 
+// -- Full-screen search overlay ----------------------------------------------
+function SearchOverlay({ open, onClose }) {
+  const [q, setQ] = useState("");
+  const navigate = useNavigate();
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (open) {
+      setQ("");
+      setTimeout(() => inputRef.current?.focus(), 50);
+      const onKey = (e) => { if (e.key === "Escape") onClose(); };
+      document.addEventListener("keydown", onKey);
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.removeEventListener("keydown", onKey);
+        document.body.style.overflow = "";
+      };
+    }
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (q.trim()) {
+      navigate(`/search?q=${encodeURIComponent(q.trim())}`);
+      onClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#0A1628]/70 backdrop-blur-sm" onClick={onClose} data-testid="search-overlay">
+      <div className="max-w-2xl mx-auto mt-24 px-4" onClick={(e) => e.stopPropagation()}>
+        <form onSubmit={submit} className="bg-white rounded-2xl shadow-2xl border border-[#E2E8F0] overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4">
+            <Search className="w-5 h-5 text-[#94A3B8]" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search posts, tags, knowledge base..."
+              className="flex-1 text-base bg-transparent outline-none placeholder:text-[#94A3B8]"
+              data-testid="search-overlay-input"
+            />
+            <button type="button" onClick={onClose} className="p-1.5 text-[#64748B] hover:text-[#0A1628] rounded-md hover:bg-[#F1F5F9]" data-testid="search-overlay-close" aria-label="Close search">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="px-5 py-3 bg-[#F8FAFC] border-t border-[#E2E8F0] text-xs text-[#64748B] flex items-center justify-between">
+            <span>Press <kbd className="px-1.5 py-0.5 rounded bg-white border border-[#E2E8F0] font-mono text-[10px]">Enter</kbd> to search</span>
+            <span><kbd className="px-1.5 py-0.5 rounded bg-white border border-[#E2E8F0] font-mono text-[10px]">Esc</kbd> to close</span>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// -- Main header --------------------------------------------------------------
 export default function NavHeader() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [searchQ, setSearchQ] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Fetch unread count when logged in, refresh on route change
   useEffect(() => {
     if (!user) { setUnread(0); return; }
     let cancelled = false;
@@ -81,132 +196,110 @@ export default function NavHeader() {
     return () => { cancelled = true; };
   }, [user, location.pathname]);
 
-  const submitSearch = (e) => {
-    e.preventDefault();
-    if (searchQ.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQ.trim())}`);
-    }
-  };
-
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-[#E2E8F0]" data-testid="nav-header">
-      <div className="max-w-[1440px] mx-auto px-4 lg:px-8 h-16 flex items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-2 group" data-testid="logo-link">
-          <div className="w-8 h-8 rounded-md bg-[#0A1628] flex items-center justify-center">
-            <div className="w-3.5 h-3.5 rounded-full bg-[#0D9373]" />
-          </div>
-          <span className="font-heading font-bold text-lg text-[#0A1628] tracking-tight">HCMOrbit</span>
-        </Link>
+    <>
+      <header className="sticky top-0 z-40 bg-white border-b border-[#E2E8F0]" data-testid="nav-header">
+        <div className="max-w-[1440px] mx-auto px-4 lg:px-8 h-20 flex items-center justify-between gap-6">
+          <BrandMark />
 
-        {user ? (
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium" data-testid="nav-main">
-            <NavLink to="/community" className={({isActive}) => isActive ? "text-[#0A1628]" : "text-[#64748B] hover:text-[#0A1628]"} data-testid="nav-home">
-              Community
-            </NavLink>
-            <NavLink to="/knowledge-base" className={({isActive}) => isActive ? "text-[#0A1628]" : "text-[#64748B] hover:text-[#0A1628]"} data-testid="nav-kb">
-              Knowledge Base
-            </NavLink>
-            <NavLink to="/ecosystem" className={({isActive}) => isActive ? "text-[#0A1628]" : "text-[#64748B] hover:text-[#0A1628]"} data-testid="nav-ecosystem">
-              Ecosystem
-            </NavLink>
+          {/* Center navigation */}
+          <nav className="hidden lg:flex items-center gap-8" data-testid={user ? "nav-main" : "nav-main-guest"}>
+            {user && <NavItem to="/community" label="Community" testid="nav-home" />}
+            <NavItem to="/knowledge-base" label="Knowledge Base" hasCaret testid="nav-kb" />
+            <NavItem to="/career-hub" label="Career Hub" testid="nav-career" />
+            <NavItem to="/ecosystem" label="Ecosystem" hasCaret testid="nav-ecosystem" />
             <AboutMenu />
+            <NavItem to="/connect" label="Connect" testid="nav-connect" />
           </nav>
-        ) : (
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium" data-testid="nav-main-guest">
-            <NavLink to="/knowledge-base" className="text-[#64748B] hover:text-[#0A1628]" data-testid="nav-kb-guest">
-              Knowledge Base
-            </NavLink>
-            <NavLink to="/ecosystem" className={({isActive}) => isActive ? "text-[#0A1628]" : "text-[#64748B] hover:text-[#0A1628]"} data-testid="nav-ecosystem-guest">
-              Ecosystem
-            </NavLink>
-            <AboutMenu />
-          </nav>
-        )}
 
-        {/* Search */}
-        <form onSubmit={submitSearch} className="hidden md:flex flex-1 max-w-md mx-2 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
-          <input
-            type="text"
-            value={searchQ}
-            onChange={(e) => setSearchQ(e.target.value)}
-            placeholder="Search posts, tags..."
-            data-testid="header-search-input"
-            className="w-full pl-9 pr-3 py-1.5 text-sm bg-[#F1F5F9] border border-transparent rounded-md focus:bg-white focus:border-[#0D9373] focus:ring-2 focus:ring-[#0D9373]/20 outline-none"
-          />
-        </form>
+          {/* Right cluster */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="p-2.5 rounded-full text-[#475569] hover:text-[#0A1628] hover:bg-[#F1F5F9] transition-colors"
+              aria-label="Search"
+              data-testid="header-search-button"
+            >
+              <Search className="w-5 h-5" />
+            </button>
 
-        <div className="flex items-center gap-3">
-          {user ? (
-            <>
-              <Link to="/community/new-post" className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium transition-colors" data-testid="new-post-btn">
-                <PlusCircle className="w-4 h-4" />
-                New Post
-              </Link>
-              {user.is_admin && (
-                <Link
-                  to="/admin"
-                  className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#0A1628] hover:bg-[#0F1F36] text-white text-xs font-semibold uppercase tracking-wider"
-                  data-testid="admin-link"
-                  title="Admin dashboard"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5" /> Admin
+            {user ? (
+              <>
+                <Link to="/community/new-post" className="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-semibold transition-colors shadow-sm" data-testid="new-post-btn">
+                  <PlusCircle className="w-4 h-4" />
+                  New Post
                 </Link>
-              )}
-              <Link to="/notifications" className="relative p-2 hover:bg-[#F1F5F9] rounded-md text-[#64748B]" aria-label="Notifications" data-testid="bell-icon">
-                <Bell className="w-5 h-5" />
-                {unread > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#DC2626] text-white text-[10px] font-semibold flex items-center justify-center counter" data-testid="bell-unread-count">
-                    {unread > 99 ? "99+" : unread}
-                  </span>
+                {user.is_admin && (
+                  <Link
+                    to="/admin"
+                    className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#0A1628] hover:bg-[#0F1F36] text-white text-xs font-semibold uppercase tracking-wider"
+                    data-testid="admin-link"
+                    title="Admin dashboard"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" /> Admin
+                  </Link>
                 )}
-              </Link>
-              <div className="relative">
-                <button
-                  onClick={() => setMenuOpen(!menuOpen)}
-                  className="flex items-center gap-2 p-1 hover:bg-[#F1F5F9] rounded-md"
-                  data-testid="user-menu-button"
-                >
-                  <div className="w-8 h-8 rounded-full bg-[#0A1628] text-white flex items-center justify-center text-sm font-medium">
-                    {(user.full_name || user.username || "U")[0].toUpperCase()}
-                  </div>
-                  <ChevronDown className="w-3.5 h-3.5 text-[#64748B]" />
-                </button>
-                {menuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-                    <div className="absolute right-0 mt-2 w-64 bg-white border border-[#E2E8F0] rounded-lg shadow-lg z-40 overflow-hidden" data-testid="user-menu-dropdown">
-                      <div className="px-4 py-3 border-b border-[#E2E8F0]">
-                        <div className="font-medium text-sm text-[#0F172A]">{user.full_name}</div>
-                        <div className="text-xs text-[#64748B]">@{user.username}</div>
-                        <div className="mt-2 flex items-center gap-2">
-                          <GroupBadge group={user.group_type} />
-                          <span className="text-xs text-[#64748B] counter">{user.reputation_score} rep</span>
-                        </div>
-                      </div>
-                      <button onClick={() => { setMenuOpen(false); navigate(`/profile/${user.username}`); }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#0F172A] hover:bg-[#F8FAFC]" data-testid="menu-profile">
-                        <User className="w-4 h-4" /> Profile
-                      </button>
-                      <button onClick={() => { setMenuOpen(false); logout(); navigate("/"); }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#DC2626] hover:bg-[#FEF2F2]" data-testid="menu-logout">
-                        <LogOut className="w-4 h-4" /> Sign out
-                      </button>
+                <Link to="/notifications" className="relative p-2.5 hover:bg-[#F1F5F9] rounded-full text-[#475569] hover:text-[#0A1628] transition-colors" aria-label="Notifications" data-testid="bell-icon">
+                  <Bell className="w-5 h-5" />
+                  {unread > 0 && (
+                    <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#DC2626] text-white text-[10px] font-semibold flex items-center justify-center counter" data-testid="bell-unread-count">
+                      {unread > 99 ? "99+" : unread}
+                    </span>
+                  )}
+                </Link>
+                <div className="relative">
+                  <button
+                    onClick={() => setMenuOpen(!menuOpen)}
+                    className="flex items-center gap-1.5 p-0.5 pr-1 rounded-full hover:bg-[#F1F5F9] transition-colors"
+                    data-testid="user-menu-button"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-[#0A1628] text-white flex items-center justify-center text-sm font-semibold ring-2 ring-white shadow-sm">
+                      {(user.full_name || user.username || "U")[0].toUpperCase()}
                     </div>
-                  </>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="px-3.5 py-2 text-sm text-[#0A1628] hover:text-[#0D9373]" data-testid="signin-btn">
-                Sign In
-              </Link>
-              <Link to="/register" className="px-3.5 py-2 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium" data-testid="join-btn">
-                Join Community
-              </Link>
-            </>
-          )}
+                    <ChevronDown className="w-3.5 h-3.5 text-[#64748B]" />
+                  </button>
+                  {menuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+                      <div className="absolute right-0 mt-3 w-64 bg-white border border-[#E2E8F0] rounded-xl shadow-xl z-40 overflow-hidden" data-testid="user-menu-dropdown">
+                        <div className="px-4 py-3 border-b border-[#E2E8F0]">
+                          <div className="font-semibold text-sm text-[#0F172A]">{user.full_name}</div>
+                          <div className="text-xs text-[#64748B]">@{user.username}</div>
+                          <div className="mt-2 flex items-center gap-2">
+                            <GroupBadge group={user.group_type} />
+                            <span className="text-xs text-[#64748B] counter">{user.reputation_score} rep</span>
+                          </div>
+                        </div>
+                        <button onClick={() => { setMenuOpen(false); navigate(`/profile/${user.username}`); }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#0F172A] hover:bg-[#F8FAFC]" data-testid="menu-profile">
+                          <User className="w-4 h-4" /> Profile
+                        </button>
+                        <button onClick={() => { setMenuOpen(false); logout(); navigate("/"); }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#DC2626] hover:bg-[#FEF2F2]" data-testid="menu-logout">
+                          <LogOut className="w-4 h-4" /> Sign out
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="hidden sm:inline-flex items-center px-4 py-2 text-sm font-medium text-[#0A1628] hover:text-[#0D9373] transition-colors" data-testid="signin-btn">
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  className="inline-flex items-center px-5 py-2.5 rounded-full bg-[#0A1628] hover:bg-[#0F1F36] text-white text-sm font-semibold transition-colors shadow-sm"
+                  data-testid="join-btn"
+                >
+                  Join Community
+                </Link>
+              </>
+            )}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+    </>
   );
 }

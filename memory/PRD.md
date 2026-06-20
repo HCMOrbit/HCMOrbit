@@ -71,10 +71,15 @@ HCMOrbit is an independent professional Q&A community for the HCM (Workday) ecos
 - Full CRUD: `/api/posts`, `/api/comments`, `/api/votes`, `/api/admin/*`, `/api/kb/*`
 
 ## Roadmap
+### Recently shipped (Feb 2026)
+- **Header redesign** to match attached reference image: two-tone "HCM"+"Orbit" wordmark, tagline beneath, taller h-20 layout, teal underline for active route, icon-only search opening a full-screen overlay, Career Hub + Connect nav items, rounded "Join Community" CTA pill, refined avatar dropdown
+- New placeholder pages `/career-hub` and `/connect` (coming-soon style with feature previews)
+
 ### P1 — Next up
 - Custom domain `hcmorbit.com` setup (platform-level — needs support_agent guidance)
 - Admin moderation tools: post moderation actions, user impersonation, reporting workflows (from original PRD)
 - Production run of `migrate_seed_kb_engagement.py` against Atlas (user-driven; preview pod lacks prod `MONGO_URL`)
+- Flesh out `/career-hub` and `/connect` placeholder pages into full features (job board, contact form)
 
 ### P2 — Soon
 - Add `/app/backend/tests` pytest suite for the new route structure (refresh KB tests to reflect admin-only authoring policy)
