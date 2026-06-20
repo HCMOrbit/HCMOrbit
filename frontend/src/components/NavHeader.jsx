@@ -5,25 +5,15 @@ import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import GroupBadge from "./GroupBadge";
 
-// -- Brand mark (logo square + wordmark + tagline) ----------------------------
-function BrandMark({ showTagline = true }) {
+// -- Brand mark (logo square + wordmark) --------------------------------------
+function BrandMark() {
   return (
     <Link to="/" className="flex items-center gap-3 group shrink-0" data-testid="logo-link">
-      <div className="relative w-11 h-11 rounded-lg bg-[#0A1628] flex items-center justify-center shadow-sm">
-        <div className="w-4 h-4 rounded-full bg-[#0D9373]" />
-        <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-white border-2 border-[#0A1628]" />
-      </div>
-      <div className="flex flex-col leading-tight min-w-0">
-        <span className="font-heading font-extrabold text-2xl tracking-tight whitespace-nowrap">
-          <span className="text-[#0A1628]">HCM</span>
-          <span className="text-[#0D9373]">Orbit</span>
-        </span>
-        {showTagline && (
-          <span className="hidden xl:block text-[10.5px] text-[#64748B] font-medium tracking-[0.01em] leading-snug whitespace-nowrap">
-            The Community Where Workday Professionals Learn, Solve, and Grow
-          </span>
-        )}
-      </div>
+      <div className="w-11 h-11 rounded-lg bg-[#0A1628] shadow-sm" />
+      <span className="font-heading font-extrabold text-2xl tracking-tight whitespace-nowrap">
+        <span className="text-[#0A1628]">HCM</span>
+        <span className="text-[#0D9373]">Orbit</span>
+      </span>
     </Link>
   );
 }
@@ -36,8 +26,8 @@ function NavItem({ to, label, hasCaret = false, testid }) {
       end={to === "/"}
       data-testid={testid}
       className={({ isActive }) =>
-        `relative inline-flex items-center gap-1 py-2 text-[15px] font-medium whitespace-nowrap transition-colors ${
-          isActive ? "text-[#0A1628]" : "text-[#475569] hover:text-[#0A1628]"
+        `relative inline-flex items-center gap-1 py-2 text-[15px] font-bold whitespace-nowrap transition-colors ${
+          isActive ? "text-[#0A1628]" : "text-[#0A1628]/80 hover:text-[#0A1628]"
         }`
       }
     >
@@ -79,7 +69,7 @@ function AboutMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`relative inline-flex items-center gap-1 py-2 text-[15px] font-medium whitespace-nowrap transition-colors ${isActive ? "text-[#0A1628]" : "text-[#475569] hover:text-[#0A1628]"}`}
+        className={`relative inline-flex items-center gap-1 py-2 text-[15px] font-bold whitespace-nowrap transition-colors ${isActive ? "text-[#0A1628]" : "text-[#0A1628]/80 hover:text-[#0A1628]"}`}
         data-testid="nav-about-trigger"
         aria-expanded={open}
       >
