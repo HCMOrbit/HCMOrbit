@@ -1,6 +1,11 @@
-# Railway / Nixpacks config — force SPA-aware static serving so direct hits
-# on client-side routes (e.g. /reset-password?token=…) render index.html
-# instead of falling through to the home page or a 404.
+# Railway / Nixpacks config — explicit SPA-aware production serve so direct
+# hits on client-side routes (e.g. /reset-password?token=…) render the React
+# app's index.html instead of falling through to the home page or a 404.
+#
+# Why `serve -s`?
+#   The `-s` flag tells `serve` to treat this as a single-page app and rewrite
+#   every unknown route to /index.html. Without it, requests like
+#   /reset-password return 404 → which Railway's edge often masks as `/`.
 providers = ["node"]
 
 [phases.setup]
@@ -13,4 +18,4 @@ cmds = ["yarn install --frozen-lockfile"]
 cmds = ["yarn build"]
 
 [start]
-cmd = "npx serve -s build -l ${PORT:-3000}"
+cmd = "yarn start:prod"

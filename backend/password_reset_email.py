@@ -15,7 +15,25 @@ log = logging.getLogger("password_reset_email")
 # Import the shared visual primitives from welcome_emails so any branding
 # update propagates automatically. We deliberately do NOT reuse welcome's
 # `_send_via_resend` because the sender must differ for transactional auth mail.
-from welcome_emails import HEADER_HTML, SIGNATURE_HTML, _footer_html
+from welcome_emails import HEADER_HTML, _footer_html
+
+
+# Generic operational signature used only by password-reset (and future
+# transactional) emails. Replaces the founder's personal signature so the
+# user sees a team/support voice, not "Suchismita Tripathy, Founder".
+SUPPORT_SIGNATURE_HTML = """
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"
+       style="margin-top:28px;border-top:1px solid #e5e7eb;padding-top:18px;">
+  <tr><td style="font-family:Arial,Helvetica,sans-serif;color:#1B3A6B;line-height:1.55;font-size:14px;">
+    Thanks,<br>
+    <strong style="font-weight:700;">The HCMOrbit Team</strong>
+  </td></tr>
+  <tr><td style="padding-top:8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#64748B;line-height:1.5;">
+    Need help? Reply to this email or write to
+    <a href="mailto:support@hcmorbit.com" style="color:#0D9373;text-decoration:none;font-weight:600;">support@hcmorbit.com</a>.
+  </td></tr>
+</table>
+"""
 
 
 # Dedicated sender for password-reset (operational) mail. Keep separate from
@@ -66,7 +84,7 @@ def _wrap(body_html: str) -> str:
         <tr><td>{HEADER_HTML}</td></tr>
         <tr><td style="padding:32px;font-family:Arial,Helvetica,sans-serif;color:#1f2937;line-height:1.6;font-size:15px;">
           {body_html}
-          {SIGNATURE_HTML}
+          {SUPPORT_SIGNATURE_HTML}
         </td></tr>
         <tr><td>{_footer_html()}</td></tr>
       </table>

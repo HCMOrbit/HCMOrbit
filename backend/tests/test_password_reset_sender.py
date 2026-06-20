@@ -36,3 +36,13 @@ def test_welcome_sender_is_independent_of_password_reset_sender(monkeypatch):
     importlib.reload(pr_mod)
     assert pr_mod._password_reset_sender() == "support@hcmorbit.com"
     assert we_mod._resend_config()["sender"] == "founder@hcmorbit.com"
+
+
+def test_password_reset_email_uses_generic_team_signature_not_founder():
+    """Password reset emails must never carry the founder's personal signature."""
+    from password_reset_email import render_password_reset_html
+    _, html = render_password_reset_html("Jane", "https://hcmorbit.com/reset-password?token=abc")
+    for needle in ["Suchismita Tripathy", "Founder | HCMOrbit", "suchi@hcmorbit.com", "Book a 1:1"]:
+        assert needle not in html, f"Password reset email leaks founder info: {needle!r}"
+    assert "HCMOrbit Team" in html
+    assert "support@hcmorbit.com" in html
