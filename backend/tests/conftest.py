@@ -1,5 +1,13 @@
 """Shared pytest fixtures for the backend test suite."""
 import os
+import sys
+
+# Make the `backend/` directory importable so test modules can do
+# `from event_scraper import ...`, `from jobs.rug_scraper import ...`, etc.
+# regardless of where pytest is invoked from (CI runs from `backend/`,
+# `/app/`, or a fresh checkout). Individual test files should NOT repeat
+# this — conftest.py is loaded before any test module's imports run.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 import requests

@@ -1,14 +1,53 @@
 """Public + admin Ecosystem endpoints — community news (RSS-hydrated) + curated events."""
+import time
 import uuid
+from collections import defaultdict
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, HttpUrl
 
 from core import db, now_iso
 from dependencies import require_admin, log_admin_action
+from event_scraper import fetch_event_metadata
+from jobs.rug_scraper import scrape_rug_events
+from jobs.meetup_scraper import scrape_meetup_events
+from jobs.eventbrite_scraper import scrape_eventbrite_rugs
 
 router = APIRouter()
+
+
+# ── Public-submit rate limit ───────────────────────────────────────────────
+# Simple in-memory sliding window — bounded by # of active submitter IPs, no
+# Redis needed at this scale. Each list holds Unix timestamps of recent hits.
+_SUBMIT_RL_WINDOW_S = 3600     # 1 hour
+_SUBMIT_RL_MAX_HITS = 5        # max submissions per IP per window
+_submit_hits: dict[str, list[float]] = defaultdict(list)
+
+
+def _client_ip(request: Request) -> str:
+    """Best-effort client IP — honors X-Forwarded-For (Kubernetes ingress)."""
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:
+        # First entry is the original client, rest are proxies.
+        return fwd.split(",")[0].strip()
+    return (request.client.host if request.client else "unknown") or "unknown"
+
+
+def _check_submit_rate_limit(request: Request) -> None:
+    """Sliding-window per-IP guard for the public submit endpoint. Raises 429."""
+    ip = _client_ip(request)
+    now = time.monotonic()
+    cutoff = now - _SUBMIT_RL_WINDOW_S
+    hits = _submit_hits[ip]
+    # Drop expired timestamps in-place to keep the list bounded.
+    fresh = [t for t in hits if t > cutoff]
+    if len(fresh) >= _SUBMIT_RL_MAX_HITS:
+        _submit_hits[ip] = fresh  # keep memory clean even when rejecting
+        raise HTTPException(status_code=429, detail="Too many submissions — please try again later")
+    fresh.append(now)
+    _submit_hits[ip] = fresh
+
 
 
 # ── Community news (RSS-hydrated) ──────────────────────────────────────────
@@ -31,7 +70,8 @@ async def list_ecosystem_news(limit: int = Query(5, ge=1, le=50)):
 EVENT_TYPES = {"RUG", "Conference", "Webinar"}
 EVENT_PUBLIC_PROJECTION = {
     "_id": 0, "id": 1, "title": 1, "event_type": 1, "date": 1, "time": 1,
-    "timezone": 1, "sponsor": 1, "location": 1, "register_url": 1, "is_published": 1,
+    "timezone": 1, "sponsor": 1, "location": 1, "register_url": 1, "description": 1,
+    "is_published": 1, "source": 1,
 }
 
 
@@ -44,6 +84,7 @@ class EventIn(BaseModel):
     sponsor: Optional[str] = None
     location: Optional[str] = None
     register_url: Optional[str] = None
+    description: Optional[str] = None
     is_published: bool = True
 
 
@@ -56,6 +97,7 @@ class EventPatch(BaseModel):
     sponsor: Optional[str] = None
     location: Optional[str] = None
     register_url: Optional[str] = None
+    description: Optional[str] = None
     is_published: Optional[bool] = None
 
 
@@ -80,6 +122,73 @@ async def list_events_admin(admin: dict = Depends(require_admin)):
     """All events (published + drafts), soonest first — for the admin manager."""
     cursor = db.ecosystem_events.find({}, EVENT_PUBLIC_PROJECTION).sort("date", 1)
     return {"items": await cursor.to_list(500)}
+
+
+# Body shape for the "Paste URL → auto-fill" admin helper. Kept loose so a
+# typo never bounces with a 422 — the scraper itself fails silently downstream.
+class FetchUrlBody(BaseModel):
+    url: HttpUrl
+
+
+@router.post("/admin/ecosystem/events/fetch-url")
+async def admin_fetch_event_url(body: FetchUrlBody, admin: dict = Depends(require_admin)):
+    """Best-effort scrape of an event URL → returns whatever fields it could
+    extract (title, description, date, time, sponsor, location, event_type,
+    register_url, source). Frontend pre-fills the create-event form with these.
+    """
+    return await fetch_event_metadata(str(body.url))
+
+
+@router.post("/ecosystem/events/fetch-url")
+async def public_fetch_event_url(body: FetchUrlBody):
+    """Public version of the URL auto-fill scraper for the community submission
+    form. Reads only external public pages — no internal data exposed."""
+    return await fetch_event_metadata(str(body.url))
+
+
+@router.post("/ecosystem/events/submit", status_code=201)
+async def submit_event_public(ev: EventIn, request: Request):
+    """Community submission — no auth required. Rate-limited to 5/IP/hour.
+    Always stored as draft (`is_published=False`) with `source='community'`
+    for admin review; anything the client tries to set for `is_published`
+    is ignored."""
+    _check_submit_rate_limit(request)
+    _validate_event_type(ev.event_type)
+    if not (ev.title or "").strip():
+        raise HTTPException(400, "title is required")
+    if not (ev.date or "").strip():
+        raise HTTPException(400, "date is required")
+    if not (ev.register_url or "").strip():
+        raise HTTPException(400, "register_url is required")
+    doc = ev.model_dump()
+    doc["id"] = f"evt_{uuid.uuid4().hex[:12]}"
+    doc["is_published"] = False
+    doc["source"] = "community"
+    doc["submitted_at"] = now_iso()
+    await db.ecosystem_events.insert_one(doc)
+    return {"ok": True, "id": doc["id"]}
+
+
+@router.post("/admin/ecosystem/scrape-rugs")
+async def admin_scrape_rugs(admin: dict = Depends(require_admin)):
+    """Trigger the WDBeacon RUG scraper on demand. Returns the run summary.
+    Scraped events land in `ecosystem_events` as drafts (`is_published=False`)
+    with `source: 'wdbeacon'` for admin review."""
+    return await scrape_rug_events()
+
+
+@router.post("/admin/ecosystem/scrape-meetup")
+async def admin_scrape_meetup(admin: dict = Depends(require_admin)):
+    """Trigger the Meetup.com Workday/HCM scraper on demand. Same draft flow as
+    `scrape-rugs`, but events land with `source: 'meetup'`."""
+    return await scrape_meetup_events()
+
+
+@router.post("/admin/ecosystem/scrape-eventbrite")
+async def admin_scrape_eventbrite(admin: dict = Depends(require_admin)):
+    """Trigger the Eventbrite Workday RUG scraper on demand.
+    Events land with `source: 'eventbrite'`, `event_type: 'RUG'`."""
+    return await scrape_eventbrite_rugs()
 
 
 @router.post("/admin/ecosystem/events")

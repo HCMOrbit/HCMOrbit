@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Calendar,
@@ -65,18 +65,14 @@ const PLACEHOLDER_CERTS = [
 
 // ── Visual primitives ──────────────────────────────────────────────────────
 
-const CATEGORY_GRADIENT = {
-  RUG:        "linear-gradient(135deg, #134E4A 0%, #0D9373 55%, #0A1628 100%)",
-  CONFERENCE: "linear-gradient(135deg, #1E3A8A 0%, #1E40AF 45%, #0A1628 100%)",
-  WEBINAR:    "linear-gradient(135deg, #581C87 0%, #7E22CE 45%, #0A1628 100%)",
-  DEFAULT:    "linear-gradient(135deg, #0D9373 0%, #134E4A 50%, #0A1628 100%)",
-};
-
-const CATEGORY_PILL_STYLES = {
-  RUG:        { bg: "rgba(13, 147, 115, 0.16)",  color: "#5EEAD4", border: "rgba(94, 234, 212, 0.40)" },
-  CONFERENCE: { bg: "rgba(59, 130, 246, 0.18)",  color: "#93C5FD", border: "rgba(147, 197, 253, 0.40)" },
-  WEBINAR:    { bg: "rgba(168, 85, 247, 0.18)",  color: "#D8B4FE", border: "rgba(216, 180, 254, 0.40)" },
-  DEFAULT:    { bg: "rgba(255, 255, 255, 0.10)", color: "#FFFFFF", border: "rgba(255, 255, 255, 0.25)" },
+// Per-type styling for the EventCard banner: dark solid background + large
+// accent-colored type word + small subtitle line below. Matches the spec
+// banner design (no gradient, no pill).
+const CATEGORY_BANNER = {
+  RUG:        { bg: "#0A1628", accent: "#0D9373", subtitle: "Regional User Group" },
+  CONFERENCE: { bg: "#0C2A5E", accent: "#5B9BD5", subtitle: "Workday Official" },
+  WEBINAR:    { bg: "#2D1B69", accent: "#A78BFA", subtitle: "Online Session" },
+  DEFAULT:    { bg: "#0A1628", accent: "#0D9373", subtitle: "Workday Community Event" },
 };
 
 const NEWS_ICONS = { bot: Bot, puzzle: Puzzle, ticket: Ticket, doc: FileText };
@@ -298,15 +294,14 @@ function downloadIcs(ev) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function EventCard({ ev }) {
+export function EventCard({ ev, expanded = false }) {
   // Tolerate both shapes: placeholder ({category, date, host, location, url}) and
   // API ({event_type, date, time, timezone, sponsor, location, register_url}).
   const category = ev.category || ev.event_type || "DEFAULT";
   const categoryKey = category === "Conference" ? "CONFERENCE"
                     : category === "Webinar"    ? "WEBINAR"
                     : category;
-  const pill = CATEGORY_PILL_STYLES[categoryKey] || CATEGORY_PILL_STYLES.DEFAULT;
-  const gradient = CATEGORY_GRADIENT[categoryKey] || CATEGORY_GRADIENT.DEFAULT;
+  const banner = CATEGORY_BANNER[categoryKey] || CATEGORY_BANNER.DEFAULT;
   const host = ev.host || ev.sponsor;
   const url = ev.url || ev.register_url || "#";
   const gcalUrl = buildGoogleCalendarUrl(ev);
@@ -327,13 +322,25 @@ export function EventCard({ ev }) {
       className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow"
       data-testid={`event-${ev.id}`}
     >
-      {/* Gradient header with category pill anchored bottom-left */}
-      <div className="h-[160px] relative" style={{ background: gradient }}>
+      {/* Solid dark banner with large type word + subtitle, per spec */}
+      <div
+        className="h-[160px] relative overflow-hidden flex flex-col items-center justify-center"
+        style={{ background: banner.bg }}
+        data-testid={`event-${ev.id}-banner`}
+      >
         <span
-          className="absolute left-5 bottom-5 inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border"
-          style={{ background: pill.bg, color: pill.color, borderColor: pill.border }}
+          className="font-extrabold leading-none whitespace-nowrap text-[42px]"
+          style={{ color: banner.accent }}
+          data-testid={`event-${ev.id}-type`}
         >
-          {category}
+          {category === "DEFAULT" ? "Event" : category}
+        </span>
+        <span
+          className="mt-2 text-[11px] font-semibold uppercase tracking-[0.18em]"
+          style={{ color: banner.accent, opacity: 0.6 }}
+          data-testid={`event-${ev.id}-subtitle`}
+        >
+          {banner.subtitle}
         </span>
       </div>
 
@@ -358,6 +365,14 @@ export function EventCard({ ev }) {
             </li>
           )}
         </ul>
+        {ev.description && (
+          <p
+            className={`text-[13px] text-[#475569] leading-relaxed ${expanded ? "whitespace-pre-line" : "line-clamp-2"}`}
+            data-testid={`event-${ev.id}-description`}
+          >
+            {ev.description}
+          </p>
+        )}
         <a
           href={url}
           target={url && url !== "#" ? "_blank" : undefined}
@@ -574,6 +589,34 @@ export default function Ecosystem() {
   const [events, setEvents] = useState(PLACEHOLDER_EVENTS);
   const [certs, setCerts] = useState(PLACEHOLDER_CERTS);
 
+  // Hub-only featured-events pick: one earliest future event per type, ordered
+  // RUG → Conference → Webinar. Slots with no candidate are skipped gracefully.
+  // Tolerates both API (`event_type` + ISO `date`) and placeholder (`category`
+  // + combined date string) shapes.
+  const featuredEvents = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const eventDateKey = (ev) => {
+      // ISO "YYYY-MM-DD" sorts lexicographically; placeholder strings (e.g.
+      // "June 17, 2026 · 4:00 PM MT") get coerced via Date as a fallback.
+      const raw = (ev.date || "").toString();
+      if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+      const d = new Date(raw.split("·")[0]);
+      return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+    };
+    const eventType = (ev) => ev.event_type || ev.category || null;
+    const earliestFuture = (type) =>
+      events
+        .filter((ev) => eventType(ev) === type)
+        .filter((ev) => {
+          const k = eventDateKey(ev);
+          return k === "" || k >= today;  // keep undated entries as candidates
+        })
+        .sort((a, b) => (eventDateKey(a) || "9999").localeCompare(eventDateKey(b) || "9999"))[0];
+    return ["RUG", "Conference", "Webinar"]
+      .map((t) => earliestFuture(t))
+      .filter(Boolean);
+  }, [events]);
+
   useEffect(() => {
     let cancelled = false;
     api.get("/ecosystem/news?limit=6")
@@ -616,11 +659,11 @@ export default function Ecosystem() {
 
       <main className="max-w-[1200px] mx-auto px-6 lg:px-8 py-10 lg:py-12">
 
-        {/* Upcoming events — first 3 only on the hub; "View all" leads to /ecosystem/events */}
+        {/* Upcoming events — one earliest future event per type (RUG → Conference → Webinar). */}
         <section className="mb-12" data-testid="events-section">
           <SectionHeader icon={Calendar} title="Upcoming events" viewAllHref="/ecosystem/events" dataTestId="events-section-header" />
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="events-list">
-            {events.slice(0, 3).map((ev) => <EventCard key={ev.id} ev={ev} />)}
+            {featuredEvents.map((ev) => <EventCard key={ev.id} ev={ev} />)}
           </div>
         </section>
 

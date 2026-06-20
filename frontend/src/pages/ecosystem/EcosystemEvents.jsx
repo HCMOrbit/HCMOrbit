@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Calendar, X } from "lucide-react";
+import { Calendar, X, Plus } from "lucide-react";
 import NavHeader from "../../components/NavHeader";
 import EcosystemSubpageHero from "../../components/ecosystem/EcosystemSubpageHero";
 import { EventCard } from "../Ecosystem";
+import SubmitEventModal from "./SubmitEventModal";
 import { api } from "../../lib/api";
 
 // ── Filter helpers ─────────────────────────────────────────────────────────
@@ -91,6 +92,7 @@ export default function EcosystemEvents() {
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState("all");
+  const [showSubmit, setShowSubmit] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,6 +129,18 @@ export default function EcosystemEvents() {
         current="Events"
       />
       <main className="max-w-[1200px] mx-auto px-6 lg:px-8 py-10 lg:py-12">
+        {/* Top action bar — Submit-an-event lives here so it sits next to filters */}
+        <div className="flex justify-end mb-3">
+          <button
+            type="button"
+            onClick={() => setShowSubmit(true)}
+            data-testid="submit-event-open-btn"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md border border-[#0D9373] text-[#0D9373] hover:bg-[#F0FDF4] text-sm font-semibold"
+          >
+            <Plus className="w-4 h-4" /> Submit an event
+          </button>
+        </div>
+
         {/* Filter bar */}
         {!loading && events.length > 0 && (
           <div
@@ -211,10 +225,11 @@ export default function EcosystemEvents() {
             className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"
             data-testid="events-list"
           >
-            {filtered.map((ev) => <EventCard key={ev.id} ev={ev} />)}
+            {filtered.map((ev) => <EventCard key={ev.id} ev={ev} expanded />)}
           </div>
         )}
       </main>
+      {showSubmit && <SubmitEventModal onClose={() => setShowSubmit(false)} />}
     </div>
   );
 }

@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Calendar as CalIcon } from "lucide-react";
+import { Plus, Calendar as CalIcon, Link2, Loader2, RefreshCw, CheckCircle2 } from "lucide-react";
 import { api, formatApiError } from "../../lib/api";
 import { toast } from "sonner";
 import { ecoInputCls, EcoFormField, EcoFormShell, EcoRowActions, EcoStatusPill } from "../../components/admin/EcoPrimitives";
 
 const EVENT_TYPES = ["RUG", "Conference", "Webinar"];
-const EMPTY = { title: "", event_type: "RUG", date: "", time: "", timezone: "", sponsor: "", location: "", register_url: "", is_published: true };
+const EMPTY = { title: "", event_type: "RUG", date: "", time: "", timezone: "", sponsor: "", location: "", register_url: "", description: "", is_published: true };
 
 export default function EventsPanel() {
   const [events, setEvents] = useState([]);
@@ -13,6 +13,8 @@ export default function EventsPanel() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [fetchUrl, setFetchUrl] = useState("");
+  const [fetching, setFetching] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
@@ -22,9 +24,41 @@ export default function EventsPanel() {
   };
   useEffect(() => { refresh(); }, []);
 
-  const openCreate = () => { setForm(EMPTY); setEditing("new"); };
-  const openEdit   = (ev) => { setForm({ ...EMPTY, ...ev }); setEditing(ev.id); };
-  const closeForm  = () => { setEditing(null); setForm(EMPTY); };
+  const openCreate = () => { setForm(EMPTY); setFetchUrl(""); setEditing("new"); };
+  const openEdit   = (ev) => { setForm({ ...EMPTY, ...ev }); setFetchUrl(""); setEditing(ev.id); };
+  const closeForm  = () => { setEditing(null); setForm(EMPTY); setFetchUrl(""); };
+
+  // Best-effort URL → form pre-fill. Toast on full miss; keep manual entry path open.
+  const fetchFromUrl = async () => {
+    if (!fetchUrl.trim()) return;
+    setFetching(true);
+    try {
+      const { data } = await api.post("/admin/ecosystem/events/fetch-url", { url: fetchUrl.trim() });
+      // Source === "unknown" means the scraper got nothing meaningful.
+      const hit = data?.source && data.source !== "unknown" && (data.title || data.date);
+      if (!hit) {
+        toast.error("Could not auto-fill — please fill in manually.");
+        setForm((f) => ({ ...f, register_url: data?.register_url || fetchUrl.trim() }));
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        title:        data.title       ?? f.title,
+        event_type:   data.event_type  ?? f.event_type,
+        date:         data.date        ?? f.date,
+        time:         data.time        ?? f.time,
+        sponsor:      data.sponsor     ?? f.sponsor,
+        location:     data.location    ?? f.location,
+        description:  data.description ?? f.description,
+        register_url: data.register_url ?? fetchUrl.trim(),
+      }));
+      toast.success(`Auto-filled from ${data.source === "jsonld" ? "structured data" : "page metadata"}.`);
+    } catch (e) {
+      toast.error("Could not auto-fill — please fill in manually.");
+    } finally {
+      setFetching(false);
+    }
+  };
 
   const save = async (e) => {
     e.preventDefault();
@@ -43,19 +77,107 @@ export default function EventsPanel() {
     catch (e) { toast.error(formatApiError(e)); }
   };
 
+  // One-click publish for scraped drafts.
+  const publishOne = async (ev) => {
+    try {
+      await api.patch(`/admin/ecosystem/events/${ev.id}`, { is_published: true });
+      toast.success(`Published "${ev.title}"`);
+      refresh();
+    } catch (e) {
+      toast.error(formatApiError(e));
+    }
+  };
+
+  // On-demand WDBeacon scrape — feeds `Scraped (pending review)` below.
+  const [scrapingRugs, setScrapingRugs] = useState(false);
+  const scrapeRugs = async () => {
+    setScrapingRugs(true);
+    try {
+      const { data } = await api.post("/admin/ecosystem/scrape-rugs");
+      if (data.found === 0) {
+        toast.info("WDBeacon scrape complete — 0 events found (site may be behind CAPTCHA).");
+      } else {
+        toast.success(`WDBeacon scrape complete — ${data.new} new, ${data.updated} updated.`);
+      }
+      refresh();
+    } catch (e) {
+      toast.error(formatApiError(e));
+    } finally {
+      setScrapingRugs(false);
+    }
+  };
+
+  // On-demand Meetup scrape (Workday + HCM keywords).
+  const [scrapingMeetup, setScrapingMeetup] = useState(false);
+  const scrapeMeetup = async () => {
+    setScrapingMeetup(true);
+    try {
+      const { data } = await api.post("/admin/ecosystem/scrape-meetup");
+      if (data.found === 0) {
+        toast.info("Meetup scrape complete — 0 Workday-relevant events found.");
+      } else {
+        toast.success(`Meetup scrape complete — ${data.new} new, ${data.updated} updated.`);
+      }
+      refresh();
+    } catch (e) {
+      toast.error(formatApiError(e));
+    } finally {
+      setScrapingMeetup(false);
+    }
+  };
+
+  // On-demand Eventbrite RUG scrape (curated organizer pages).
+  const [scrapingEventbrite, setScrapingEventbrite] = useState(false);
+  const scrapeEventbrite = async () => {
+    setScrapingEventbrite(true);
+    try {
+      const { data } = await api.post("/admin/ecosystem/scrape-eventbrite");
+      if (data.found === 0) {
+        toast.info("Eventbrite scrape complete — 0 upcoming RUG events found.");
+      } else {
+        toast.success(`Eventbrite scrape complete — ${data.new} new, ${data.updated} updated.`);
+      }
+      refresh();
+    } catch (e) {
+      toast.error(formatApiError(e));
+    } finally {
+      setScrapingEventbrite(false);
+    }
+  };
+
   const today = new Date().toISOString().slice(0,10);
-  const upcoming = events.filter((e) => !e.date || e.date >= today);
-  const past     = events.filter((e) =>  e.date && e.date <  today);
+  const SCRAPER_SOURCES = new Set(["wdbeacon", "meetup", "eventbrite", "community"]);
+  const scrapedPending = events.filter((e) => SCRAPER_SOURCES.has(e.source) && !e.is_published);
+  const scrapedIds = new Set(scrapedPending.map((e) => e.id));
+  const upcoming = events.filter((e) => !scrapedIds.has(e.id) && (!e.date || e.date >= today));
+  const past     = events.filter((e) => !scrapedIds.has(e.id) &&  e.date && e.date <  today);
 
   return (
     <>
       <div className="flex items-start justify-between mb-5 gap-4 flex-wrap">
         <p className="text-sm text-[#64748B]">Events shown on the public <strong>/ecosystem</strong> page.</p>
-        <button onClick={openCreate}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium"
-                data-testid="event-create-btn">
-          <Plus className="w-4 h-4" /> New event
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={scrapeRugs} disabled={scrapingRugs}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-[#0D9373] text-[#0D9373] hover:bg-[#F0FDF4] text-sm font-medium disabled:opacity-50"
+                  data-testid="event-scrape-rugs-btn">
+            {scrapingRugs ? <><Loader2 className="w-4 h-4 animate-spin" /> Scraping…</> : <><RefreshCw className="w-4 h-4" /> Scrape RUGs now</>}
+          </button>
+          <button onClick={scrapeMeetup} disabled={scrapingMeetup}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-[#0D9373] text-[#0D9373] hover:bg-[#F0FDF4] text-sm font-medium disabled:opacity-50"
+                  data-testid="event-scrape-meetup-btn">
+            {scrapingMeetup ? <><Loader2 className="w-4 h-4 animate-spin" /> Scraping…</> : <><RefreshCw className="w-4 h-4" /> Scrape Meetup now</>}
+          </button>
+          <button onClick={scrapeEventbrite} disabled={scrapingEventbrite}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-[#0D9373] text-[#0D9373] hover:bg-[#F0FDF4] text-sm font-medium disabled:opacity-50"
+                  data-testid="event-scrape-eventbrite-btn">
+            {scrapingEventbrite ? <><Loader2 className="w-4 h-4 animate-spin" /> Scraping…</> : <><RefreshCw className="w-4 h-4" /> Scrape Eventbrite</>}
+          </button>
+          <button onClick={openCreate}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium"
+                  data-testid="event-create-btn">
+            <Plus className="w-4 h-4" /> New event
+          </button>
+        </div>
       </div>
 
       {editing && (
@@ -64,6 +186,35 @@ export default function EventsPanel() {
           onClose={closeForm} onSubmit={save} saving={saving}
           submitLabel={editing === "new" ? "Create event" : "Save changes"} testIdPrefix="event"
         >
+          <EcoFormField label="Paste event URL (auto-fill)" wide>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+                <input
+                  type="url"
+                  value={fetchUrl}
+                  onChange={(e) => setFetchUrl(e.target.value)}
+                  placeholder="https://www.eventbrite.com/e/…  or  https://workday.com/…/event"
+                  className={`${ecoInputCls} pl-9`}
+                  data-testid="event-form-fetch-url"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); fetchFromUrl(); } }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={fetchFromUrl}
+                disabled={fetching || !fetchUrl.trim()}
+                data-testid="event-form-fetch-btn"
+                className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-md border border-[#0D9373] text-[#0D9373] hover:bg-[#F0FDF4] text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {fetching ? <><Loader2 className="w-4 h-4 animate-spin" /> Fetching…</> : <>Fetch details</>}
+              </button>
+            </div>
+            <p className="mt-1.5 text-xs text-[#94A3B8] leading-snug">
+              Works best with Eventbrite. Falls back to OpenGraph for any page. Review and correct the fields below before saving.
+            </p>
+          </EcoFormField>
+
           <EcoFormField label="Title *">
             <input required value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} className={ecoInputCls} data-testid="event-form-title" />
           </EcoFormField>
@@ -90,6 +241,16 @@ export default function EventsPanel() {
           <EcoFormField label="Register URL">
             <input type="url" placeholder="https://…" value={form.register_url} onChange={(e)=>setForm({...form,register_url:e.target.value})} className={ecoInputCls} data-testid="event-form-url" />
           </EcoFormField>
+          <EcoFormField label="Description" wide>
+            <textarea
+              rows={4}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Short blurb about the event — shown as a preview on the event card and in full on /ecosystem/events."
+              className={`${ecoInputCls} resize-y leading-relaxed`}
+              data-testid="event-form-description"
+            />
+          </EcoFormField>
           <EcoFormField label="Published" wide>
             <label className="inline-flex items-center gap-2 text-sm text-[#475569]">
               <input type="checkbox" checked={form.is_published} onChange={(e)=>setForm({...form,is_published:e.target.checked})} data-testid="event-form-published" />
@@ -99,13 +260,24 @@ export default function EventsPanel() {
         </EcoFormShell>
       )}
 
+      <EventTable
+        label="Scraped (pending review)"
+        rows={scrapedPending}
+        loading={loading}
+        onEdit={openEdit}
+        onDelete={removeEvent}
+        onPublish={publishOne}
+        emptyHint="No pending submissions or scraped drafts. Use the scraper buttons above to pull events, or wait for community submissions."
+        testid="events-scraped"
+        showSource
+      />
       <EventTable label="Upcoming" rows={upcoming} loading={loading}  onEdit={openEdit} onDelete={removeEvent} testid="events-upcoming" />
       <EventTable label="Past"     rows={past}     loading={false}    onEdit={openEdit} onDelete={removeEvent} testid="events-past" />
     </>
   );
 }
 
-function EventTable({ label, rows, loading, onEdit, onDelete, testid }) {
+function EventTable({ label, rows, loading, onEdit, onDelete, onPublish, testid, showSource, emptyHint }) {
   return (
     <section className="mb-8" data-testid={testid}>
       <h2 className="font-heading text-base font-semibold text-[#0A1628] mb-3">
@@ -115,7 +287,7 @@ function EventTable({ label, rows, loading, onEdit, onDelete, testid }) {
         {loading ? (
           <div className="p-6 text-sm text-[#64748B]">Loading…</div>
         ) : rows.length === 0 ? (
-          <div className="p-6 text-sm text-[#94A3B8] flex items-center gap-2"><CalIcon className="w-4 h-4" /> No events.</div>
+          <div className="p-6 text-sm text-[#94A3B8] flex items-center gap-2"><CalIcon className="w-4 h-4" /> {emptyHint || "No events."}</div>
         ) : (
           <table className="w-full text-sm">
             <thead><tr className="text-left text-[11px] uppercase tracking-wider text-[#94A3B8] border-b border-[#E2E8F0]">
@@ -123,8 +295,9 @@ function EventTable({ label, rows, loading, onEdit, onDelete, testid }) {
               <th className="px-4 py-2.5 font-semibold">Type</th>
               <th className="px-4 py-2.5 font-semibold">Title</th>
               <th className="px-4 py-2.5 font-semibold">Sponsor</th>
+              {showSource && <th className="px-4 py-2.5 font-semibold">Source</th>}
               <th className="px-4 py-2.5 font-semibold">Status</th>
-              <th className="px-4 py-2.5 font-semibold w-32 text-right">Actions</th>
+              <th className="px-4 py-2.5 font-semibold w-44 text-right">Actions</th>
             </tr></thead>
             <tbody>
               {rows.map((ev) => (
@@ -133,9 +306,37 @@ function EventTable({ label, rows, loading, onEdit, onDelete, testid }) {
                   <td className="px-4 py-3"><span className="text-xs font-semibold text-[#0D9373] uppercase tracking-wider">{ev.event_type}</span></td>
                   <td className="px-4 py-3 text-[#0A1628]">{ev.title}</td>
                   <td className="px-4 py-3 text-[#64748B]">{ev.sponsor || "—"}</td>
+                  {showSource && (
+                    <td className="px-4 py-3" data-testid={`event-source-${ev.id}`}>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider ${
+                          ev.source === "community"
+                            ? "bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC]"
+                            : ev.source === "eventbrite"
+                            ? "bg-[#FFEDD5] text-[#C2410C] border border-[#FDBA74]"
+                            : ev.source === "meetup"
+                            ? "bg-[#FEF3C7] text-[#B45309] border border-[#FCD34D]"
+                            : "bg-[#FEF3C7] text-[#92400E]"
+                        }`}
+                      >
+                        {ev.source || "manual"}
+                      </span>
+                    </td>
+                  )}
                   <td className="px-4 py-3"><EcoStatusPill isPublished={ev.is_published} /></td>
-                  <td className="px-4 py-3 text-right">
-                    <EcoRowActions testIdPrefix="event" id={ev.id} onEdit={()=>onEdit(ev)} onDelete={()=>onDelete(ev)} />
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-2">
+                      {onPublish && !ev.is_published && (
+                        <button
+                          onClick={() => onPublish(ev)}
+                          data-testid={`event-publish-${ev.id}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold bg-[#0D9373] hover:bg-[#0b7c61] text-white"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Publish
+                        </button>
+                      )}
+                      <EcoRowActions testIdPrefix="event" id={ev.id} onEdit={()=>onEdit(ev)} onDelete={()=>onDelete(ev)} />
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -67,12 +67,6 @@ export default function KBCategory() {
                 </div>
               </div>
               <p className="mt-4 text-white/70 max-w-2xl">{cat.description}</p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Pill>{cat.doc_count} docs total</Pill>
-                {activeSubModule && <Pill>{visibleDocs.length} in this sub-module</Pill>}
-                <Pill>{cat.avg_helpful_pct}% avg helpful</Pill>
-                <Pill>{(cat.total_views || 0).toLocaleString()} total views</Pill>
-              </div>
               <form onSubmit={submit} className="mt-7 flex gap-2 max-w-2xl">
                 <div className="relative flex-1">
                   <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
@@ -118,10 +112,6 @@ export default function KBCategory() {
       </div>
     </div>
   );
-}
-
-function Pill({ children }) {
-  return <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs text-white/80">{children}</span>;
 }
 
 export function DocRow({ doc, categorySlug, highlightQuery }) {
