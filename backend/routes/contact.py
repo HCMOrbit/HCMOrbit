@@ -12,10 +12,11 @@ import asyncio
 from collections import defaultdict
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel, EmailStr, Field
 
 from core import db, now_iso, log
+from dependencies import require_admin, log_admin_action
 
 router = APIRouter()
 
@@ -117,3 +118,40 @@ async def submit_contact(payload: ContactIn, request: Request):
     await db.contact_messages.insert_one(dict(doc))
     await _send_email_notification(doc)
     return {"ok": True}
+
+
+# ── Admin endpoints ─────────────────────────────────────────────────────────
+class ResolvePatch(BaseModel):
+    resolved: bool
+
+
+@router.get("/admin/contact")
+async def admin_list_contact_messages(admin: dict = Depends(require_admin)):
+    """List all contact submissions, newest first. No pagination yet."""
+    cursor = db.contact_messages.find({}, {"_id": 0}).sort("submitted_at", -1)
+    items = await cursor.to_list(length=2000)
+    # Ensure defaults on legacy rows missing resolved/resolved_at fields
+    for it in items:
+        it.setdefault("resolved", False)
+        it.setdefault("resolved_at", None)
+    return {"items": items, "count": len(items)}
+
+
+@router.patch("/admin/contact/{msg_id}")
+async def admin_update_contact_message(
+    msg_id: str,
+    payload: ResolvePatch,
+    admin: dict = Depends(require_admin),
+):
+    """Toggle the resolved flag on a contact submission."""
+    update = {"resolved": bool(payload.resolved), "resolved_at": now_iso() if payload.resolved else None}
+    result = await db.contact_messages.update_one({"id": msg_id}, {"$set": update})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Contact message not found")
+    await log_admin_action(
+        admin,
+        "contact_resolve" if payload.resolved else "contact_reopen",
+        target_type="contact_message",
+        target_id=msg_id,
+    )
+    return {"ok": True, **update}

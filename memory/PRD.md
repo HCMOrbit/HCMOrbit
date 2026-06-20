@@ -67,12 +67,15 @@ HCMOrbit is an independent professional Q&A community for the HCM (Workday) ecos
 ## Key endpoints
 - `POST /api/admin/kb/docs/upload` — `.docx` ingestion
 - `POST /api/contact` — public contact form (5/IP/hr rate limit, stores to `contact_messages`, Resend email to `ADMIN_EMAIL`)
+- `GET /api/admin/contact` — list contact submissions (admin)
+- `PATCH /api/admin/contact/{id}` — toggle `resolved` (admin)
 - `POST /api/kb/docs/{id}/feedback`, `GET /api/kb/docs/{id}/feedback`
 - `POST /api/kb/bookmarks/{id}`
 - Full CRUD: `/api/posts`, `/api/comments`, `/api/votes`, `/api/admin/*`, `/api/kb/*`
 
 ## Roadmap
 ### Recently shipped (Feb 2026)
+- **Admin → Contact inbox** at `/admin/contact`: list view with topic pills, expandable rows showing full message + IP + received date, mailto quick-reply, mark resolved/reopen toggle, and Open/Resolved/All filter tabs with live counts. Backed by `GET /api/admin/contact` and `PATCH /api/admin/contact/{id}`.
 - **Connect page** redesign with dark navy hero, functional contact form (5/IP/hr rate-limited), and 3 channel cards (email, community, LinkedIn). Submissions stored in `db.contact_messages` and emailed to `ADMIN_EMAIL` via Resend. Tests: `tests/test_contact_rate_limit.py` (5 passing).
 - **Header redesign** to match attached reference image: two-tone "HCM"+"Orbit" wordmark, tagline beneath, taller h-20 layout, teal underline for active route, icon-only search opening a full-screen overlay, Career Hub nav item, Connect moved into About dropdown, rounded "Join Community" CTA pill, refined avatar dropdown
 - New placeholder pages `/career-hub` and `/connect` (Connect is now fully functional)

@@ -26,6 +26,7 @@ import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminKnowledgeBase from "@/pages/admin/AdminKnowledgeBase";
 import AdminEmailPreviews from "@/pages/admin/AdminEmailPreviews";
 import AdminEcosystem, { RedirectToEvents, RedirectToCertifications } from "@/pages/admin/AdminEcosystem";
+import AdminContact from "@/pages/admin/AdminContact";
 import Ecosystem from "@/pages/Ecosystem";
 import EcosystemEvents from "@/pages/ecosystem/EcosystemEvents";
 import EcosystemNews from "@/pages/ecosystem/EcosystemNews";
@@ -79,6 +80,7 @@ function AppRoutes() {
       <Route path="/admin/ecosystem" element={<AdminEcosystem />} />
       <Route path="/admin/ecosystem-events" element={<RedirectToEvents />} />
       <Route path="/admin/ecosystem-certifications" element={<RedirectToCertifications />} />
+      <Route path="/admin/contact" element={<AdminContact />} />
       <Route path="/knowledge-base" element={<KBHome />} />
       <Route path="/knowledge-base/new" element={<NewKBDoc />} />
       <Route path="/knowledge-base/:slug" element={<KBCategory />} />
