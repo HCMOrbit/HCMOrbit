@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Search as SearchIcon, ChevronRight, X } from "lucide-react";
 import NavHeader from "../../components/NavHeader";
@@ -20,13 +20,12 @@ export default function KBCategory() {
 
   useEffect(() => {
     api.get(`/kb/categories/${slug}`).then((r) => setCat(r.data)).catch(() => {});
-    api.get(`/kb/docs?category=${slug}`).then((r) => setDocs(r.data.docs)).catch(() => {});
-  }, [slug]);
+    const params = new URLSearchParams({ category: slug });
+    if (activeSubModule) params.set("sub", activeSubModule);
+    api.get(`/kb/docs?${params.toString()}`).then((r) => setDocs(r.data.docs)).catch(() => {});
+  }, [slug, activeSubModule]);
 
-  const visibleDocs = useMemo(() => {
-    if (!activeSubModule) return docs;
-    return docs.filter((d) => d.sub_module === activeSubModule);
-  }, [docs, activeSubModule]);
+  const visibleDocs = docs;
 
   const submit = (e) => {
     e.preventDefault();
