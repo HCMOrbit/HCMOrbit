@@ -1,7 +1,9 @@
 """Transactional emails — currently the password-reset email.
 
 Shares the branded shell (header/footer/signature) with the welcome sequence
-in `welcome_emails.py` to keep the visual language consistent.
+in `welcome_emails.py` to keep the visual language consistent. Sends from a
+dedicated `PASSWORD_RESET_SENDER_EMAIL` (default `support@hcmorbit.com`) so
+operational mail does not appear to come from the founder's inbox.
 """
 import asyncio
 import logging
@@ -11,8 +13,45 @@ log = logging.getLogger("password_reset_email")
 
 
 # Import the shared visual primitives from welcome_emails so any branding
-# update propagates automatically.
-from welcome_emails import HEADER_HTML, SIGNATURE_HTML, _footer_html, _send_via_resend
+# update propagates automatically. We deliberately do NOT reuse welcome's
+# `_send_via_resend` because the sender must differ for transactional auth mail.
+from welcome_emails import HEADER_HTML, SIGNATURE_HTML, _footer_html
+
+
+# Dedicated sender for password-reset (operational) mail. Keep separate from
+# the marketing/welcome sender (`SENDER_EMAIL`) so the user's eyes treat the
+# two streams differently in their inbox.
+def _password_reset_sender() -> str:
+    return os.environ.get("PASSWORD_RESET_SENDER_EMAIL", "support@hcmorbit.com")
+
+
+def _reply_to() -> str | None:
+    return os.environ.get("REPLY_TO_EMAIL") or None
+
+
+async def _send_password_reset_via_resend(to_email: str, subject: str, html: str) -> bool:
+    """Send a password-reset email via Resend using the dedicated sender."""
+    api_key = os.environ.get("RESEND_API_KEY")
+    if not api_key:
+        log.warning("RESEND_API_KEY not configured — skipping password reset email.")
+        return False
+    try:
+        import resend
+        resend.api_key = api_key
+        params = {
+            "from": _password_reset_sender(),
+            "to": [to_email],
+            "subject": subject,
+            "html": html,
+        }
+        reply_to = _reply_to()
+        if reply_to:
+            params["reply_to"] = reply_to
+        await asyncio.to_thread(resend.Emails.send, params)
+        return True
+    except Exception as e:  # noqa: BLE001
+        log.warning(f"Password reset email send failed (to={to_email}): {e}")
+        return False
 
 
 def _wrap(body_html: str) -> str:
@@ -78,8 +117,5 @@ async def send_password_reset_email(to_email: str, full_name: str | None, reset_
     Failures are logged but never raise — registration/forgot-password flows
     rely on always-success behavior to prevent user enumeration.
     """
-    if not os.environ.get("RESEND_API_KEY"):
-        log.warning("RESEND_API_KEY not configured — skipping password reset email.")
-        return False
     subject, html = render_password_reset_html(full_name, reset_url)
-    return await _send_via_resend(to_email, subject, html)
+    return await _send_password_reset_via_resend(to_email, subject, html)

@@ -1,0 +1,16 @@
+# Railway / Nixpacks config — force SPA-aware static serving so direct hits
+# on client-side routes (e.g. /reset-password?token=…) render index.html
+# instead of falling through to the home page or a 404.
+providers = ["node"]
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "yarn"]
+
+[phases.install]
+cmds = ["yarn install --frozen-lockfile"]
+
+[phases.build]
+cmds = ["yarn build"]
+
+[start]
+cmd = "npx serve -s build -l ${PORT:-3000}"
