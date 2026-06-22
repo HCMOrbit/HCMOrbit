@@ -21,6 +21,7 @@ from routes.admin import router as admin_router
 from routes.feedback import router as feedback_router
 from routes.ecosystem import router as ecosystem_router
 from routes.contact import router as contact_router
+from routes.stats import router as stats_router
 from welcome_emails import process_welcome_queue
 from jobs.rss_fetch import fetch_workday_news
 from jobs.event_archive import archive_stale_events
@@ -41,6 +42,7 @@ api.include_router(admin_router)
 api.include_router(feedback_router)
 api.include_router(ecosystem_router)
 api.include_router(contact_router)
+api.include_router(stats_router)
 
 
 @api.get("/")

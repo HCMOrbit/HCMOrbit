@@ -6,20 +6,22 @@ import PageHero from "../../components/PageHero";
 import { DocTypeBadge, DifficultyBadge, TYPE_BORDER, CAT_BG } from "../../components/kb/KBBadges";
 import KBSidebar from "../../components/kb/KBSidebar";
 import { api } from "../../lib/api";
+import { useStats } from "../../lib/useStats";
 import { useAuth } from "../../lib/auth";
 
 const VISIBLE_COUNT = 9;
 
 export default function KBHome() {
-  const [stats, setStats] = useState({});
+  const [kbStats, setKbStats] = useState({});
   const [featured, setFeatured] = useState([]);
   const [categories, setCategories] = useState([]);
   const [showAll, setShowAll] = useState(false);
   const { user } = useAuth();
+  const { stats, loading: statsLoading } = useStats();
   const canContribute = !!user?.is_admin;
 
   useEffect(() => {
-    api.get("/kb/stats").then((r) => setStats(r.data)).catch(() => {});
+    api.get("/kb/stats").then((r) => setKbStats(r.data)).catch(() => {});
     api.get("/kb/featured?limit=3").then((r) => setFeatured(r.data)).catch(() => {});
     api.get("/kb/categories").then((r) => setCategories(r.data)).catch(() => {});
   }, []);
@@ -49,9 +51,9 @@ export default function KBHome() {
         testId="kb-hero"
       >
         <div className="mt-8 flex flex-wrap items-end gap-10">
-          <Stat value={stats.total_docs} label="Published documents" />
-          <Stat value={stats.total_helpful_votes} label="Practitioners helped" />
-          <Stat value={stats.avg_helpful_pct ? `${stats.avg_helpful_pct}%` : "—"} label="Avg helpful rating" />
+          <Stat value={statsLoading ? null : stats.kb_articles} label="Published documents" />
+          <Stat value={kbStats.total_helpful_votes} label="Practitioners helped" />
+          <Stat value={kbStats.avg_helpful_pct ? `${kbStats.avg_helpful_pct}%` : "—"} label="Avg helpful rating" />
           {canContribute && (
             <Link to="/knowledge-base/new" data-testid="kb-contribute-cta"
                   className="ml-auto inline-flex items-center gap-2 px-5 py-3 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white text-sm font-medium transition-colors">

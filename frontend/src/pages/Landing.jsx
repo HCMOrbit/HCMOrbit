@@ -5,6 +5,7 @@ import NavHeader from "../components/NavHeader";
 import GroupBadge from "../components/GroupBadge";
 import PostTypeBadge from "../components/PostTypeBadge";
 import { api, timeAgo } from "../lib/api";
+import { useStats } from "../lib/useStats";
 
 const ICON_MAP = { Users, Network, Shield, BarChart3, CircleDollarSign, Wallet, Landmark, Coffee };
 
@@ -133,12 +134,11 @@ function Credential({ value, label }) {
     </div>
   );
 }export default function Landing() {
-  const [stats, setStats] = useState({});
+  const { stats, loading: statsLoading } = useStats();
   const [spaces, setSpaces] = useState([]);
   const [recent, setRecent] = useState([]);
 
   useEffect(() => {
-    api.get("/community/stats").then(r => setStats(r.data)).catch(() => {});
     api.get("/spaces").then(r => setSpaces(r.data)).catch(() => {});
     api.get("/community/recent-activity?limit=5").then(r => setRecent(r.data)).catch(() => {});
   }, []);
@@ -313,19 +313,27 @@ function Credential({ value, label }) {
       <section className="py-14 bg-[#0A1628] text-white" data-testid="stats-section">
         <div className="max-w-[1200px] mx-auto px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-8">
           <div>
-            <div className="font-heading text-4xl lg:text-5xl font-bold text-white"><Counter value={stats.members || 0} /></div>
+            <div className="font-heading text-4xl lg:text-5xl font-bold text-white">
+              {statsLoading ? <span className="counter">—</span> : <Counter value={stats.members} />}
+            </div>
             <div className="text-sm text-white/60 mt-2 uppercase tracking-wider">Members</div>
           </div>
           <div>
-            <div className="font-heading text-4xl lg:text-5xl font-bold text-white"><Counter value={stats.posts || 0} /></div>
+            <div className="font-heading text-4xl lg:text-5xl font-bold text-white">
+              {statsLoading ? <span className="counter">—</span> : <Counter value={stats.posts} />}
+            </div>
             <div className="text-sm text-white/60 mt-2 uppercase tracking-wider">Posts</div>
           </div>
           <div>
-            <div className="font-heading text-4xl lg:text-5xl font-bold text-white"><Counter value={stats.answers || 0} /></div>
+            <div className="font-heading text-4xl lg:text-5xl font-bold text-white">
+              {statsLoading ? <span className="counter">—</span> : <Counter value={stats.answers} />}
+            </div>
             <div className="text-sm text-white/60 mt-2 uppercase tracking-wider">Answers</div>
           </div>
           <div>
-            <div className="font-heading text-4xl lg:text-5xl font-bold text-[#0D9373]"><Counter value={stats.active_today || 0} /></div>
+            <div className="font-heading text-4xl lg:text-5xl font-bold text-[#0D9373]">
+              {statsLoading ? <span className="counter">—</span> : <Counter value={stats.active_members} />}
+            </div>
             <div className="text-sm text-white/60 mt-2 uppercase tracking-wider">Active today</div>
           </div>
         </div>
@@ -444,7 +452,7 @@ function Credential({ value, label }) {
 
           <div className="mt-14 pt-10 border-t border-white/10" data-testid="founder-member-counter">
             <div className="font-heading text-5xl lg:text-6xl font-bold text-[#0D9373] leading-none">
-              <Counter value={stats.members || 0} />
+              {statsLoading ? <span className="counter">—</span> : <Counter value={stats.members} />}
             </div>
             <div className="mt-4 text-base lg:text-lg text-white font-medium">Workday professionals have already joined HCMOrbit</div>
             <div className="mt-1 text-sm text-white/50">Help shape the future of the community.</div>
