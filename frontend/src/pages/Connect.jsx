@@ -156,10 +156,14 @@ export default function Connect() {
         testId="connect-hero"
       />
 
-      {/* Centered contact form -------------------------------------------- */}
-      <section className="max-w-[720px] mx-auto px-4 lg:px-8 py-14 lg:py-20">
-        <p className="text-[#64748B] mb-6">A real human reads every note. We aim to reply within 2 business days.</p>
-        <ContactForm />
+      {/* Contact form — same outer container as PageHero so the body and
+          hero left edges line up. Form itself stays narrow (720px) and
+          left-aligned within that container. */}
+      <section className="max-w-[1200px] mx-auto px-6 lg:px-8 py-14 lg:py-20">
+        <div className="max-w-[720px]">
+          <p className="text-[#64748B] mb-6">A real human reads every note. We aim to reply within 2 business days.</p>
+          <ContactForm />
+        </div>
       </section>
     </div>
   );
