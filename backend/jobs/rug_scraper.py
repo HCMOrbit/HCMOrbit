@@ -25,6 +25,8 @@ from urllib.parse import urljoin
 import httpx
 from bs4 import BeautifulSoup
 
+from jobs.recurrence import detect_recurrence
+
 from core import db
 
 log = logging.getLogger(__name__)
@@ -171,6 +173,7 @@ def _build_event_doc(parsed: dict[str, Any], base_url: str) -> dict[str, Any] | 
     if not (title and register_url and date):
         return None
     description = (parsed.get("description") or "").strip()
+    recurrence = detect_recurrence(parsed, text=f"{title} {description}")
     return {
         "title": title[:200],
         "event_type": _infer_event_type(title, description, parsed.get("location") if isinstance(parsed.get("location"), str) else ""),
@@ -181,6 +184,7 @@ def _build_event_doc(parsed: dict[str, Any], base_url: str) -> dict[str, Any] | 
         "location": _format_location(parsed.get("location")),
         "register_url": register_url,
         "description": description[:1000] if description else None,
+        **recurrence,
     }
 
 

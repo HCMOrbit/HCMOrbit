@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, CheckCircle2, MessageSquare, Users, Network, Shield, BarChart3, CircleDollarSign, Wallet, Landmark, Coffee, Sparkles, Eye } from "lucide-react";
+import { ArrowRight, ArrowUpRight, CheckCircle2, MessageSquare, Users, Network, Shield, BarChart3, CircleDollarSign, Wallet, Landmark, Coffee, Sparkles, Eye, Wrench, Building2, TrendingUp, Plug, CalendarClock } from "lucide-react";
 import NavHeader from "../components/NavHeader";
 import GroupBadge from "../components/GroupBadge";
 import PostTypeBadge from "../components/PostTypeBadge";
@@ -45,12 +45,12 @@ const ROLES = [
 ];
 
 const REASONS = [
-  "Solve Workday production issues faster",
-  "Learn from real Workday implementations",
-  "Accelerate your Workday career",
-  "Share integration and EIB solutions",
-  "Stay ahead of Workday releases and AI features",
-  "Build your Workday professional network",
+  { icon: Wrench,         text: "Solve Workday production issues faster" },
+  { icon: Building2,      text: "Learn from real Workday implementations" },
+  { icon: TrendingUp,     text: "Accelerate your Workday career" },
+  { icon: Plug,           text: "Share integration and EIB solutions" },
+  { icon: CalendarClock,  text: "Stay ahead of Workday releases and AI features" },
+  { icon: Network,        text: "Build your Workday professional network" },
 ];
 
 const FEATURED_TOPICS = [
@@ -200,18 +200,30 @@ function Credential({ value, label }) {
       {/* Why Workday Professionals Join */}
       <section className="py-20 lg:py-24 bg-[#F8FAFC]" data-testid="why-join-section">
         <div className="max-w-[1100px] mx-auto px-6 lg:px-8">
-          <div className="max-w-2xl mb-10">
+          <div className="max-w-2xl mb-12">
             <div className="text-xs uppercase tracking-wider text-[#0D9373] font-semibold mb-3">Why Members Join</div>
-            <h2 className="font-heading text-3xl lg:text-4xl font-semibold text-[#0A1628]">Why Workday professionals join.</h2>
+            <h2 className="font-heading text-3xl lg:text-4xl font-semibold text-[#0A1628]">What you get out of it.</h2>
           </div>
-          <div className="grid sm:grid-cols-2 gap-4" data-testid="why-join-grid">
-            {REASONS.map((r) => (
-              <div key={r} className="flex items-start gap-3 bg-white border border-[#E2E8F0] rounded-lg p-5 hover:border-[#0D9373]/40 transition-colors">
-                <span className="text-2xl leading-none shrink-0" aria-hidden>🚀</span>
-                <span className="text-[15px] text-[#0F172A] leading-relaxed">{r}</span>
-              </div>
+          <ul className="grid sm:grid-cols-2 gap-x-12 gap-y-1" data-testid="why-join-grid">
+            {REASONS.map(({ icon: Icon, text }, i) => (
+              <li
+                key={text}
+                className={`flex items-center gap-4 py-5 border-l-2 border-[#0D9373] pl-5 ${
+                  // Hairline divider between stacked rows on each column,
+                  // not on the very last row of each column.
+                  i < REASONS.length - 2 ? "border-b border-b-[#E2E8F0]" : ""
+                }`}
+              >
+                <span
+                  className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-md bg-[#0D9373]/10 text-[#0D9373]"
+                  aria-hidden="true"
+                >
+                  <Icon className="w-5 h-5" />
+                </span>
+                <span className="text-[15px] font-semibold text-[#0A1628] leading-snug">{text}</span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 
