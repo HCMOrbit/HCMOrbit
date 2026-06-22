@@ -111,7 +111,14 @@ export default function EcosystemEvents() {
   const filtered = useMemo(() => {
     return events.filter((ev) => {
       if (typeFilter !== "all" && eventType(ev) !== typeFilter) return false;
-      if (monthFilter !== "all" && eventMonthKey(ev.date) !== monthFilter) return false;
+      // On-demand events bypass the month filter — they don't belong to a month.
+      if (monthFilter !== "all") {
+        if (ev.is_on_demand) return false;
+        // For recurring events the backend's `next_date` already reflects the
+        // upcoming occurrence; use it so the DMV-monthly forum shows up
+        // under its actual next month, not the seed month.
+        if (eventMonthKey(ev.next_date || ev.date) !== monthFilter) return false;
+      }
       return true;
     });
   }, [events, typeFilter, monthFilter]);

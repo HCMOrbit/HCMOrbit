@@ -304,19 +304,37 @@ export function EventCard({ ev, expanded = false }) {
   const banner = CATEGORY_BANNER[categoryKey] || CATEGORY_BANNER.DEFAULT;
   const host = ev.host || ev.sponsor;
   const url = ev.url || ev.register_url || "#";
-  const gcalUrl = buildGoogleCalendarUrl(ev);
+
+  // Temporal mode — drives the date line, the recurrence badge and whether
+  // we render the calendar export controls.
+  const isOnDemand = !!ev.is_on_demand;
+  const isRecurring = !!ev.is_recurring;
+  // Prefer the backend-computed `next_date` (handles rollforward for recurring
+  // series); otherwise fall back to whatever the source provided.
+  const effectiveDate = isOnDemand ? null : (ev.next_date || ev.date || "");
+  const gcalUrl = isOnDemand ? null : buildGoogleCalendarUrl({ ...ev, date: effectiveDate });
+  const icsAvailable = !isOnDemand && !!compactDate(effectiveDate);
+
   // Format date line: prefer combined placeholder string; otherwise build from API fields.
-  let dateLine = ev.date || "";
-  if (dateLine && !dateLine.includes("·")) {
-    try {
-      const d = new Date(dateLine);
-      if (!Number.isNaN(d.getTime())) {
-        dateLine = d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
-      }
-    } catch { /* leave as-is */ }
-    if (ev.time) dateLine += ` · ${ev.time}`;
-    if (ev.timezone) dateLine += ` ${ev.timezone}`;
+  let dateLine = "";
+  if (isOnDemand) {
+    dateLine = "On demand";
+  } else {
+    dateLine = effectiveDate || "";
+    if (dateLine && !dateLine.includes("·")) {
+      try {
+        const d = new Date(dateLine);
+        if (!Number.isNaN(d.getTime())) {
+          dateLine = d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+        }
+      } catch { /* leave as-is */ }
+      if (ev.time) dateLine += ` · ${ev.time}`;
+      if (ev.timezone) dateLine += ` ${ev.timezone}`;
+    }
   }
+  const recurrenceBadge = isRecurring
+    ? (ev.recurrence_rule === "weekly" ? "Weekly" : "Monthly")
+    : null;
   return (
     <div
       className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow"
@@ -350,7 +368,17 @@ export function EventCard({ ev, expanded = false }) {
         <ul className="space-y-1.5 text-[13px] text-[#475569]">
           <li className="flex items-start gap-2">
             <Calendar className="w-3.5 h-3.5 text-[#0D9373] shrink-0 mt-0.5" />
-            <span>{dateLine}</span>
+            <span className="flex items-center gap-2">
+              <span data-testid={`event-${ev.id}-date`}>{dateLine}</span>
+              {recurrenceBadge && (
+                <span
+                  className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#F3E8FF] text-[#7E22CE] text-[10px] font-semibold uppercase tracking-wider border border-[#D8B4FE]"
+                  data-testid={`event-${ev.id}-recurrence-badge`}
+                >
+                  {recurrenceBadge}
+                </span>
+              )}
+            </span>
           </li>
           {host && (
             <li className="flex items-start gap-2">
@@ -382,7 +410,7 @@ export function EventCard({ ev, expanded = false }) {
         >
           Register now <ArrowRight className="w-3.5 h-3.5" />
         </a>
-        {(gcalUrl || compactDate(ev.date)) && (
+        {(gcalUrl || icsAvailable) && (
           <div className="flex items-center justify-center gap-4">
             {gcalUrl && (
               <a
@@ -396,10 +424,10 @@ export function EventCard({ ev, expanded = false }) {
                 Add to calendar
               </a>
             )}
-            {compactDate(ev.date) && (
+            {icsAvailable && (
               <button
                 type="button"
-                onClick={() => downloadIcs(ev)}
+                onClick={() => downloadIcs({ ...ev, date: effectiveDate })}
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-[#64748B] hover:text-[#0D9373] transition-colors"
                 data-testid={`event-${ev.id}-download-ics`}
               >

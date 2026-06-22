@@ -23,6 +23,8 @@ from typing import Any
 import httpx
 from bs4 import BeautifulSoup
 
+from jobs.recurrence import detect_recurrence
+
 from core import db
 from jobs.rug_scraper import (
     _format_location,
@@ -110,15 +112,19 @@ def _normalize_graphql_event(ev: dict[str, Any]) -> dict[str, Any]:
     venue = ev.get("venue") or {}
     venue_str = ", ".join(filter(None, [venue.get("name"), venue.get("city"), venue.get("state")])) or None
     group = ev.get("group") or {}
+    title = (ev.get("title") or "").strip()
+    description = (ev.get("description") or "").strip()
+    recurrence = detect_recurrence(ev, text=f"{title} {description}")
     return {
-        "title":       (ev.get("title") or "").strip()[:200],
+        "title":       title[:200],
         "date":        _iso_date(ev.get("dateTime")),
         "time":        _time_from_iso(ev.get("dateTime")),
         "timezone":    None,
         "sponsor":     (group.get("name") or "").strip() or None,
         "location":    venue_str,
         "register_url": ev.get("eventUrl"),
-        "description": (ev.get("description") or "").strip()[:1000] or None,
+        "description": description[:1000] or None,
+        **recurrence,
     }
 
 

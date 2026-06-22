@@ -1,7 +1,9 @@
 """Public + admin Ecosystem endpoints — community news (RSS-hydrated) + curated events."""
+import calendar
 import time
 import uuid
 from collections import defaultdict
+from datetime import date, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -68,24 +70,34 @@ async def list_ecosystem_news(limit: int = Query(5, ge=1, le=50)):
 # ── Events (admin-managed) ─────────────────────────────────────────────────
 
 EVENT_TYPES = {"RUG", "Conference", "Webinar"}
+RECURRENCE_RULES = {"weekly", "monthly", "monthly_nth_weekday"}
 EVENT_PUBLIC_PROJECTION = {
     "_id": 0, "id": 1, "title": 1, "event_type": 1, "date": 1, "time": 1,
     "timezone": 1, "sponsor": 1, "location": 1, "register_url": 1, "description": 1,
     "is_published": 1, "source": 1,
+    # Recurrence + on-demand metadata (all optional).
+    "is_recurring": 1, "recurrence_rule": 1, "recurrence_end": 1,
+    "series_url": 1, "is_on_demand": 1,
 }
 
 
 class EventIn(BaseModel):
     title: str
     event_type: str
-    date: str                      # ISO date — e.g. "2026-06-17"
-    time: Optional[str] = None     # e.g. "4:00 PM – 7:00 PM"
-    timezone: Optional[str] = None # e.g. "MT", "CT", "UTC"
+    date: Optional[str] = None         # ISO date — required unless `is_on_demand` is true.
+    time: Optional[str] = None         # e.g. "4:00 PM – 7:00 PM"
+    timezone: Optional[str] = None     # e.g. "MT", "CT", "UTC"
     sponsor: Optional[str] = None
     location: Optional[str] = None
     register_url: Optional[str] = None
     description: Optional[str] = None
     is_published: bool = True
+    # Recurrence / on-demand (mutually exclusive — see _validate_event_temporal).
+    is_recurring: bool = False
+    recurrence_rule: Optional[str] = None     # "weekly" | "monthly" | "monthly_nth_weekday"
+    recurrence_end: Optional[str] = None      # ISO date; series ends after this
+    series_url: Optional[str] = None
+    is_on_demand: bool = False
 
 
 class EventPatch(BaseModel):
@@ -99,6 +111,11 @@ class EventPatch(BaseModel):
     register_url: Optional[str] = None
     description: Optional[str] = None
     is_published: Optional[bool] = None
+    is_recurring: Optional[bool] = None
+    recurrence_rule: Optional[str] = None
+    recurrence_end: Optional[str] = None
+    series_url: Optional[str] = None
+    is_on_demand: Optional[bool] = None
 
 
 def _validate_event_type(t: str):
@@ -106,22 +123,169 @@ def _validate_event_type(t: str):
         raise HTTPException(400, f"event_type must be one of {sorted(EVENT_TYPES)}")
 
 
+def _validate_event_temporal(doc: dict) -> None:
+    """Enforce date/recurrence/on-demand rules consistently for create + update.
+
+    Rules:
+      - is_recurring and is_on_demand cannot both be true.
+      - date is required unless is_on_demand is true. Recurring events still
+        need a date (it seeds the series).
+      - recurrence_rule must be in RECURRENCE_RULES when is_recurring is true,
+        and must be empty otherwise.
+    """
+    is_recurring = bool(doc.get("is_recurring"))
+    is_on_demand = bool(doc.get("is_on_demand"))
+    if is_recurring and is_on_demand:
+        raise HTTPException(400, "is_recurring and is_on_demand are mutually exclusive")
+    if not is_on_demand and not (doc.get("date") or "").strip():
+        raise HTTPException(400, "date is required unless is_on_demand is true")
+    if is_recurring:
+        rule = (doc.get("recurrence_rule") or "").strip()
+        if rule not in RECURRENCE_RULES:
+            raise HTTPException(
+                400,
+                f"recurrence_rule must be one of {sorted(RECURRENCE_RULES)} when is_recurring is true",
+            )
+    else:
+        # Keep the data tight — drop any stray rule on non-recurring rows.
+        if doc.get("recurrence_rule") is not None:
+            doc["recurrence_rule"] = None
+        if doc.get("recurrence_end") is not None:
+            doc["recurrence_end"] = None
+
+
+# ── Recurrence helpers ─────────────────────────────────────────────────────
+
+def _parse_iso(d: Optional[str]) -> Optional[date]:
+    if not d:
+        return None
+    try:
+        return date.fromisoformat(d[:10])
+    except ValueError:
+        return None
+
+
+def _add_months(d: date, n: int) -> date:
+    """Add n months to d, clamping the day to the target month's max."""
+    m_idx = d.month - 1 + n
+    y = d.year + m_idx // 12
+    m = m_idx % 12 + 1
+    last_day = calendar.monthrange(y, m)[1]
+    return date(y, m, min(d.day, last_day))
+
+
+def _nth_weekday_of_month(seed: date, target: date) -> date:
+    """Return the same Nth-occurrence-of-weekday as `seed` falls in `target`'s month.
+    e.g. seed = 3rd Tuesday in May → returns 3rd Tuesday of target.year/target.month.
+    Falls back to the last matching weekday when the Nth doesn't exist that month.
+    """
+    weekday = seed.weekday()
+    n = (seed.day - 1) // 7 + 1
+    # Find all occurrences of this weekday in the target month.
+    days_in_month = calendar.monthrange(target.year, target.month)[1]
+    matches = [
+        date(target.year, target.month, day)
+        for day in range(1, days_in_month + 1)
+        if date(target.year, target.month, day).weekday() == weekday
+    ]
+    if not matches:
+        return target  # should never happen — every weekday occurs each month
+    return matches[min(n, len(matches)) - 1]
+
+
+def compute_next_occurrence(seed_iso: str, rule: Optional[str], today: Optional[date] = None) -> Optional[str]:
+    """For a recurring event seeded by `seed_iso`, return the next occurrence
+    on or after `today` as an ISO string. Returns the seed itself if it is
+    already in the future. Returns None if the rule is unknown or the seed
+    cannot be parsed.
+    """
+    today = today or date.today()
+    seed = _parse_iso(seed_iso)
+    if seed is None or not rule:
+        return None
+    if seed >= today:
+        return seed.isoformat()
+    if rule == "weekly":
+        delta_days = (today - seed).days
+        weeks = (delta_days + 6) // 7  # ceil
+        return (seed + timedelta(weeks=weeks)).isoformat()
+    if rule == "monthly":
+        # Walk month by month — bounded loop, max ~12 iterations per call site.
+        candidate = seed
+        while candidate < today:
+            candidate = _add_months(candidate, 1)
+        return candidate.isoformat()
+    if rule == "monthly_nth_weekday":
+        candidate = seed
+        while candidate < today:
+            candidate = _add_months(candidate, 1)
+            candidate = _nth_weekday_of_month(seed, candidate)
+        return candidate.isoformat()
+    return None
+
+
+def _series_active(ev: dict, today: Optional[date] = None) -> bool:
+    """True iff a recurring event has no end date or its end is still in the future."""
+    today = today or date.today()
+    end = _parse_iso(ev.get("recurrence_end"))
+    return end is None or end >= today
+
+
+def _annotate_event(ev: dict, today: Optional[date] = None) -> dict:
+    """Attach derived fields the UI needs: `next_date`, `is_past`.
+
+    - On-demand events: next_date=None, is_past=False (never past).
+    - Recurring active: next_date=computed rollforward, is_past=False.
+    - Recurring expired (past recurrence_end): is_past=True.
+    - One-off: next_date=date, is_past iff date < today.
+    """
+    today = today or date.today()
+    out = dict(ev)
+    if ev.get("is_on_demand"):
+        out["next_date"] = None
+        out["is_past"] = False
+        return out
+    if ev.get("is_recurring") and ev.get("date"):
+        if not _series_active(ev, today):
+            out["next_date"] = ev.get("date")
+            out["is_past"] = True
+            return out
+        out["next_date"] = compute_next_occurrence(ev["date"], ev.get("recurrence_rule"), today) or ev["date"]
+        out["is_past"] = False
+        return out
+    out["next_date"] = ev.get("date")
+    seed = _parse_iso(ev.get("date"))
+    out["is_past"] = seed is not None and seed < today
+    return out
+
+
+def _sort_key(ev: dict):
+    """Upcoming sort: dated first by date, on-demand pushed to the end."""
+    if ev.get("is_on_demand"):
+        return (1, "")
+    return (0, ev.get("next_date") or ev.get("date") or "9999-12-31")
+
+
 @router.get("/ecosystem/events")
 async def list_events_public():
-    """All published events, soonest first."""
-    cursor = (
-        db.ecosystem_events
-        .find({"is_published": True}, EVENT_PUBLIC_PROJECTION)
-        .sort("date", 1)
-    )
-    return {"items": await cursor.to_list(200)}
+    """Published events, annotated with `next_date` + `is_past` so the client
+    can split Upcoming/Past consistently for one-off, recurring, and on-demand
+    events. Sort: dated first by next occurrence, on-demand last."""
+    cursor = db.ecosystem_events.find({"is_published": True}, EVENT_PUBLIC_PROJECTION)
+    raw = await cursor.to_list(500)
+    items = [_annotate_event(ev) for ev in raw]
+    items.sort(key=_sort_key)
+    return {"items": items}
 
 
 @router.get("/admin/ecosystem/events")
 async def list_events_admin(admin: dict = Depends(require_admin)):
-    """All events (published + drafts), soonest first — for the admin manager."""
-    cursor = db.ecosystem_events.find({}, EVENT_PUBLIC_PROJECTION).sort("date", 1)
-    return {"items": await cursor.to_list(500)}
+    """All events (published + drafts), annotated like the public endpoint."""
+    cursor = db.ecosystem_events.find({}, EVENT_PUBLIC_PROJECTION)
+    raw = await cursor.to_list(1000)
+    items = [_annotate_event(ev) for ev in raw]
+    items.sort(key=_sort_key)
+    return {"items": items}
 
 
 # Body shape for the "Paste URL → auto-fill" admin helper. Kept loose so a
@@ -156,11 +320,10 @@ async def submit_event_public(ev: EventIn, request: Request):
     _validate_event_type(ev.event_type)
     if not (ev.title or "").strip():
         raise HTTPException(400, "title is required")
-    if not (ev.date or "").strip():
-        raise HTTPException(400, "date is required")
     if not (ev.register_url or "").strip():
         raise HTTPException(400, "register_url is required")
     doc = ev.model_dump()
+    _validate_event_temporal(doc)
     doc["id"] = f"evt_{uuid.uuid4().hex[:12]}"
     doc["is_published"] = False
     doc["source"] = "community"
@@ -195,6 +358,7 @@ async def admin_scrape_eventbrite(admin: dict = Depends(require_admin)):
 async def create_event(payload: EventIn, admin: dict = Depends(require_admin)):
     _validate_event_type(payload.event_type)
     doc = payload.model_dump()
+    _validate_event_temporal(doc)
     doc["id"] = f"evt_{uuid.uuid4().hex[:12]}"
     doc["created_at"] = now_iso()
     doc["updated_at"] = doc["created_at"]
@@ -211,6 +375,17 @@ async def update_event(event_id: str, payload: EventPatch, admin: dict = Depends
         _validate_event_type(updates["event_type"])
     if not updates:
         raise HTTPException(400, "No fields to update")
+    # Re-validate temporal rules using the merged view of the doc post-update.
+    if {"is_recurring", "is_on_demand", "date", "recurrence_rule"} & updates.keys():
+        current = await db.ecosystem_events.find_one({"id": event_id}, EVENT_PUBLIC_PROJECTION)
+        if not current:
+            raise HTTPException(404, "Event not found")
+        merged = {**current, **updates}
+        _validate_event_temporal(merged)
+        # Carry any normalizations (e.g. cleared recurrence_rule) back to the update.
+        for k in ("recurrence_rule", "recurrence_end"):
+            if k in merged and merged[k] != current.get(k):
+                updates[k] = merged[k]
     updates["updated_at"] = now_iso()
     result = await db.ecosystem_events.update_one({"id": event_id}, {"$set": updates})
     if result.matched_count == 0:

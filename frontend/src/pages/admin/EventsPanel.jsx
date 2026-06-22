@@ -5,7 +5,12 @@ import { toast } from "sonner";
 import { ecoInputCls, EcoFormField, EcoFormShell, EcoRowActions, EcoStatusPill } from "../../components/admin/EcoPrimitives";
 
 const EVENT_TYPES = ["RUG", "Conference", "Webinar"];
-const EMPTY = { title: "", event_type: "RUG", date: "", time: "", timezone: "", sponsor: "", location: "", register_url: "", description: "", is_published: true };
+const EMPTY = {
+  title: "", event_type: "RUG", date: "", time: "", timezone: "",
+  sponsor: "", location: "", register_url: "", description: "", is_published: true,
+  is_recurring: false, recurrence_rule: "monthly", recurrence_end: "",
+  series_url: "", is_on_demand: false,
+};
 
 export default function EventsPanel() {
   const [events, setEvents] = useState([]);
@@ -183,12 +188,16 @@ export default function EventsPanel() {
     }
   };
 
-  const today = new Date().toISOString().slice(0,10);
   const SCRAPER_SOURCES = new Set(["wdbeacon", "meetup", "eventbrite", "community"]);
   const scrapedPending = events.filter((e) => SCRAPER_SOURCES.has(e.source) && !e.is_published);
   const scrapedIds = new Set(scrapedPending.map((e) => e.id));
-  const upcoming = events.filter((e) => !scrapedIds.has(e.id) && (!e.date || e.date >= today));
-  const past     = events.filter((e) => !scrapedIds.has(e.id) &&  e.date && e.date <  today);
+  // Backend annotates each event with `is_past` (handles recurring + on-demand).
+  // Fall back to date comparison only for legacy rows that haven't been re-fetched yet.
+  const today = new Date().toISOString().slice(0, 10);
+  const isPastFallback = (e) => e.date && e.date < today && !e.is_on_demand && !e.is_recurring;
+  const isPast = (e) => (e.is_past !== undefined ? e.is_past : isPastFallback(e));
+  const upcoming = events.filter((e) => !scrapedIds.has(e.id) && !isPast(e));
+  const past     = events.filter((e) => !scrapedIds.has(e.id) &&  isPast(e));
 
   return (
     <>
@@ -262,12 +271,94 @@ export default function EventsPanel() {
             <input required value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} className={ecoInputCls} data-testid="event-form-title" />
           </EcoFormField>
           <EcoFormField label="Event type *">
-            <select value={form.event_type} onChange={(e)=>setForm({...form,event_type:e.target.value})} className={ecoInputCls} data-testid="event-form-type">
+            <select
+              value={form.event_type}
+              onChange={(e) => {
+                const t = e.target.value;
+                // When the user picks Webinar for the first time, default to
+                // "On demand" since most webinars are recorded. They can flip
+                // it off in the next field for a live, dated webinar.
+                setForm((f) => ({
+                  ...f,
+                  event_type: t,
+                  is_on_demand: t === "Webinar" && !f.is_recurring ? true : f.is_on_demand,
+                }));
+              }}
+              className={ecoInputCls}
+              data-testid="event-form-type"
+            >
               {EVENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </EcoFormField>
-          <EcoFormField label="Date * (YYYY-MM-DD)">
-            <input required type="date" value={form.date} onChange={(e)=>setForm({...form,date:e.target.value})} className={ecoInputCls} data-testid="event-form-date" />
+
+          <EcoFormField label={form.is_on_demand ? "Date (disabled — on-demand)" : "Date *"}>
+            <input
+              type="date"
+              required={!form.is_on_demand}
+              disabled={form.is_on_demand}
+              value={form.is_on_demand ? "" : form.date}
+              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              className={`${ecoInputCls} ${form.is_on_demand ? "opacity-50 cursor-not-allowed" : ""}`}
+              data-testid="event-form-date"
+            />
+          </EcoFormField>
+
+          {/* Recurring + On-demand controls — mutually exclusive */}
+          <EcoFormField label="Recurring">
+            <label className="inline-flex items-center gap-2 text-sm text-[#475569]">
+              <input
+                type="checkbox"
+                checked={form.is_recurring}
+                onChange={(e) => setForm({
+                  ...form,
+                  is_recurring: e.target.checked,
+                  // mutually exclusive with on-demand
+                  is_on_demand: e.target.checked ? false : form.is_on_demand,
+                })}
+                data-testid="event-form-recurring"
+              />
+              This event repeats on a schedule
+            </label>
+            {form.is_recurring && (
+              <div className="mt-3 grid grid-cols-2 gap-3" data-testid="event-form-recurring-details">
+                <select
+                  value={form.recurrence_rule || "monthly"}
+                  onChange={(e) => setForm({ ...form, recurrence_rule: e.target.value })}
+                  className={ecoInputCls}
+                  data-testid="event-form-recurrence-rule"
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly (same day-of-month)</option>
+                  <option value="monthly_nth_weekday">Monthly (same Nth weekday)</option>
+                </select>
+                <input
+                  type="date"
+                  placeholder="End date (optional)"
+                  value={form.recurrence_end || ""}
+                  onChange={(e) => setForm({ ...form, recurrence_end: e.target.value })}
+                  className={ecoInputCls}
+                  data-testid="event-form-recurrence-end"
+                />
+              </div>
+            )}
+          </EcoFormField>
+
+          <EcoFormField label="On demand">
+            <label className="inline-flex items-center gap-2 text-sm text-[#475569]">
+              <input
+                type="checkbox"
+                checked={form.is_on_demand}
+                onChange={(e) => setForm({
+                  ...form,
+                  is_on_demand: e.target.checked,
+                  // mutually exclusive with recurring; also clear date when going on-demand
+                  is_recurring: e.target.checked ? false : form.is_recurring,
+                  date: e.target.checked ? "" : form.date,
+                })}
+                data-testid="event-form-on-demand"
+              />
+              No fixed date — recorded/on-demand (e.g. evergreen webinar)
+            </label>
           </EcoFormField>
           <EcoFormField label="Time">
             <input value={form.time} onChange={(e)=>setForm({...form,time:e.target.value})} className={ecoInputCls} data-testid="event-form-time" placeholder="4:00 PM – 7:00 PM" />
@@ -345,7 +436,19 @@ function EventTable({ label, rows, loading, onEdit, onDelete, onPublish, testid,
             <tbody>
               {rows.map((ev) => (
                 <tr key={ev.id} className="border-b border-[#F1F5F9] hover:bg-[#F8FAFC]" data-testid={`event-row-${ev.id}`}>
-                  <td className="px-4 py-3 text-[#0A1628] font-medium whitespace-nowrap">{ev.date}</td>
+                  <td className="px-4 py-3 text-[#0A1628] font-medium whitespace-nowrap">
+                    {ev.is_on_demand
+                      ? <span data-testid={`event-row-${ev.id}-on-demand`} className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#E0F2FE] text-[#075985] text-[11px] font-semibold uppercase tracking-wider border border-[#7DD3FC]">On demand</span>
+                      : ev.is_recurring
+                      ? <span data-testid={`event-row-${ev.id}-recurring`} className="inline-flex items-center gap-1 text-[#0A1628]">
+                          {ev.next_date || ev.date}
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#F3E8FF] text-[#7E22CE] text-[10px] font-semibold uppercase tracking-wider border border-[#D8B4FE]">
+                            {ev.recurrence_rule === "weekly" ? "Weekly" : "Monthly"}
+                          </span>
+                        </span>
+                      : (ev.date || "—")
+                    }
+                  </td>
                   <td className="px-4 py-3"><span className="text-xs font-semibold text-[#0D9373] uppercase tracking-wider">{ev.event_type}</span></td>
                   <td className="px-4 py-3 text-[#0A1628]">{ev.title}</td>
                   <td className="px-4 py-3 text-[#64748B]">{ev.sponsor || "—"}</td>
