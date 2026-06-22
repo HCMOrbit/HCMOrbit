@@ -344,7 +344,7 @@ function Credential({ value, label }) {
           </div>
           <div>
             <div className="font-heading text-4xl lg:text-5xl font-bold text-[#0D9373]">
-              {statsLoading ? <span className="counter">—</span> : <Counter value={stats.active_members} />}
+              {statsLoading ? <span className="counter">—</span> : <Counter value={stats.active_today} />}
             </div>
             <div className="text-sm text-white/60 mt-2 uppercase tracking-wider">Active today</div>
           </div>

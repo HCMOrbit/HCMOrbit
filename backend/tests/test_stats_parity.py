@@ -61,3 +61,22 @@ async def test_stats_community_news_unfiltered(db):
     s = await stats()
     raw = await db.ecosystem_news.count_documents({})
     assert s["community_news"] == raw
+
+
+@pytest.mark.asyncio
+async def test_active_today_does_not_use_onboarded_flag(db):
+    """The 'Active today' number must reflect real recent activity, not the
+    legacy onboarded flag — otherwise 12/13 members look active forever.
+    """
+    from routes.stats import stats
+    s = await stats()
+    onboarded = await db.users.count_documents({"onboarded": True})
+    total_members = await db.users.count_documents({})
+    # active_today must be <= total_members and must not be hard-coded to onboarded
+    assert s["active_today"] <= total_members
+    if onboarded > 0 and total_members > onboarded:
+        # When data is non-degenerate, the two are very unlikely to be equal
+        # (active_today derives from posts/answers in last 24h, not onboarding).
+        assert s["active_today"] != onboarded or s["active_today"] == 0
+    # And we still expose the onboarded count under its accurate name
+    assert s["onboarded_users"] == onboarded
