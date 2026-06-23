@@ -110,7 +110,7 @@ const FOUNDING_BENEFITS = [
 function Counter({ value, suffix = "" }) {
   const [n, setN] = useState(0);
   useEffect(() => {
-    if (typeof value !== "number") return;
+    if (typeof value !== "number" || !Number.isFinite(value)) return;
     let raf;
     const start = performance.now();
     const dur = 1200;
@@ -123,6 +123,10 @@ function Counter({ value, suffix = "" }) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [value]);
+  // Never render NaN or undefined — show a neutral dash if the value isn't a real number yet.
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return <span className="counter">—</span>;
+  }
   return <span className="counter">{n.toLocaleString()}{suffix}</span>;
 }
 

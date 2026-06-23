@@ -33,6 +33,7 @@ async def get_current_user(request: Request) -> dict:
             raise HTTPException(401, "Session expired")
         user = await db.users.find_one({"user_id": sess["user_id"]}, {"_id": 0, "password_hash": 0})
         if user:
+            await _touch_last_active(user["user_id"])
             return user
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
@@ -44,10 +45,27 @@ async def get_current_user(request: Request) -> dict:
             if impersonator:
                 user["impersonator_user_id"] = impersonator
                 user["impersonator_username"] = payload.get("impersonator_username")
+            await _touch_last_active(user["user_id"])
             return user
     except jwt.InvalidTokenError:
         pass
     raise HTTPException(401, "Invalid or expired token")
+
+
+async def _touch_last_active(user_id: str) -> None:
+    """Stamp `users.last_active` (UTC ISO) on every authenticated request.
+
+    This is the source of truth for the home strip's "ACTIVE TODAY" stat —
+    the day boundary is **UTC midnight**, by design, so the count is
+    deterministic across regions.
+    """
+    try:
+        await db.users.update_one(
+            {"user_id": user_id},
+            {"$set": {"last_active": datetime.now(timezone.utc).isoformat()}},
+        )
+    except Exception:  # never fail the request because of activity-stamping
+        pass
 
 
 async def require_admin(user: dict = Depends(get_current_user)) -> dict:
