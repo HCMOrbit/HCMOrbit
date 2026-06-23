@@ -151,18 +151,19 @@ export default function Connect() {
 
       <PageHero
         eyebrow="Connect with HCMOrbit"
-        title="Let's talk."
+        title="Send us a message"
         description="Drop us a note, ping the community, or say hello on LinkedIn — whichever's easier. We read every message."
         testId="connect-hero"
       />
 
-      {/* Centered contact form -------------------------------------------- */}
-      <section className="max-w-[720px] mx-auto px-4 lg:px-8 py-14 lg:py-20">
-        <h2 className="font-heading text-2xl sm:text-3xl font-bold text-[#0A1628] tracking-tight mb-2">
-          Send us a message
-        </h2>
-        <p className="text-[#64748B] mb-6">A real human reads every note. We aim to reply within 2 business days.</p>
-        <ContactForm />
+      {/* Contact form — same outer container as PageHero so the body and
+          hero left edges line up. Form itself stays narrow (720px) and
+          left-aligned within that container. */}
+      <section className="max-w-[1200px] mx-auto px-6 lg:px-8 py-14 lg:py-20">
+        <div className="max-w-[720px]">
+          <p className="text-[#64748B] mb-6">A real human reads every note. We aim to reply within 2 business days.</p>
+          <ContactForm />
+        </div>
       </section>
     </div>
   );

@@ -81,10 +81,10 @@ export default function KBCategory() {
           </form>
         </PageHero>
       )}
-      <div className="flex" style={{ minHeight: "calc(100vh - 64px)" }}>
+      <div className="max-w-[1300px] mx-auto px-4 lg:px-8 py-6 flex gap-6" style={{ minHeight: "calc(100vh - 64px)" }}>
         <KBSidebar activeSlug={slug} activeSubModule={activeSubModule} />
         <main className="flex-1 min-w-0">
-          <section className="max-w-[900px] mx-auto px-6 lg:px-8 py-10">
+          <section className="py-4">
             <div className="text-xs uppercase tracking-wider text-[#94A3B8] font-semibold mb-4">
               {activeSubModule
                 ? `${visibleDocs.length} document${visibleDocs.length === 1 ? "" : "s"} in "${activeSubModule}"`

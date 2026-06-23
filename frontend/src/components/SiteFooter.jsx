@@ -30,8 +30,10 @@ export default function SiteFooter() {
           <div>
             <div className="text-xs uppercase tracking-wider text-white font-semibold mb-4">Community</div>
             <ul className="space-y-2.5 text-sm">
-              <li><Link to="/community" className="hover:text-[#0D9373] transition-colors">Discussions</Link></li>
+              <li><Link to="/community" className="hover:text-[#0D9373] transition-colors" data-testid="footer-community-feed">Community Feed</Link></li>
               <li><Link to="/knowledge-base" className="hover:text-[#0D9373] transition-colors">Knowledge Base</Link></li>
+              <li><Link to="/ecosystem" className="hover:text-[#0D9373] transition-colors" data-testid="footer-ecosystem">Ecosystem</Link></li>
+              <li><Link to="/career-hub" className="hover:text-[#0D9373] transition-colors" data-testid="footer-career-hub">Career Hub</Link></li>
               <li><Link to="/register" className="hover:text-[#0D9373] transition-colors">Join Community</Link></li>
               <li><Link to="/login" className="hover:text-[#0D9373] transition-colors">Sign In</Link></li>
             </ul>
