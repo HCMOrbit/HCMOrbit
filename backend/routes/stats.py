@@ -7,7 +7,7 @@ endpoint that surfaces those records, so:
 
 never drifts. No caching, no hardcoded values — every call hits Mongo.
 """
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from fastapi import APIRouter
 
@@ -17,27 +17,28 @@ router = APIRouter()
 
 
 async def _active_today_count() -> int:
-    """Distinct users who actually did something in the last 24h.
+    """Users active **since the start of today (UTC)**.
 
-    Activity = created a post or an answer. We deliberately avoid the legacy
-    `onboarded=True` flag for this stat: onboarded users may have signed up
-    months ago and never returned, which made the home strip look implausibly
-    busy (12/13 "active today").
+    "Active" is defined as: `users.last_active >= today_utc_midnight`.
+    `last_active` is stamped on every authenticated request in
+    `dependencies.get_current_user`, so it captures *real* presence
+    (browsing, voting, viewing KB) — not just "wrote a post today".
+
+    The day boundary is intentionally UTC so the number is deterministic
+    across regions; it rolls over at 00:00 UTC every day.
     """
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
-    post_authors = await db.posts.distinct(
-        "author_id",
-        {"created_at": {"$gte": cutoff}, "is_removed": {"$ne": True}},
-    )
-    answer_authors = await db.answers.distinct(
-        "author_id", {"created_at": {"$gte": cutoff}}
-    )
-    return len({a for a in (post_authors + answer_authors) if a})
+    today_utc = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    return await db.users.count_documents({"last_active": {"$gte": today_utc.isoformat()}})
 
 
 @router.get("/stats")
 async def stats():
-    """Live counts for every metric the UI shows."""
+    """Live counts for every metric the UI shows.
+
+    `active_today_boundary` is included in the payload so the frontend (and
+    QA) can see exactly which UTC instant defines "today" for this response.
+    """
+    today_utc = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     return {
         # KB — must match `/kb/docs` and `/kb/stats` filter (is_published=True).
         "kb_articles": await db.kb_docs.count_documents({"is_published": True}),
@@ -45,8 +46,7 @@ async def stats():
         # KB categories — must match `/kb/categories` filter (hidden excluded).
         "modules": await db.kb_categories.count_documents({"is_hidden": {"$ne": True}}),
 
-        # Community — members are all registered users (matches /community/stats
-        # and the admin total_members metric).
+        # Community — members are all registered users.
         "members": await db.users.count_documents({}),
 
         # Posts — must match the public feed filter (`is_removed != True`).
@@ -55,13 +55,13 @@ async def stats():
         # Answers — straight collection size (no soft-delete on answers).
         "answers": await db.answers.count_documents({}),
 
-        # Active in the last 24h — distinct authors of posts or answers.
-        # Label on the UI is "Active today", so the number must reflect real
-        # activity (not the legacy `onboarded` flag).
+        # Active today — see `_active_today_count` for the precise definition.
         "active_today": await _active_today_count(),
+        "active_today_boundary": today_utc.isoformat(),
+        "active_today_timezone": "UTC",
 
-        # Onboarded users — kept available for any view that genuinely wants
-        # the lifecycle count (e.g. admin dashboards).
+        # Onboarded users — kept available for dashboards that genuinely want
+        # the lifecycle count.
         "onboarded_users": await db.users.count_documents({"onboarded": True}),
 
         # Ecosystem — events shown publicly must use the same is_published
