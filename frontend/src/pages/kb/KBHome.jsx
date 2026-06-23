@@ -62,10 +62,10 @@ export default function KBHome() {
           )}
         </div>
       </PageHero>
-      <div className="flex" style={{ minHeight: "calc(100vh - 64px)" }}>
+      <div className="max-w-[1300px] mx-auto px-4 lg:px-8 py-6 flex gap-6" style={{ minHeight: "calc(100vh - 64px)" }}>
         <KBSidebar activeSlug={null} activeSubModule={null} />
         <main className="flex-1 min-w-0">
-          <section className="max-w-[960px] mx-auto px-6 lg:px-8 py-10">
+          <section className="py-4">
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-heading text-xl font-semibold text-[#0A1628] inline-flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-[#0D9373]" /> Featured this week
@@ -93,7 +93,7 @@ export default function KBHome() {
               ))}
             </div>
           </section>
-          <section className="max-w-[960px] mx-auto px-6 lg:px-8 pb-20">
+          <section className="pb-12 pt-6">
             <h2 className="font-heading text-xl font-semibold text-[#0A1628] inline-flex items-center gap-2 mb-6">
               <LayoutGrid className="w-5 h-5 text-[#0D9373]" /> Browse by functional area
             </h2>
