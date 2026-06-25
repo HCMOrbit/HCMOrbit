@@ -124,6 +124,22 @@ function compactDate(d) {
   return m ? `${m[1]}${m[2]}${m[3]}` : null;
 }
 
+/**
+ * Parse a date-only string ("YYYY-MM-DD") into a *local* Date.
+ *
+ * `new Date("2026-06-30")` interprets the string as **UTC midnight**, which
+ * then formats back to June 29 in any timezone west of UTC (e.g. CT). The
+ * event admin saves a calendar day, not an instant — so we must use the
+ * local-Date constructor (year, monthIndex, day) to avoid the rollback.
+ *
+ * Returns null when the string isn't a YYYY-MM-DD prefix.
+ */
+function parseLocalDateOnly(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec((s || "").trim());
+  if (!m) return null;
+  return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+}
+
 /** Parse "4:00 PM" / "16:00" → {h, m}. Returns null if unparseable. */
 function parseClock(s) {
   if (!s) return null;
@@ -322,12 +338,20 @@ export function EventCard({ ev, expanded = false }) {
   } else {
     dateLine = effectiveDate || "";
     if (dateLine && !dateLine.includes("·")) {
-      try {
-        const d = new Date(dateLine);
-        if (!Number.isNaN(d.getTime())) {
-          dateLine = d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
-        }
-      } catch { /* leave as-is */ }
+      // For date-only strings ("YYYY-MM-DD"), avoid the UTC-midnight rollback
+      // bug: `new Date("2026-06-30")` becomes 2026-06-29 in CT. Parse the
+      // numeric parts into a *local* Date instead.
+      const localDate = parseLocalDateOnly(dateLine);
+      if (localDate) {
+        dateLine = localDate.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+      } else {
+        try {
+          const d = new Date(dateLine);
+          if (!Number.isNaN(d.getTime())) {
+            dateLine = d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+          }
+        } catch { /* leave as-is */ }
+      }
       if (ev.time) dateLine += ` · ${ev.time}`;
       if (ev.timezone) dateLine += ` ${ev.timezone}`;
     }
