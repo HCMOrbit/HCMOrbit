@@ -24,6 +24,11 @@ function buildMonthOptions(now = new Date()) {
 function eventMonthKey(dateStr) {
   if (!dateStr || typeof dateStr !== "string") return null;
   const head = dateStr.split("·")[0].trim();
+  // YYYY-MM-DD: read the month directly from the string. Don't construct a
+  // Date — `new Date("2026-06-30")` is UTC midnight and resolves to a
+  // different month in some timezones, mis-bucketing the event.
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(head);
+  if (m) return `${m[1]}-${m[2]}`;
   const d = new Date(head);
   if (Number.isNaN(d.getTime())) return null;
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
