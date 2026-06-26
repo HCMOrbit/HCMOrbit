@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, CheckCircle2, MessageSquare, Users, Network, Shield, BarChart3, CircleDollarSign, Wallet, Landmark, Coffee, Sparkles, Eye, Wrench, Building2, TrendingUp, Plug, CalendarClock } from "lucide-react";
+import { ArrowRight, CheckCircle2, MessageSquare, Network, Sparkles, Eye, Wrench, Building2, TrendingUp, Plug, CalendarClock } from "lucide-react";
 import NavHeader from "../components/NavHeader";
 import GroupBadge from "../components/GroupBadge";
 import PostTypeBadge from "../components/PostTypeBadge";
 import { api, timeAgo } from "../lib/api";
 import { useStats } from "../lib/useStats";
-
-const ICON_MAP = { Users, Network, Shield, BarChart3, CircleDollarSign, Wallet, Landmark, Coffee };
 
 const QUOTES = [
   { group: "aspirant", text: "I went from 'what is a business process?' to launching my first integration in 4 months. The community answered every dumb question I had.", name: "Marcus T.", role: "Workday Aspirant · Austin" },
@@ -139,11 +137,9 @@ function Credential({ value, label }) {
   );
 }export default function Landing() {
   const { stats, loading: statsLoading } = useStats();
-  const [spaces, setSpaces] = useState([]);
   const [recent, setRecent] = useState([]);
 
   useEffect(() => {
-    api.get("/spaces").then(r => setSpaces(r.data)).catch(() => {});
     api.get("/community/recent-activity?limit=5").then(r => setRecent(r.data)).catch(() => {});
   }, []);
 
@@ -326,66 +322,6 @@ function Credential({ value, label }) {
       </section>
 
       {/* Stats Strip */}
-      <section className="py-14 bg-[#0A1628] text-white" data-testid="stats-section">
-        <div className="max-w-[1200px] mx-auto px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-8">
-          <div>
-            <div className="font-heading text-4xl lg:text-5xl font-bold text-white">
-              {statsLoading ? <span className="counter">—</span> : <Counter value={stats.members} />}
-            </div>
-            <div className="text-sm text-white/60 mt-2 uppercase tracking-wider">Members</div>
-          </div>
-          <div>
-            <div className="font-heading text-4xl lg:text-5xl font-bold text-white">
-              {statsLoading ? <span className="counter">—</span> : <Counter value={stats.posts} />}
-            </div>
-            <div className="text-sm text-white/60 mt-2 uppercase tracking-wider">Posts</div>
-          </div>
-          <div>
-            <div className="font-heading text-4xl lg:text-5xl font-bold text-white">
-              {statsLoading ? <span className="counter">—</span> : <Counter value={stats.answers} />}
-            </div>
-            <div className="text-sm text-white/60 mt-2 uppercase tracking-wider">Answers</div>
-          </div>
-          <div>
-            <div className="font-heading text-4xl lg:text-5xl font-bold text-[#0D9373]">
-              {statsLoading ? <span className="counter">—</span> : <Counter value={stats.active_today} />}
-            </div>
-            <div className="text-sm text-white/60 mt-2 uppercase tracking-wider">Active today</div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Spaces */}
-      <section className="py-20 lg:py-24 bg-white" data-testid="spaces-section">
-        <div className="max-w-[1200px] mx-auto px-6 lg:px-8">
-          <div className="flex items-end justify-between mb-10">
-            <div className="max-w-2xl">
-              <div className="text-xs uppercase tracking-wider text-[#0D9373] font-semibold mb-3">Spaces</div>
-              <h2 className="font-heading text-3xl lg:text-4xl font-semibold text-[#0A1628]">Topic spaces. Real expertise.</h2>
-              <p className="text-[#64748B] mt-3">Eight module-based spaces where Workday practitioners go deep on what they actually work on.</p>
-            </div>
-            <Link to="/community" className="hidden sm:inline-flex items-center gap-1 text-sm text-[#0D9373] hover:underline font-medium">
-              Browse all <ArrowUpRight className="w-4 h-4" />
-            </Link>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {spaces.map((s) => {
-              const Icon = ICON_MAP[s.icon] || Users;
-              return (
-                <Link key={s.slug} to={`/community/spaces/${s.slug}`} className="group bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-5 hover:border-[#0D9373] hover:bg-white transition-all" data-testid={`featured-space-${s.slug}`}>
-                  <div className="w-10 h-10 rounded-md bg-[#0A1628] flex items-center justify-center mb-4 group-hover:bg-[#0D9373] transition-colors">
-                    <Icon className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="font-heading font-semibold text-[#0A1628]">{s.name}</div>
-                  <div className="text-xs text-[#64748B] mt-1 line-clamp-2 leading-relaxed">{s.description}</div>
-                  <div className="text-xs text-[#94A3B8] mt-3 counter">{s.post_count} posts</div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
       {/* Recent activity */}
       <section className="py-20 lg:py-24 bg-[#F8FAFC]" data-testid="recent-section">
         <div className="max-w-[1100px] mx-auto px-6 lg:px-8">
