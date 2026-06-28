@@ -40,7 +40,7 @@ import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
 import Cookies from "@/pages/Cookies";
 import WhyHCMOrbit from "@/pages/WhyHCMOrbit";
-import CareerHub from "@/pages/CareerHub";
+import CareerNavigator from "@/careerNavigator/CareerNavigator";
 import Connect from "@/pages/Connect";
 import CookieBanner from "@/components/CookieBanner";
 import SiteFooter from "@/components/SiteFooter";
@@ -95,7 +95,7 @@ function AppRoutes() {
       <Route path="/ecosystem/news" element={<EcosystemNews />} />
       <Route path="/ecosystem/certifications" element={<EcosystemCertifications />} />
       <Route path="/about/why-hcmorbit" element={<WhyHCMOrbit />} />
-      <Route path="/career-hub" element={<CareerHub />} />
+      <Route path="/career-hub" element={<CareerNavigator />} />
       <Route path="/connect" element={<Connect />} />
     </Routes>
   );
