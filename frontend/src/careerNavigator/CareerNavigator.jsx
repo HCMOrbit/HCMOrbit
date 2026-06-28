@@ -5,6 +5,7 @@ import TabBar from "./components/TabBar";
 import HomeTab from "./tabs/HomeTab";
 import PathsTab from "./tabs/PathsTab";
 import InterviewTab from "./tabs/InterviewTab";
+import IndustryTab from "./tabs/IndustryTab";
 import RoadmapView from "./RoadmapView";
 
 /**
@@ -60,6 +61,8 @@ export default function CareerNavigator() {
     heroProps = { ...PathsTab.heroProps, heroChildren: null };
   } else if (tab === "interview") {
     heroProps = { ...InterviewTab.heroProps, heroChildren: null };
+  } else if (tab === "industry") {
+    heroProps = { ...IndustryTab.heroProps, heroChildren: null };
   }
 
   return (
@@ -83,8 +86,13 @@ export default function CareerNavigator() {
           />
         )}
         {tab === "interview" && <InterviewTab />}
+        {tab === "industry" && (
+          <IndustryTab
+            onPickTrack={(trackId, stage) => setRoadmap({ trackId, stage })}
+          />
+        )}
 
-        {tab !== "home" && tab !== "paths" && tab !== "interview" && (
+        {tab !== "home" && tab !== "paths" && tab !== "interview" && tab !== "industry" && (
           <div
             className="mt-6 rounded-xl bg-white p-6 text-sm"
             style={{ border: "1px solid #eaeaea", color: "#555" }}
