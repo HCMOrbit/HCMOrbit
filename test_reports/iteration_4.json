@@ -1,0 +1,49 @@
+{
+  "summary": "Frontend-only verification of Career Navigator Phase 2 bug fixes (FIX 1 horizontal role strip + FIX 2 visible CTA buttons at rest) on /career-hub. All acceptance criteria pass. No console errors. No backend testing performed (per request).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verification_results": {
+    "FIX_1_role_strip": {
+      "career-home-role-strip_exists": true,
+      "career-home-role-panel_removed": true,
+      "all_8_track_chips_rendered": ["payroll","core-hcm","integrations","security","reporting","recruiting","benefits","absence"],
+      "strip_below_buttons": "Find-button bottom=285px, Strip top=305px (strip is below CTA row)",
+      "strip_full_width": "strip width=864px matching hero container width",
+      "no_right_side_panel": true
+    },
+    "FIX_2_resting_button_styles": {
+      "find_button_computed_background": "rgb(29, 181, 137)  (matches #1DB589)",
+      "find_button_computed_color": "rgb(10, 22, 40)  (matches #0a1628)",
+      "find_button_border": "0px / none",
+      "find_button_fontWeight": "500",
+      "starting_button_computed_background": "rgba(255, 255, 255, 0.1)",
+      "starting_button_computed_color": "rgb(255, 255, 255)",
+      "starting_button_border": "1px solid rgba(255, 255, 255, 0.55)",
+      "starting_button_fontWeight": "500",
+      "both_visible_at_rest_no_hover": true
+    },
+    "interactions": {
+      "find_my_path_click_switches_tab": "Placeholder shows 'paths' text after click — PASS",
+      "payroll_chip_click_no_error": "PASS (no JS exceptions, no console errors)"
+    },
+    "console_errors": "None observed on page load or during interactions"
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Minor: hover handlers on the CTA buttons in HomeTab.jsx use inline onMouseEnter/onMouseLeave to override the background. This works but is slightly fragile — a stray pointer event during mount could swap states. Not a defect for this bug fix; consider moving to CSS-in-JS or a tiny stylesheet later.",
+    "Minor: RoleStrip chips use onMouseEnter/onMouseLeave to swap background only (no important flag). If a future global button reset is added, chips could also go flat — apply the same setProperty('important') pattern used on the hero CTAs for resilience."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (skipped per request)", "frontend": "100%" },
+  "test_credentials": "Not required — /career-hub is public",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Career Navigator is mid-incremental-build. Only Home tab is implemented; clicking 'Career paths', 'Interview prep', or 'Industry pulse' shows a placeholder with just the tab id (career-navigator-placeholder) — this is intentional, do NOT report as a bug. Hero CTAs apply resting styles via ref + el.style.setProperty(..., 'important') because a global button theme used to flatten them — keep an eye that any future button refactor preserves this guard. Both bug fixes from Phase 2 verified PASS.",
+  "rca_of_the_issue": "Original issue 1 (role panel on right): old layout used a vertical RolePanel column inside HeroMast's right slot, causing a large empty left area. Fix replaced it with a full-width RoleStrip rendered after the CTA row inside the hero content slot — verified by absence of career-home-role-panel and presence of career-home-role-strip with width matching hero. Original issue 2 (flat invisible buttons): a global CSS rule (likely shadcn/ui Button or a layout reset) was overriding inline style props. Fix uses React refs (setFindRest, setStartRest) that call el.style.setProperty('background'|'color'|'border', value, 'important') after mount, which beats global styles — verified via getComputedStyle returning the exact expected values."
+}
