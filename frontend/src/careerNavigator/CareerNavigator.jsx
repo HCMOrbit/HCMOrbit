@@ -3,6 +3,7 @@ import NavHeader from "../components/NavHeader";
 import HeroMast from "./components/HeroMast";
 import TabBar from "./components/TabBar";
 import HomeTab from "./tabs/HomeTab";
+import PathsTab from "./tabs/PathsTab";
 
 /**
  * CareerNavigator — page shell.
@@ -34,6 +35,8 @@ export default function CareerNavigator() {
       ...HomeTab.heroProps,
       heroChildren: <HomeTab.HeroContent onSetTab={setTab} onPickRole={handlePickRole} />,
     };
+  } else if (tab === "paths") {
+    heroProps = { ...PathsTab.heroProps, heroChildren: null };
   }
 
   return (
@@ -51,8 +54,13 @@ export default function CareerNavigator() {
         <TabBar value={tab} onChange={setTab} />
 
         {tab === "home" && <HomeTab onSetTab={setTab} />}
+        {tab === "paths" && (
+          <PathsTab
+            onPickTrack={(trackId, stage) => setRoadmap({ trackId, stage })}
+          />
+        )}
 
-        {tab !== "home" && (
+        {tab !== "home" && tab !== "paths" && (
           <div
             className="mt-6 rounded-xl bg-white p-6 text-sm"
             style={{ border: "1px solid #eaeaea", color: "#555" }}
