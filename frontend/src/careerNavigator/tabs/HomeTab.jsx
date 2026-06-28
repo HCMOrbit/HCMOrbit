@@ -18,13 +18,12 @@ const ICONS = {
   calendar: CalendarDays,
 };
 
-function RolePanel({ onPickRole }) {
-  const roles = TRACKS.slice(0, 6);
+function RoleStrip({ onPickRole }) {
   return (
     <div
-      className="rounded-xl p-4"
-      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
-      data-testid="career-home-role-panel"
+      className="mt-5 pt-4"
+      style={{ borderTop: "1px solid rgba(255,255,255,0.12)" }}
+      data-testid="career-home-role-strip"
     >
       <div
         className="text-[10px] font-semibold mb-3"
@@ -32,26 +31,32 @@ function RolePanel({ onPickRole }) {
       >
         Explore by role
       </div>
-      <ul className="space-y-1">
-        {roles.map((t) => {
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {TRACKS.map((t) => {
           const Icon = ICONS[t.icon] || Banknote;
           return (
-            <li key={t.id}>
-              <button
-                type="button"
-                onClick={() => onPickRole(t.id)}
-                data-testid={`career-home-role-${t.id}`}
-                className="w-full flex items-center gap-2.5 text-left text-[13px] font-medium px-2.5 py-2 rounded-md transition-colors hover:bg-white/10"
-                style={{ color: "#ffffff" }}
-              >
-                <Icon className="w-4 h-4 shrink-0" style={{ color: "#1DB589" }} />
-                <span className="flex-1 truncate">{t.name}</span>
-                <ArrowRight className="w-3.5 h-3.5 opacity-50" />
-              </button>
-            </li>
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => onPickRole(t.id)}
+              data-testid={`career-home-role-${t.id}`}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.16)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+              className="inline-flex items-center gap-2 text-[12px] font-medium"
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                color: "#ffffff",
+                border: "1px solid rgba(255,255,255,0.2)",
+                borderRadius: 9999,
+                padding: "6px 12px",
+              }}
+            >
+              <Icon className="w-3.5 h-3.5" style={{ color: "#1DB589" }} />
+              <span>{t.name}</span>
+            </button>
           );
         })}
-      </ul>
+      </div>
     </div>
   );
 }
@@ -160,36 +165,53 @@ function HomeTabBody({ onSetTab }) {
   );
 }
 
-// Hero content (right pill + role panel + CTA buttons) is exposed as a static
+// Apply resting styles via setProperty(..., 'important') so no global button
+// theme can override them. React's `style` prop does not support !important.
+const setFindRest = (el) => {
+  if (!el) return;
+  el.style.setProperty("background", "#1DB589", "important");
+  el.style.setProperty("color", "#0a1628", "important");
+  el.style.setProperty("border", "none", "important");
+};
+const setStartRest = (el) => {
+  if (!el) return;
+  el.style.setProperty("background", "rgba(255,255,255,0.1)", "important");
+  el.style.setProperty("color", "#ffffff", "important");
+  el.style.setProperty("border", "1px solid rgba(255,255,255,0.55)", "important");
+};
+
+// Hero content (CTA buttons + horizontal role strip) is exposed as a static
 // helper so the parent can drop it inside the existing HeroMast component.
 HomeTabBody.HeroContent = function HomeHeroContent({ onSetTab, onPickRole }) {
   return (
-    <div className="grid md:grid-cols-[1fr_280px] gap-5 items-start">
+    <div data-testid="career-home-hero-content">
       <div className="flex flex-wrap gap-3">
         <button
           type="button"
+          ref={setFindRest}
           onClick={() => onSetTab("paths")}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "#17a07a"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "#1DB589"; }}
+          onMouseEnter={(e) => { e.currentTarget.style.setProperty("background", "#17a07a", "important"); }}
+          onMouseLeave={(e) => { e.currentTarget.style.setProperty("background", "#1DB589", "important"); }}
           className="inline-flex items-center gap-2 text-[13px] px-4 py-2.5 rounded-md"
-          style={{ background: "#1DB589", color: "#0a1628", fontWeight: 500, border: "1px solid #1DB589" }}
+          style={{ fontWeight: 500 }}
           data-testid="career-home-cta-find"
         >
           Find my path <ArrowRight className="w-3.5 h-3.5" />
         </button>
         <button
           type="button"
+          ref={setStartRest}
           onClick={() => onSetTab("paths")}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.16)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
-          className="inline-flex items-center gap-2 text-[13px] font-semibold px-4 py-2.5 rounded-md"
-          style={{ background: "rgba(255,255,255,0.08)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.5)" }}
+          onMouseEnter={(e) => { e.currentTarget.style.setProperty("background", "rgba(255,255,255,0.18)", "important"); }}
+          onMouseLeave={(e) => { e.currentTarget.style.setProperty("background", "rgba(255,255,255,0.1)", "important"); }}
+          className="inline-flex items-center gap-2 text-[13px] px-4 py-2.5 rounded-md"
+          style={{ fontWeight: 500 }}
           data-testid="career-home-cta-starting"
         >
           I&apos;m just starting
         </button>
       </div>
-      <RolePanel onPickRole={onPickRole} />
+      <RoleStrip onPickRole={onPickRole} />
     </div>
   );
 };
