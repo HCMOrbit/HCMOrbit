@@ -169,8 +169,10 @@ HomeTabBody.HeroContent = function HomeHeroContent({ onSetTab, onPickRole }) {
         <button
           type="button"
           onClick={() => onSetTab("paths")}
-          className="inline-flex items-center gap-2 text-[13px] font-semibold px-4 py-2.5 rounded-md transition-opacity hover:opacity-90"
-          style={{ background: "#1DB589", color: "#ffffff" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "#17a07a"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "#1DB589"; }}
+          className="inline-flex items-center gap-2 text-[13px] px-4 py-2.5 rounded-md"
+          style={{ background: "#1DB589", color: "#0a1628", fontWeight: 500, border: "1px solid #1DB589" }}
           data-testid="career-home-cta-find"
         >
           Find my path <ArrowRight className="w-3.5 h-3.5" />
@@ -178,8 +180,10 @@ HomeTabBody.HeroContent = function HomeHeroContent({ onSetTab, onPickRole }) {
         <button
           type="button"
           onClick={() => onSetTab("paths")}
-          className="inline-flex items-center gap-2 text-[13px] font-semibold px-4 py-2.5 rounded-md transition-colors hover:bg-white/10"
-          style={{ background: "transparent", color: "#ffffff", border: "1px solid rgba(255,255,255,0.55)" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.16)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+          className="inline-flex items-center gap-2 text-[13px] font-semibold px-4 py-2.5 rounded-md"
+          style={{ background: "rgba(255,255,255,0.08)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.5)" }}
           data-testid="career-home-cta-starting"
         >
           I&apos;m just starting
