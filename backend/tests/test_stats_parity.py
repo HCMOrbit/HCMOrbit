@@ -57,10 +57,25 @@ async def test_stats_events_matches_public_events_filter(db):
 
 @pytest.mark.asyncio
 async def test_stats_community_news_unfiltered(db):
+    """`community_news` must mirror the unfiltered `ecosystem_news` count.
+
+    The RSS fetch scheduler can run concurrently in CI (first run +5s after
+    backend startup, every 24h thereafter), upserting new entries and pruning
+    to KEEP_RECENT. That means a strict `stats == raw` check is racy — the
+    collection can grow or shrink between the two queries. We bracket the
+    `stats()` call with raw counts and assert the reported value falls within
+    that window, which is the strongest invariant that holds under concurrent
+    ingestion.
+    """
     from routes.stats import stats
+    before = await db.ecosystem_news.count_documents({})
     s = await stats()
-    raw = await db.ecosystem_news.count_documents({})
-    assert s["community_news"] == raw
+    after = await db.ecosystem_news.count_documents({})
+    lo, hi = min(before, after), max(before, after)
+    assert lo <= s["community_news"] <= hi, (
+        f"community_news={s['community_news']} outside observed window "
+        f"[{lo}, {hi}] — stats endpoint uses a different filter than `{{}}`"
+    )
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,50 @@
+{
+  "summary": "Verified the flaky-CI fix for tests/test_stats_parity.py::test_stats_community_news_unfiltered. Race-safe bracketed assertion confirmed; all 6 stats_parity tests pass; full backend suite passes 163/163 (was 162/163 with this test failing in CI). Stability re-run (5x) of the target test passed every time. No production code changes — fix is scoped to test only, as instructed.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": { "ui_bugs": [], "integration_issues": [], "design_issues": [] },
+  "verification_results": {
+    "fix_implementation_check": {
+      "file": "/app/backend/tests/test_stats_parity.py",
+      "line_range": "58-78",
+      "uses_bracketed_assertion": true,
+      "assertion": "min(before, after) <= s['community_news'] <= max(before, after)",
+      "before_count_query": "await db.ecosystem_news.count_documents({}) BEFORE stats()",
+      "after_count_query": "await db.ecosystem_news.count_documents({}) AFTER stats()",
+      "comment_explains_race": "Yes — docstring explicitly references the AsyncIOScheduler RSS fetch firing +5s after backend startup and pruning to KEEP_RECENT"
+    },
+    "other_parity_tests_unchanged": {
+      "test_stats_kb_articles_matches_kb_docs_listing": "strict equality preserved (no scheduler writes to kb_docs)",
+      "test_stats_modules_matches_categories_listing": "strict equality preserved",
+      "test_stats_posts_excludes_removed": "strict equality preserved",
+      "test_stats_events_matches_public_events_filter": "strict equality preserved (RSS scheduler touches ecosystem_news only, NOT ecosystem_events)",
+      "test_active_today_does_not_use_onboarded_flag": "unchanged"
+    },
+    "pytest_runs": {
+      "stats_parity_targeted": "6 passed, 0 failed (0.32s)",
+      "stats_parity_target_stability_5x": "5/5 passes — no flakes observed under live scheduler",
+      "full_suite_with_REACT_APP_BACKEND_URL": "163 passed, 0 failed, 1 warning (55.04s)"
+    },
+    "filter_drift_detection_reasoning": {
+      "claim": "Bracket still catches real filter drift",
+      "argument": "If stats() switched to {is_published: True} while raw uses {}, s['community_news'] would equal published_count, while [lo, hi] hugs the unfiltered count. Drift = (count of unpublished ecosystem_news docs). Any non-zero drift falls outside the bracket. A simulated +1000 perturbation as suggested in the request would fail trivially (1000 + raw_count >> hi).",
+      "false_negative_edge_case": "If 100% of ecosystem_news docs are is_published=True (drift==0), the bracket would NOT catch a filter-only change. This is a deliberate tradeoff — strict equality is impossible under concurrent ingestion. Acceptable per the task brief."
+    }
+  },
+  "code_review_observations": [
+    "tests/test_kb_p0.py:17 — BASE_URL = os.environ.get('REACT_APP_BACKEND_URL').rstrip('/'). When REACT_APP_BACKEND_URL is not set, this raises AttributeError at COLLECTION time, breaking the whole suite. Not part of this iteration's fix, but worth a follow-up: use os.environ['REACT_APP_BACKEND_URL'] (KeyError gives a clearer message) or skip the whole module with pytest.skip if the var is missing. CI presumably sets this var, so it passes there.",
+    "The race-safe pattern used in test_stats_community_news_unfiltered is a good template — if any future stats field is backed by a collection a scheduler also writes (e.g., scrapers writing ecosystem_events), the same bracket pattern should be applied there."
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_stats_parity.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "updated_files": [],
+  "success_rate": { "backend": "100% (163/163)", "frontend": "N/A (skipped per request)" },
+  "test_credentials": "Not required for this test",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "The previously-flaky test test_stats_parity.py::test_stats_community_news_unfiltered is now race-safe via a bracketed [before, after] window. If you see it fail again, it means stats() truly drifted (different filter than {} on ecosystem_news) — investigate routes/stats.py:72 first. Note: running `pytest tests/` locally without REACT_APP_BACKEND_URL set will fail at COLLECTION because tests/test_kb_p0.py:17 calls .rstrip() on os.environ.get(). Export REACT_APP_BACKEND_URL or use --ignore=tests/test_kb_p0.py. CI sets this env var so it's not a CI blocker. Full suite is 163 tests, all green.",
+  "rca_of_the_issue": "Root cause: CI workflow .github/workflows/backend-tests.yml starts uvicorn server:app before invoking pytest. server.py (lines 141-164) registers an AsyncIOScheduler with rss_fetch_workday scheduled at now+5s. The full pytest suite runs ~7-11s, so the scheduler fires mid-test, upserting fresh ecosystem_news docs and pruning to KEEP_RECENT. The original assertion `s['community_news'] == raw` reads `raw` AFTER `s = await stats()`, giving the scheduler a window to mutate the collection between the two reads (s read 7 docs, raw later read 8). Mitigation: take raw counts BEFORE and AFTER the stats() call and assert s['community_news'] lies in [min, max] of that window. Verified by running the test 5x consecutively with the live scheduler — 5/5 pass."
+}
