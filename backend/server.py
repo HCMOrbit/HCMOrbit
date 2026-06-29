@@ -69,6 +69,33 @@ async def on_startup():
     await db.kb_categories.create_index("slug", unique=True)
     await db.kb_docs.create_index("id", unique=True)
     await db.kb_docs.create_index([("category_id", 1), ("view_count", -1)])
+    # Unique catalog code (e.g. "HCM-CORE-KB-001"). Sparse via partial filter
+    # so docs with no/null reference_id don't collide. Idempotent on restart;
+    # if a duplicate value already exists we log the offending ref ids by
+    # value and continue so the app still boots.
+    try:
+        await db.kb_docs.create_index(
+            "reference_id",
+            unique=True,
+            partialFilterExpression={"reference_id": {"$type": "string"}},
+            name="reference_id_unique_string",
+        )
+    except Exception as exc:
+        dup_pipeline = [
+            {"$match": {"reference_id": {"$type": "string"}}},
+            {"$group": {"_id": "$reference_id", "count": {"$sum": 1}}},
+            {"$match": {"count": {"$gt": 1}}},
+            {"$sort": {"count": -1}},
+        ]
+        dups = [d async for d in db.kb_docs.aggregate(dup_pipeline)]
+        if dups:
+            log.error(
+                "kb_docs.reference_id unique index build FAILED — %d duplicate value(s): %s",
+                len(dups),
+                ", ".join(f"{d['_id']!r}×{d['count']}" for d in dups),
+            )
+        else:
+            log.error("kb_docs.reference_id index build failed: %s", exc)
     await db.kb_helpful_votes.create_index([("doc_id", 1), ("user_id", 1)], unique=True)
     # Follows
     await db.follows.create_index([("follower_id", 1), ("following_id", 1)], unique=True)
