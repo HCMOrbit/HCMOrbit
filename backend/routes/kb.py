@@ -226,6 +226,27 @@ async def kb_get_doc(doc_id: str):
     return enriched
 
 
+@router.get("/kb/by-ref/{reference_id}")
+async def kb_get_by_reference_id(reference_id: str):
+    """Resolve a human-readable catalog code (e.g. ``HCM-CORE-KB-001``) to the
+    underlying published doc's UUID and category slug.
+
+    Public read — matches the auth style of ``GET /kb/categories`` and
+    ``GET /kb/docs``. Returns 404 if no published doc carries that
+    ``reference_id``.
+    """
+    doc = await db.kb_docs.find_one(
+        {"reference_id": reference_id, "is_published": True},
+        {"_id": 0, "id": 1, "category_slug": 1},
+    )
+    if not doc:
+        raise HTTPException(
+            status_code=404,
+            detail="No published KB doc for that reference_id",
+        )
+    return {"id": doc["id"], "category_slug": doc["category_slug"]}
+
+
 # ---------- Helpful votes (legacy) + Feedback (new spec with change-vote) ----------
 @router.post("/kb/docs/{doc_id}/helpful")
 async def kb_vote_helpful(doc_id: str, payload: KBHelpfulIn, user: dict = Depends(get_current_user)):
