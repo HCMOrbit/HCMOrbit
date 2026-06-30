@@ -167,12 +167,9 @@ export default function KBHome() {
   const rest = ordered.slice(VISIBLE_COUNT);
   const mostActiveSlug = populated[0]?.slug;
 
-  // Wire search to the app's existing per-category search route. Without a
-  // global search page, the most-active populated category is the closest
-  // entry point — the same route KBCategory.jsx pushes to on its own search.
+  // Global KB search — spans every functional area. No category anchoring.
   const runSearch = (term) => {
-    if (!mostActiveSlug) return; // no docs yet → no-op
-    navigate(`/knowledge-base/${mostActiveSlug}/search?q=${encodeURIComponent(term)}`);
+    navigate(`/knowledge-base/search?q=${encodeURIComponent(term)}`);
   };
 
   return (

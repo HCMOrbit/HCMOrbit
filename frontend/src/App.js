@@ -34,6 +34,7 @@ import EcosystemCertifications from "@/pages/ecosystem/EcosystemCertifications";
 import KBHome from "@/pages/kb/KBHome";
 import KBCategory from "@/pages/kb/KBCategory";
 import KBSearch from "@/pages/kb/KBSearch";
+import KBGlobalSearch from "@/pages/kb/KBGlobalSearch";
 import KBDoc from "@/pages/kb/KBDoc";
 import NewKBDoc from "@/pages/kb/NewKBDoc";
 import Privacy from "@/pages/Privacy";
@@ -82,6 +83,7 @@ function AppRoutes() {
       <Route path="/admin/ecosystem-certifications" element={<RedirectToCertifications />} />
       <Route path="/admin/contact" element={<AdminContact />} />
       <Route path="/knowledge-base" element={<KBHome />} />
+      <Route path="/knowledge-base/search" element={<KBGlobalSearch />} />
       <Route path="/knowledge-base/new" element={<NewKBDoc />} />
       <Route path="/knowledge-base/:slug" element={<KBCategory />} />
       <Route path="/knowledge-base/:slug/search" element={<KBSearch />} />
