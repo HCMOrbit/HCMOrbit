@@ -168,13 +168,23 @@ export default function KBDoc() {
       {/* Full-width dark hero */}
       <section className="bg-[#0A1628] text-white" data-testid="kb-doc-hero">
         <div className="max-w-[1300px] mx-auto px-4 lg:px-8 pt-5 pb-8">
-          <nav className="text-xs flex items-center gap-1.5 mb-5 text-white/60" data-testid="kb-doc-breadcrumb">
-            <Link to="/knowledge-base" className="text-white/80 hover:text-white hover:underline">Knowledge Base</Link>
-            <ChevronRight className="w-3 h-3" />
-            <Link to={`/knowledge-base/${slug}`} className="text-white/80 hover:text-white hover:underline">{doc.category?.name}</Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="truncate" style={{ color: "#F5B731", fontWeight: 600 }}>{doc.title.slice(0, 60)}</span>
-          </nav>
+          <div className="flex items-center gap-3 mb-5">
+            <nav className="text-xs flex items-center gap-1.5 text-white/60 flex-1 min-w-0" data-testid="kb-doc-breadcrumb">
+              <Link to="/knowledge-base" className="text-white/80 hover:text-white hover:underline">Knowledge Base</Link>
+              <ChevronRight className="w-3 h-3" />
+              <Link to={`/knowledge-base/${slug}`} className="text-white/80 hover:text-white hover:underline">{doc.category?.name}</Link>
+              <ChevronRight className="w-3 h-3" />
+              <span className="truncate" style={{ color: "#F5B731", fontWeight: 600 }}>{doc.title.slice(0, 60)}</span>
+            </nav>
+            <div className="shrink-0 flex items-center gap-2">
+              <button onClick={toggleBookmark} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-bookmark-btn">
+                <Bookmark className="w-3.5 h-3.5" fill={bookmarked ? "currentColor" : "none"} /> {bookmarked ? "Saved" : "Save"}
+              </button>
+              <button onClick={share} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-share-btn">
+                <Share2 className="w-3.5 h-3.5" /> Share
+              </button>
+            </div>
+          </div>
           <div className="flex flex-wrap items-center gap-1.5 mb-4">
             <DocTypeBadge type={doc.doc_type} />
             {doc.difficulty && (
@@ -198,22 +208,6 @@ export default function KBDoc() {
             </div>
           )}
           <p className="mt-3 text-white/70 leading-relaxed max-w-3xl">{doc.summary}</p>
-          <div className="mt-5 pt-5 border-t border-white/10 flex flex-wrap items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-medium">{(doc.author?.full_name || "U")[0].toUpperCase()}</div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium flex items-center gap-2">
-                {doc.author?.full_name}
-                <GroupBadge group={doc.author?.group_type} />
-              </div>
-              <div className="text-xs text-white/50 mt-0.5"><span className="counter">{doc.author?.reputation_score}</span> rep</div>
-            </div>
-            <button onClick={toggleBookmark} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-bookmark-btn">
-              <Bookmark className="w-3.5 h-3.5" fill={bookmarked ? "currentColor" : "none"} /> {bookmarked ? "Saved" : "Save"}
-            </button>
-            <button onClick={share} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-share-btn">
-              <Share2 className="w-3.5 h-3.5" /> Share
-            </button>
-          </div>
         </div>
       </section>
 
