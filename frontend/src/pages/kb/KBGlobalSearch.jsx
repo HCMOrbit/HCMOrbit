@@ -48,10 +48,17 @@ export default function KBGlobalSearch() {
       <section className="bg-[#0A1628] text-white">
         <div className="max-w-[1200px] mx-auto px-6 lg:px-8 py-10">
           <nav className="text-xs flex items-center gap-1.5 mb-4 text-white/70">
-            <Link to="/knowledge-base" className="text-[#0D9373] hover:underline">Knowledge Base</Link>
+            <Link to="/knowledge-base" className="hover:underline" style={{ color: "#F5B731" }}>Knowledge Base</Link>
             <ChevronRight className="w-3 h-3" />
-            <span className="text-white">Search results</span>
+            <span style={{ color: "#F5B731", fontWeight: 600 }}>Search results</span>
           </nav>
+          <div
+            className="text-[11px] font-semibold mb-2"
+            style={{ color: "#F5B731", letterSpacing: "0.14em", textTransform: "uppercase" }}
+            data-testid="kb-global-search-eyebrow"
+          >
+            Knowledge Base
+          </div>
           <h1 className="font-heading text-2xl font-semibold mb-5">Search all guides</h1>
           <form onSubmit={submit} className="flex gap-2 max-w-2xl">
             <div className="relative flex-1">
@@ -66,8 +73,14 @@ export default function KBGlobalSearch() {
             </div>
             <button
               type="submit"
+              ref={(el) => {
+                if (!el) return;
+                el.style.setProperty("background", "#F5B731", "important");
+                el.style.setProperty("color", "#0a1628", "important");
+                el.style.setProperty("border", "none", "important");
+              }}
               data-testid="kb-global-search-submit"
-              className="px-5 py-2.5 rounded bg-[#0D9373] hover:bg-[#0b7c61] text-sm font-medium"
+              className="px-5 py-2.5 rounded text-sm font-semibold"
             >
               Search
             </button>
