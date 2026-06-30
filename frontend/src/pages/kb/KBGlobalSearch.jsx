@@ -22,16 +22,20 @@ export default function KBGlobalSearch() {
   const q = params.get("q") || "";
   const [query, setQuery] = useState(q);
   const [docs, setDocs] = useState([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => { setQuery(q); }, [q]);
 
   useEffect(() => {
-    if (!q) { setDocs([]); return; }
+    if (!q) { setDocs([]); setTotal(0); return; }
     setLoading(true);
-    api.get(`/kb/docs?q=${encodeURIComponent(q)}&limit=50`)
-      .then((r) => setDocs(r.data.docs || []))
-      .catch(() => setDocs([]))
+    api.get(`/kb/docs?q=${encodeURIComponent(q)}&limit=200`)
+      .then((r) => {
+        setDocs(r.data.docs || []);
+        setTotal(typeof r.data.total === "number" ? r.data.total : (r.data.docs || []).length);
+      })
+      .catch(() => { setDocs([]); setTotal(0); })
       .finally(() => setLoading(false));
   }, [q]);
 
@@ -100,7 +104,7 @@ export default function KBGlobalSearch() {
               <span data-testid="kb-global-search-meta">
                 {loading
                   ? `Searching for “${q}”…`
-                  : `${docs.length} ${docs.length === 1 ? "result" : "results"} for “${q}” across all areas`}
+                  : `${total} ${total === 1 ? "result" : "results"} for “${q}” across all areas`}
               </span>
             </div>
             <div className="flex flex-col gap-3" data-testid="kb-global-search-results">

@@ -1,0 +1,75 @@
+{
+  "summary": "Verified KB search count fix across all three modified pages (KBGlobalSearch, KBSearch, KBCategory). UI displayed counts now match backend `total` field exactly for every scenario tested. Singular/plural ternary works (1 result vs N results). Filter-active path shows 'N of TOTAL' format correctly. Empty state still renders for no-results. No console errors. Result cards still render correctly post-fix.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": { "ui_bugs": [], "integration_issues": [], "design_issues": [] },
+  "verification_matrix": {
+    "global_search_q_hcm": {
+      "url": "/knowledge-base/search?q=hcm",
+      "backend_total": 4,
+      "ui_meta": "4 results for \"hcm\" across all areas",
+      "ui_cards_rendered": 4,
+      "match": true
+    },
+    "global_search_no_results": {
+      "url": "/knowledge-base/search?q=zzznoresultzzz",
+      "backend_total": 0,
+      "ui_meta": "0 results for \"zzznoresultzzz\" across all areas",
+      "kb_global_search_empty_visible": true,
+      "match": true
+    },
+    "global_search_plural_payroll": {
+      "url": "/knowledge-base/search?q=payroll",
+      "backend_total": 2,
+      "ui_meta": "2 results for \"payroll\" across all areas",
+      "match": true
+    },
+    "per_category_search_singular": {
+      "url": "/knowledge-base/integration-platform/search?q=payroll",
+      "backend_total": 1,
+      "ui_meta": "1 result for \"payroll\"",
+      "ui_cards_rendered": 1,
+      "singular_form_used": true,
+      "match": true,
+      "note": "Confirms singular/plural ternary in KBSearch.jsx works"
+    },
+    "per_category_search_with_filter": {
+      "url": "/knowledge-base/core-hcm/search?q=hcm + Level=advanced filter clicked",
+      "backend_total": 4,
+      "ui_meta_before_filter": "4 results for \"hcm\"",
+      "ui_meta_after_filter": "1 of 4 results for \"hcm\"",
+      "format_n_of_total_used": true,
+      "ui_cards_rendered": 1,
+      "match": true
+    },
+    "category_landing_count": {
+      "url": "/knowledge-base/integration-platform",
+      "backend_total": 9,
+      "ui_heading": "All 9 documents",
+      "match": true
+    },
+    "category_sub_module_count": {
+      "url": "/knowledge-base/integration-platform?sub=Workday%20Gateway",
+      "backend_total": 6,
+      "ui_heading": "6 documents in \"Workday Gateway\"",
+      "match": true,
+      "note": "Sub-module heading now driven by `total` not `docs.length`"
+    },
+    "console_errors": "None observed on any tested page"
+  },
+  "critical_code_review_comments": [
+    "KBCategory.jsx line 158-159: Heading text 'N documents in \"sub\"' uses `total` from the API. The backend filters by sub when ?sub= is passed (verified — backend returns total=6 for sub=Workday Gateway). Correct.",
+    "KBSearch.jsx line 122-124: Meta line correctly switches between '${total} results' (no filter) and '${filtered.length} of ${total} results' (any filter active). Verified live.",
+    "Minor: KBSearch.jsx still client-side filters with `docs.filter(...)` for type/level/version. Since the API call is capped at limit=200, if a category ever exceeds 200 docs the type/version sidebar counts and filtered list would be incomplete. Not a regression from this fix (was always there), but flag for future scalability. Currently safe at preview scale.",
+    "KBGlobalSearch.jsx line 30-40 and KBCategory.jsx line 48-58 both have a small race: if the user types quickly and triggers two requests, only the latter is canceled implicitly by React reconciliation — there is no AbortController. Not in scope of this bug, but worth tracking."
+  ],
+  "test_report_links": [],
+  "action_items": [],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (frontend-only scope per request)", "frontend": "100% (7/7 scenarios verified)" },
+  "test_credentials": "Not required — KB search pages are public",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Counting fix is solid on preview. All counts (global, per-category, category landing, sub-module) now use the backend `total` field instead of `docs.length`. Singular/plural ternary verified live (q=payroll in integration-platform returns 1 → UI says 'result' not 'results'). Filter-active path verified live ('1 of 4 results for hcm' after Level=advanced filter on core-hcm). Backend used: GET /api/kb/docs?... already returns `total` via db.kb_docs.count_documents(query) — no backend change was needed. Preview DB is small (~24 docs); the original user-reported '50 cap' bug cannot reproduce here, but the fix is structurally correct because UI now reads the same `total` field that backend computes from count_documents.",
+  "rca_of_the_issue": "Original bug: three KB pages (KBGlobalSearch, KBSearch, KBCategory) were calling GET /api/kb/docs?... without limit (or with limit=50) and then displaying `docs.length` as the result count. Backend caps responses at limit=50 by default but always returns the full `total` via count_documents — UI was ignoring `total`. Fix: bumped limit to 200 (so the docs array also contains most categories' full set for client-side type/level filtering) and switched all three count displays to read `r.data.total` from the API response, falling back to docs.length only when total is missing. Verified: every UI count now matches `total` returned by the same endpoint."
+}

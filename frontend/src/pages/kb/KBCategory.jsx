@@ -22,6 +22,7 @@ export default function KBCategory() {
 
   const [cat, setCat] = useState(null);
   const [docs, setDocs] = useState([]);
+  const [total, setTotal] = useState(0);
   const [query, setQuery] = useState("");
 
   // Resizable sidebar — clamped 200–420, persisted across reloads
@@ -46,9 +47,14 @@ export default function KBCategory() {
 
   useEffect(() => {
     api.get(`/kb/categories/${slug}`).then((r) => setCat(r.data)).catch(() => {});
-    const params = new URLSearchParams({ category: slug });
+    const params = new URLSearchParams({ category: slug, limit: "200" });
     if (activeSubModule) params.set("sub", activeSubModule);
-    api.get(`/kb/docs?${params.toString()}`).then((r) => setDocs(r.data.docs)).catch(() => {});
+    api.get(`/kb/docs?${params.toString()}`)
+      .then((r) => {
+        setDocs(r.data.docs || []);
+        setTotal(typeof r.data.total === "number" ? r.data.total : (r.data.docs || []).length);
+      })
+      .catch(() => { setDocs([]); setTotal(0); });
   }, [slug, activeSubModule]);
 
   const visibleDocs = docs;
@@ -149,8 +155,8 @@ export default function KBCategory() {
           <section className="py-4">
             <div className="text-xs uppercase tracking-wider text-[#94A3B8] font-semibold mb-4">
               {activeSubModule
-                ? `${visibleDocs.length} document${visibleDocs.length === 1 ? "" : "s"} in "${activeSubModule}"`
-                : `All ${docs.length} document${docs.length === 1 ? "" : "s"}`}
+                ? `${total} document${total === 1 ? "" : "s"} in "${activeSubModule}"`
+                : `All ${total} document${total === 1 ? "" : "s"}`}
             </div>
             {activeSubModule && (
               <div className="mb-4 flex items-center gap-2 text-sm text-[#475569]">
