@@ -1,11 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Sparkles, LayoutGrid, Search, ArrowRight } from "lucide-react";
+import { Sparkles, LayoutGrid, Search } from "lucide-react";
 import NavHeader from "../../components/NavHeader";
 import { DocTypeBadge, DifficultyBadge, TYPE_BORDER, CAT_BG } from "../../components/kb/KBBadges";
 import { api } from "../../lib/api";
-
-const VISIBLE_COUNT = 9;
 
 // Resting-style helper (setProperty + 'important' beats global button theme)
 const setSearchBtnRest = (el) => {
@@ -129,7 +127,6 @@ export default function KBHome() {
   const [kbStats, setKbStats] = useState({});
   const [featured, setFeatured] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [showAll, setShowAll] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -138,16 +135,14 @@ export default function KBHome() {
     api.get("/kb/categories").then((r) => setCategories(r.data)).catch(() => {});
   }, []);
 
-  const populated = categories
-    .filter((c) => (c.doc_count || 0) > 0)
-    .sort((a, b) => (b.doc_count || 0) - (a.doc_count || 0) || (a.sort_order || 99) - (b.sort_order || 99));
-  const empty = categories
-    .filter((c) => (c.doc_count || 0) === 0)
-    .sort((a, b) => (a.sort_order || 99) - (b.sort_order || 99));
-  const ordered = [...populated, ...empty];
-  const first = ordered.slice(0, VISIBLE_COUNT);
-  const rest = ordered.slice(VISIBLE_COUNT);
-  const mostActiveSlug = populated[0]?.slug;
+  // Sort by doc_count descending — populated areas lead, empties sink to the
+  // bottom. Stable tiebreaker on sort_order so equal counts stay deterministic.
+  const ordered = [...categories].sort(
+    (a, b) =>
+      (b.doc_count || 0) - (a.doc_count || 0) ||
+      (a.sort_order || 99) - (b.sort_order || 99),
+  );
+  const mostActiveSlug = ordered.find((c) => (c.doc_count || 0) > 0)?.slug;
 
   // Global KB search — spans every functional area. No category anchoring.
   const runSearch = (term) => {
@@ -160,28 +155,20 @@ export default function KBHome() {
       <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-8 space-y-10">
         <KBHero totalDocs={kbStats.total_docs} areaCount={categories.length} onSearch={runSearch} />
 
-        {/* Browse by functional area (full-width) */}
+        {/* Browse by functional area (all in one grid, sorted by count) */}
         <section data-testid="kb-browse-section">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-heading text-xl font-semibold text-[#0A1628] inline-flex items-center gap-2">
-              <LayoutGrid className="w-5 h-5 text-[#0D9373]" /> Browse by functional area
-            </h2>
-            {categories.length > 0 && (rest.length > 0 || showAll) && (
-              <button
-                type="button"
-                onClick={() => setShowAll((v) => !v)}
-                data-testid="kb-view-all-link"
-                aria-expanded={showAll}
-                className="inline-flex items-center gap-1 text-[14px] font-semibold transition-opacity hover:opacity-80"
-                style={{ color: "#F5B731", background: "transparent", border: "none", cursor: "pointer" }}
-              >
-                {showAll ? "Show fewer" : `View all ${categories.length}`} <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+          <h2 className="font-heading text-xl font-semibold text-[#0A1628] inline-flex items-center gap-2 mb-6">
+            <LayoutGrid className="w-5 h-5 text-[#0D9373]" />
+            Browse all {categories.length > 0 ? categories.length : ""} functional areas
+          </h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="kb-categories">
-            {first.map((c) => <CategoryBox key={c.slug} cat={c} isMostActive={c.slug === mostActiveSlug} />)}
-            {showAll && rest.map((c) => <CategoryBox key={c.slug} cat={c} isMostActive={c.slug === mostActiveSlug} />)}
+            {ordered.map((c) => (
+              <CategoryBox
+                key={c.slug}
+                cat={c}
+                isMostActive={c.slug === mostActiveSlug}
+              />
+            ))}
           </div>
         </section>
 
