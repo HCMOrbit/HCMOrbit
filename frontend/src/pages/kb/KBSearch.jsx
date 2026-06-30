@@ -31,14 +31,20 @@ export default function KBSearch() {
   const [query, setQuery] = useState(q);
   const [cat, setCat] = useState(null);
   const [docs, setDocs] = useState([]);
+  const [total, setTotal] = useState(0);
   const [type, setType] = useState("all");
   const [level, setLevel] = useState("all");
   const [version, setVersion] = useState("all");
 
   useEffect(() => { api.get(`/kb/categories/${slug}`).then((r) => setCat(r.data)).catch(() => {}); }, [slug]);
   useEffect(() => {
-    if (!q) { setDocs([]); return; }
-    api.get(`/kb/docs?category=${slug}&q=${encodeURIComponent(q)}&limit=50`).then((r) => setDocs(r.data.docs)).catch(() => {});
+    if (!q) { setDocs([]); setTotal(0); return; }
+    api.get(`/kb/docs?category=${slug}&q=${encodeURIComponent(q)}&limit=200`)
+      .then((r) => {
+        setDocs(r.data.docs || []);
+        setTotal(typeof r.data.total === "number" ? r.data.total : (r.data.docs || []).length);
+      })
+      .catch(() => { setDocs([]); setTotal(0); });
   }, [slug, q]);
 
   const versions = useMemo(() => Array.from(new Set(docs.map((d) => d.workday_version).filter(Boolean))).sort().reverse(), [docs]);
@@ -112,7 +118,11 @@ export default function KBSearch() {
         <main className="flex-1 min-w-0">
           <div className="bg-white border border-[#E2E8F0] rounded-lg px-4 py-3 mb-4 text-sm text-[#64748B] inline-flex items-center gap-2">
             <SearchIcon className="w-4 h-4" />
-            <span data-testid="search-meta">{filtered.length} {filtered.length === 1 ? "result" : "results"} for &ldquo;{q}&rdquo;</span>
+            <span data-testid="search-meta">
+              {(type === "all" && level === "all" && version === "all")
+                ? `${total} ${total === 1 ? "result" : "results"} for "${q}"`
+                : `${filtered.length} of ${total} ${total === 1 ? "result" : "results"} for "${q}"`}
+            </span>
           </div>
           <div className="flex flex-col gap-3" data-testid="search-results">
             {filtered.length === 0 ? (
