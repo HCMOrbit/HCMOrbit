@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Link, useParams, useLocation } from "react-router-dom";
-import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Users, Share2, MessageSquare, Info, Lightbulb, AlertTriangle } from "lucide-react";
+import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Share2, MessageSquare, Info, Lightbulb, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import NavHeader from "../../components/NavHeader";
 import { DocTypeBadge, VersionPill } from "../../components/kb/KBBadges";
 import useResizable from "../../components/kb/useResizable";
-import GroupBadge from "../../components/GroupBadge";
 import { api, timeAgo, formatApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { loginHref } from "../../lib/redirect";
@@ -183,6 +182,9 @@ export default function KBDoc() {
               <button onClick={share} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-share-btn">
                 <Share2 className="w-3.5 h-3.5" /> Share
               </button>
+              <span className="text-xs text-white/55 pl-1 counter" data-testid="kb-view-count">
+                {doc.view_count} views
+              </span>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 mb-4">
@@ -262,13 +264,6 @@ export default function KBDoc() {
         )}
 
         <main className="flex-1 min-w-0 lg:pl-6">
-          <div className="bg-white border border-[#E2E8F0] rounded-lg px-5 py-3 mb-5 flex flex-wrap items-center gap-3 text-xs text-[#64748B]">
-            <Users className="w-4 h-4" />
-            <span className="font-medium text-[#475569]">Written for:</span>
-            {(doc.target_groups || []).map((g) => <GroupBadge key={g} group={g} />)}
-            <span className="ml-auto counter">{doc.view_count} views</span>
-          </div>
-
           <article className="bg-white border border-[#E2E8F0] rounded-lg p-6 lg:p-8 kb-prose" data-testid="doc-body">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
               h2: ({ children }) => {
