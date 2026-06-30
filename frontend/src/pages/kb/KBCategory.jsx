@@ -5,8 +5,14 @@ import NavHeader from "../../components/NavHeader";
 import PageHero from "../../components/PageHero";
 import { DocTypeBadge, DifficultyBadge, VersionPill, CategoryIcon } from "../../components/kb/KBBadges";
 import KBSidebar from "../../components/kb/KBSidebar";
+import useResizable from "../../components/kb/useResizable";
 import GroupBadge from "../../components/GroupBadge";
 import { api } from "../../lib/api";
+
+const SIDEBAR_MIN = 200;
+const SIDEBAR_MAX = 420;
+const SIDEBAR_DEFAULT = 260;
+const MOBILE_BREAKPOINT = 768;
 
 export default function KBCategory() {
   const { slug } = useParams();
@@ -17,6 +23,26 @@ export default function KBCategory() {
   const [cat, setCat] = useState(null);
   const [docs, setDocs] = useState([]);
   const [query, setQuery] = useState("");
+
+  // Resizable sidebar — clamped 200–420, persisted across reloads
+  const { width: sidebarWidth, startDrag, isDragging } = useResizable({
+    storageKey: "kbSidebarWidth",
+    defaultWidth: SIDEBAR_DEFAULT,
+    min: SIDEBAR_MIN,
+    max: SIDEBAR_MAX,
+  });
+
+  // Mobile guard — disable the resizer below 768px and lock to default width.
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" && window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`).matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  const effectiveWidth = isMobile ? SIDEBAR_DEFAULT : sidebarWidth;
 
   useEffect(() => {
     api.get(`/kb/categories/${slug}`).then((r) => setCat(r.data)).catch(() => {});
@@ -81,9 +107,33 @@ export default function KBCategory() {
           </form>
         </PageHero>
       )}
-      <div className="max-w-[1300px] mx-auto px-4 lg:px-8 py-6 flex gap-6" style={{ minHeight: "calc(100vh - 64px)" }}>
-        <KBSidebar activeSlug={slug} activeSubModule={activeSubModule} />
-        <main className="flex-1 min-w-0">
+      <div className="max-w-[1300px] mx-auto px-4 lg:px-8 py-6 flex gap-0 md:gap-0" style={{ minHeight: "calc(100vh - 64px)" }}>
+        <KBSidebar activeSlug={slug} activeSubModule={activeSubModule} width={effectiveWidth} />
+        {!isMobile && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sidebar"
+            tabIndex={0}
+            onMouseDown={startDrag}
+            data-testid="kb-sidebar-resizer"
+            className="hidden md:block shrink-0 group"
+            style={{
+              width: 6,
+              cursor: "col-resize",
+              background: isDragging ? "#1DB589" : "transparent",
+              transition: isDragging ? "none" : "background-color 120ms ease",
+              alignSelf: "stretch",
+            }}
+            onMouseEnter={(e) => {
+              if (!isDragging) e.currentTarget.style.background = "rgba(29,181,137,0.4)";
+            }}
+            onMouseLeave={(e) => {
+              if (!isDragging) e.currentTarget.style.background = "transparent";
+            }}
+          />
+        )}
+        <main className="flex-1 min-w-0 md:pl-6">
           <section className="py-4">
             <div className="text-xs uppercase tracking-wider text-[#94A3B8] font-semibold mb-4">
               {activeSubModule
