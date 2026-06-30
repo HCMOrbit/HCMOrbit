@@ -213,10 +213,10 @@ export default function NavHeader() {
 
           {/* Center navigation */}
           <nav className="hidden lg:flex items-center gap-5 xl:gap-7" data-testid={user ? "nav-main" : "nav-main-guest"}>
-            <NavItem to="/community" label="Community" testid="nav-home" />
-            <NavItem to="/knowledge-base" label="Knowledge Base" hasCaret testid="nav-kb" />
             <NavItem to="/career-hub" label="Career Hub" testid="nav-career" />
+            <NavItem to="/knowledge-base" label="Knowledge Base" hasCaret testid="nav-kb" />
             <NavItem to="/ecosystem" label="Ecosystem" hasCaret testid="nav-ecosystem" />
+            <NavItem to="/community" label="Community" testid="nav-home" />
             <AboutMenu />
           </nav>
 
