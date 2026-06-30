@@ -103,7 +103,7 @@ export default function StudyPlan() {
           {/* CENTER — what's included */}
           <section>
             <div style={{ ...cardStyle(), marginBottom: 14 }}>
-              <H>What's included</H>
+              <H>What&apos;s included</H>
               <div style={{ marginTop: 8 }}>
                 {plan.contentTiles.map((t) => <ContentTile key={t.key} t={t} />)}
               </div>

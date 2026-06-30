@@ -1,0 +1,22 @@
+{
+  "summary": "Verified the react/no-unescaped-entities fix on /app/frontend/src/pages/StudyPlan.jsx line 106. The apostrophe is now encoded as &apos; in source. Rendered output in browser is a literal 'What's included' (no &apos; leaks to DOM). No regressions on Study Plan page or on /, /knowledge-base, /career-hub. Zero console errors / page errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Note (informational only, not in scope): repo uses ESLint v9 globally (npx eslint) but project has no eslint.config.js; CRA's internal lint pipeline still works during react-scripts build. Direct CLI lint of a single file from /app/frontend therefore can't be executed without scaffolding a flat-config. Verification was done via runtime render check + source inspection. If main agent wants a CLI-runnable lint, add an eslint.config.js or run via `CI=true yarn build`."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request)", "frontend": "100%"},
+  "test_credentials": "not required",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "StudyPlan apostrophe fix verified. Heading SPAN textContent = \"What's included\" (literal apostrophe). All 5 content tiles render (Related KB articles=30, Core questions/Scenario practice/Key concepts/Failure patterns/Mock interview = Coming soon). All 6 stages render. Other routes /, /knowledge-base, /career-hub load cleanly with 0 console errors.",
+  "rca_of_the_issue": "Root cause: CRA build runs ESLint with react/no-unescaped-entities rule; a literal apostrophe in JSX text node (`What's included`) triggered the rule and, under CI=true, failed the build. Fix: replaced literal `'` with HTML entity `&apos;`. JSX/HTML decode the entity at render time, so visible text is identical. Verified via DOM inspection: SPAN.innerText === \"What's included\" and no `&apos;` string present anywhere in document.body.innerText."
+}
