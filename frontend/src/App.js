@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth";
@@ -50,6 +50,15 @@ import AuthCallback from "@/components/AuthCallback";
 
 function AppRoutes() {
   const location = useLocation();
+
+  // Scroll to top on every route change so KB doc clicks (and any other
+  // navigation) always open at the page top — unless the URL has a hash
+  // (e.g. TOC anchor jumps) where we let the browser handle the scroll.
+  useEffect(() => {
+    if (location.hash) return;
+    window.scrollTo(0, 0);
+  }, [location.pathname, location.search]);
+
   // OAuth callback: intercept session_id in hash before any other routing
   if (location.hash?.includes("session_id=")) {
     return <AuthCallback />;

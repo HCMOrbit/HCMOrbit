@@ -1,0 +1,31 @@
+{
+  "summary": "Verified the global SPA scroll-to-top fix in /app/frontend/src/App.js (AppRoutes useEffect on location.pathname + location.search, skipping when location.hash is truthy). Tested 8 navigation flows across KB, search, Community, Ecosystem, and in-page TOC anchors. All 8 scenarios pass — every route transition now lands at scrollY = 0, while in-page TOC anchor clicks (which use scrollIntoView without changing URL hash) correctly scroll to the section.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Fix is minimal, idiomatic, and correctly scoped. Dependency array [location.pathname, location.search] correctly covers both pathname navigations and query-string changes. The location.hash early-return correctly preserves anchor-based URLs and protects the existing OAuth callback handler (session_id in hash) which runs after the useEffect.",
+    "Note: Browser back-button navigation will also force scroll to top with this implementation. This is a minor regression from the typical SPA expectation of preserving scroll on back-nav. If users complain, consider tracking history action via useNavigationType() from react-router-dom and skipping scroll on POP actions. Not a blocker — the current fix matches the user-reported bug exactly."
+  ],
+  "updated_files": [],
+  "success_rate": {"frontend": "100%"},
+  "test_evidence": {
+    "Test1 KB home -> category (scrolled 729 -> 0)": "PASS",
+    "Test2 category -> doc (scrolled 1658 -> 0)": "PASS",
+    "Test3 doc -> breadcrumb KB home (scrolled 1924 -> 0)": "PASS",
+    "Test4 global search -> doc (scrolled 482 -> 0)": "PASS",
+    "Test5 search query-string change (scrolled 482 -> 0 on ?q=payroll)": "PASS",
+    "Test6 URL with #fragment respected (no force-scroll when hash present)": "PASS",
+    "Test6b TOC anchor click (scrollIntoView -> scrollY=1316, URL unchanged)": "PASS",
+    "Test7 Community feed -> space page (scrolled 3375 -> 0)": "PASS (non-KB route)",
+    "Test8 Ecosystem -> Events (scrolled 1321 -> 0)": "PASS (non-KB route)"
+  },
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Scroll-to-top fix verified working globally across SPA. No regressions found. TOC in-page anchors use scrollIntoView and do not change URL hash, so they coexist with the fix correctly. OAuth #session_id callback still handled because the hash check runs after the scroll useEffect (and the useEffect early-returns on any hash)."
+}
