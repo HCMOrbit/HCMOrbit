@@ -6,41 +6,27 @@ import { DocTypeBadge, DifficultyBadge, TYPE_BORDER, CAT_BG } from "../../compon
 import { api } from "../../lib/api";
 
 const VISIBLE_COUNT = 9;
-const SAMPLE_CHIPS = ["Retro pay", "EIB errors", "Security domains"];
 
-// Resting-style helpers (setProperty + 'important' beats global button theme)
+// Resting-style helper (setProperty + 'important' beats global button theme)
 const setSearchBtnRest = (el) => {
   if (!el) return;
   el.style.setProperty("background", "#F5B731", "important");
   el.style.setProperty("color", "#0a1628", "important");
   el.style.setProperty("border", "none", "important");
 };
-const setChipRest = (el) => {
-  if (!el) return;
-  el.style.setProperty("background", "rgba(255,255,255,0.08)", "important");
-  el.style.setProperty("color", "#ffffff", "important");
-  el.style.setProperty("border", "1px solid rgba(255,255,255,0.28)", "important");
-};
 
-function KBHero({ totalDocs, onSearch }) {
+function KBHero({ totalDocs, areaCount, onSearch }) {
   const [q, setQ] = useState("");
   const searchBtnRef = useRef(null);
-  const chipRefs = useRef({});
   useEffect(() => { setSearchBtnRest(searchBtnRef.current); }, []);
-  useEffect(() => {
-    SAMPLE_CHIPS.forEach((c) => setChipRest(chipRefs.current[c]));
-  }, []);
 
   const countLabel = totalDocs != null ? totalDocs : 937;
+  const areas = areaCount || 17;
 
   const submit = (e) => {
     if (e) e.preventDefault();
     const term = q.trim();
     if (!term) return; // empty-query guard
-    onSearch(term);
-  };
-  const runChip = (term) => {
-    setQ(term);
     onSearch(term);
   };
 
@@ -121,22 +107,18 @@ function KBHero({ totalDocs, onSearch }) {
         </form>
 
         <div
-          className="mt-4 flex flex-wrap items-center justify-center gap-2"
-          data-testid="kb-hero-chips"
+          className="mt-4 text-center"
+          style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}
+          data-testid="kb-hero-count-line"
         >
-          {SAMPLE_CHIPS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              ref={(el) => { chipRefs.current[c] = el; }}
-              onClick={() => runChip(c)}
-              data-testid={`kb-hero-chip-${c.toLowerCase().replace(/\s+/g, "-")}`}
-              className="text-[12.5px] font-medium"
-              style={{ padding: "5px 12px", borderRadius: 9999, cursor: "pointer" }}
-            >
-              {c}
-            </button>
-          ))}
+          <span style={{ color: "#F5B731", fontWeight: 600 }} data-testid="kb-hero-doc-count">
+            {countLabel}
+          </span>{" "}
+          guides across{" "}
+          <span style={{ color: "#F5B731", fontWeight: 600 }} data-testid="kb-hero-area-count">
+            {areas}
+          </span>{" "}
+          functional areas — and growing
         </div>
       </div>
     </section>
@@ -176,7 +158,7 @@ export default function KBHome() {
     <div className="min-h-screen bg-[#F1F5F9]" data-testid="kb-home">
       <NavHeader />
       <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-8 space-y-10">
-        <KBHero totalDocs={kbStats.total_docs} onSearch={runSearch} />
+        <KBHero totalDocs={kbStats.total_docs} areaCount={categories.length} onSearch={runSearch} />
 
         {/* Browse by functional area (full-width) */}
         <section data-testid="kb-browse-section">
