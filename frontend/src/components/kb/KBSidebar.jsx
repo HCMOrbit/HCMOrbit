@@ -36,8 +36,8 @@ function ModuleRow({ cat, activeSlug, activeSubModule, subModules }) {
               style={{ background: CAT_BG[cat.slug] || "#F1F5F9" }}>
           {cat.icon}
         </span>
-        <span className="flex-1 min-w-0 text-[13px] font-semibold leading-tight truncate"
-              style={{ color: isActive ? ACTIVE_TXT : BRAND_NAVY }}>
+        <span className="flex-1 min-w-0 text-[13px] font-semibold leading-tight"
+              style={{ color: isActive ? ACTIVE_TXT : BRAND_NAVY, wordBreak: "break-word" }}>
           {cat.name}
         </span>
         {count > 0 && (
@@ -86,7 +86,7 @@ function ModuleRow({ cat, activeSlug, activeSubModule, subModules }) {
   );
 }
 
-export default function KBSidebar({ activeSlug, activeSubModule }) {
+export default function KBSidebar({ activeSlug, activeSubModule, width = 256 }) {
   const [categories, setCategories] = useState([]);
   const [subModules, setSubModules] = useState({});
   const [search, setSearch]         = useState("");
@@ -111,7 +111,7 @@ export default function KBSidebar({ activeSlug, activeSubModule }) {
   return (
     <aside
       className="sticky top-[64px] self-start h-[calc(100vh-64px)] flex flex-col overflow-hidden"
-      style={{ width: 256, minWidth: 256, background: SIDEBAR_BG, borderRight: `1px solid ${BORDER}` }}
+      style={{ width, minWidth: width, maxWidth: width, background: SIDEBAR_BG, borderRight: `1px solid ${BORDER}` }}
       data-testid="kb-sidebar"
     >
       <div className="px-4 pt-5 pb-3 shrink-0" style={{ borderBottom: `1px solid ${BORDER}` }}>
@@ -136,7 +136,11 @@ export default function KBSidebar({ activeSlug, activeSubModule }) {
           )}
         </div>
       </div>
-      <nav className="flex-1 overflow-y-auto px-2 py-3" data-testid="kb-sidebar-nav">
+      <nav
+        className="flex-1 overflow-y-auto px-2 py-3"
+        style={{ scrollbarWidth: "thin", scrollbarColor: "#cbd5e1 transparent" }}
+        data-testid="kb-sidebar-nav"
+      >
         {filtered.map((cat) => (
           <ModuleRow
             key={cat.slug}
