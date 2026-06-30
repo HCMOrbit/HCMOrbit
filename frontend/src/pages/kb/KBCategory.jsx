@@ -72,13 +72,13 @@ export default function KBCategory() {
           testId="kb-category-hero"
           breadcrumb={
             <nav className="text-xs flex items-center gap-1.5 mb-5 text-white/70" data-testid="breadcrumb">
-              <Link to="/knowledge-base" className="text-[#0D9373] hover:underline">Knowledge Base</Link>
+              <Link to="/knowledge-base" className="hover:underline" style={{ color: "#F5B731" }}>Knowledge Base</Link>
               <ChevronRight className="w-3 h-3" />
-              <span className="text-white">{cat?.name}</span>
+              <span style={{ color: "#F5B731", fontWeight: 600 }}>{cat?.name}</span>
               {activeSubModule && (<><ChevronRight className="w-3 h-3" /><span className="text-white/80">{activeSubModule}</span></>)}
             </nav>
           }
-          eyebrow="Knowledge Base Module"
+          eyebrow={<span style={{ color: "#F5B731" }}>Knowledge Base Module</span>}
           title={
             <span className="inline-flex items-center gap-4">
               <CategoryIcon slug={cat.slug} icon={cat.icon} size="lg" />
@@ -103,7 +103,19 @@ export default function KBCategory() {
                      placeholder={`Search within ${cat.name}…`} data-testid="category-search-input"
                      className="w-full pl-10 pr-4 py-2.5 bg-white/10 border border-white/20 rounded text-sm placeholder:text-white/40 focus:bg-white/15 focus:border-white/40 outline-none" />
             </div>
-            <button type="submit" className="px-5 py-2.5 rounded bg-[#0D9373] hover:bg-[#0b7c61] text-sm font-medium" data-testid="category-search-submit">Search</button>
+            <button
+              type="submit"
+              ref={(el) => {
+                if (!el) return;
+                el.style.setProperty("background", "#F5B731", "important");
+                el.style.setProperty("color", "#0a1628", "important");
+                el.style.setProperty("border", "none", "important");
+              }}
+              className="px-5 py-2.5 rounded text-sm font-semibold"
+              data-testid="category-search-submit"
+            >
+              Search
+            </button>
           </form>
         </PageHero>
       )}

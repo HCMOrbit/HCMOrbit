@@ -4,7 +4,8 @@ import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Users, Share2,
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import NavHeader from "../../components/NavHeader";
-import { DocTypeBadge, DifficultyBadge, VersionPill } from "../../components/kb/KBBadges";
+import { DocTypeBadge, VersionPill } from "../../components/kb/KBBadges";
+import useResizable from "../../components/kb/useResizable";
 import GroupBadge from "../../components/GroupBadge";
 import { api, timeAgo, formatApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -22,6 +23,43 @@ export default function KBDoc() {
   const [voteJustSaved, setVoteJustSaved] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [activeAnchor, setActiveAnchor] = useState("");
+
+  // Resizable TOC — same hook as the category sidebar, distinct storage key.
+  const { width: tocWidth, startDrag: startTocDrag, isDragging: isTocDragging } = useResizable({
+    storageKey: "kbTocWidth",
+    defaultWidth: 260,
+    min: 200,
+    max: 420,
+  });
+
+  // Match the TOC's existing visibility breakpoint (Tailwind `lg` = 1024px).
+  // Below lg the TOC is hidden, so the handle is too — no UI fallback needed
+  // beyond that. The 768px mobile guard is naturally satisfied because lg
+  // already hides everything narrower than 1024px.
+  const [isWide, setIsWide] = useState(
+    typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const handler = (e) => setIsWide(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  const effectiveTocWidth = isWide ? tocWidth : 250;
+
+  // Right-rail (Navigate + Related) inline-vs-below breakpoint. Above ~1100px
+  // it sits beside the article body as a third column; below, it collapses to
+  // a full-width block under the body so we never cram three columns into a
+  // narrow viewport.
+  const [isThreeCol, setIsThreeCol] = useState(
+    typeof window !== "undefined" && window.matchMedia("(min-width: 1100px)").matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1100px)");
+    const handler = (e) => setIsThreeCol(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   const load = useCallback(() => {
     api.get(`/kb/docs/${docId}`).then((r) => setDoc(r.data)).catch(() => {});
@@ -98,6 +136,31 @@ export default function KBDoc() {
   const totalVotes = (doc.helpful_count || 0) + (doc.not_helpful_count || 0);
   const helpfulPct = totalVotes > 0 ? Math.round(100 * doc.helpful_count / totalVotes) : 0;
 
+  // Right-rail content (Navigate + Related). Rendered in two positions:
+  //  - At ≥1100px: as a 3rd column beside the article body (sticky).
+  //  - Below 1100px: as a full-width block under the body.
+  // Defined once so both call sites share the same source of truth.
+  const rightRailContent = (
+    <>
+      <div className="bg-white rounded-lg border border-[#E2E8F0] p-4" data-testid="kb-doc-navigate-block">
+        <div className="text-[10px] uppercase tracking-wider font-semibold text-[#94A3B8] mb-3">Navigate</div>
+        <Link to={`/knowledge-base/${slug}`} className="flex items-center gap-1.5 text-xs text-[#0D9373] hover:underline py-1">
+          <ArrowLeft className="w-3 h-3" /> All {doc.category?.name} documents
+        </Link>
+      </div>
+      {doc.related?.length > 0 && (
+        <div className="bg-white rounded-lg border border-[#E2E8F0] p-4" data-testid="kb-doc-related-block">
+          <div className="text-[10px] uppercase tracking-wider font-semibold text-[#94A3B8] mb-3">Related</div>
+          <div className="flex flex-col gap-2">
+            {doc.related.map((r) => (
+              <Link key={r.id} to={`/knowledge-base/${slug}/${r.id}`} className="text-xs text-[#1D6FE8] hover:underline leading-snug">{r.title}</Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-[#F1F5F9]" data-testid="kb-doc">
       <NavHeader />
@@ -110,20 +173,28 @@ export default function KBDoc() {
             <ChevronRight className="w-3 h-3" />
             <Link to={`/knowledge-base/${slug}`} className="text-white/80 hover:text-white hover:underline">{doc.category?.name}</Link>
             <ChevronRight className="w-3 h-3" />
-            <span className="truncate text-white/70">{doc.title.slice(0, 60)}</span>
+            <span className="truncate" style={{ color: "#F5B731", fontWeight: 600 }}>{doc.title.slice(0, 60)}</span>
           </nav>
           <div className="flex flex-wrap items-center gap-1.5 mb-4">
             <DocTypeBadge type={doc.doc_type} />
-            <DifficultyBadge level={doc.difficulty} />
+            {doc.difficulty && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider capitalize"
+                style={{ background: "#fdf3dc", color: "#b5841a" }}
+                data-testid="kb-doc-difficulty-gold"
+              >
+                {doc.difficulty}
+              </span>
+            )}
             <VersionPill version={doc.workday_version} />
             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20">{doc.category?.name}</span>
           </div>
           <h1 className="font-heading text-2xl lg:text-3xl font-bold tracking-tight" data-testid="doc-title">{doc.title}</h1>
           {(doc.reference_id || doc.read_time) && (
-            <div className="mt-2 text-xs text-white/55 font-mono flex items-center gap-2 flex-wrap" data-testid="doc-ref-strip">
-              {doc.reference_id && <span>{doc.reference_id}</span>}
+            <div className="mt-2 text-xs font-mono flex items-center gap-2 flex-wrap" data-testid="doc-ref-strip">
+              {doc.reference_id && <span style={{ color: "#F5B731" }}>{doc.reference_id}</span>}
               {doc.reference_id && doc.read_time && <span className="text-white/30">·</span>}
-              {doc.read_time && <span>{doc.read_time} read</span>}
+              {doc.read_time && <span className="text-white/55">{doc.read_time} read</span>}
             </div>
           )}
           <p className="mt-3 text-white/70 leading-relaxed max-w-3xl">{doc.summary}</p>
@@ -146,39 +217,57 @@ export default function KBDoc() {
         </div>
       </section>
 
-      <div className="max-w-[1300px] mx-auto px-4 lg:px-8 py-6 flex gap-6">
-        <aside className="w-[250px] shrink-0 hidden lg:flex flex-col gap-5 sticky top-20 self-start max-h-[calc(100vh-6rem)] overflow-y-auto pr-1" data-testid="kb-doc-sidebar">
-          {headings.length > 0 && (
-            <div className="bg-white rounded-lg border border-[#E2E8F0] p-4">
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-[#94A3B8] mb-3">In this document</div>
-              <div className="flex flex-col gap-0.5">
-                {headings.map((h) => (
-                  <a key={h.id} href={`#${h.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(h.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
-                    className={`text-xs py-1.5 px-2 rounded transition-colors leading-snug ${activeAnchor === h.id ? "bg-[#F0FDF4] text-[#0D9373] font-medium border-l-2 border-[#0D9373]" : "text-[#475569] hover:bg-[#F8FAFC]"} ${h.level === 3 ? "pl-4" : ""}`}
-                    data-testid={`toc-${h.id}`}>{h.text}</a>
-                ))}
-              </div>
-            </div>
-          )}
+      <div className="max-w-[1300px] mx-auto px-4 lg:px-8 py-6 flex gap-0">
+        {headings.length > 0 && (
+        <aside
+          className="shrink-0 hidden lg:flex flex-col gap-5 sticky top-20 self-start max-h-[calc(100vh-6rem)] overflow-y-auto"
+          style={{
+            width: effectiveTocWidth,
+            minWidth: effectiveTocWidth,
+            maxWidth: effectiveTocWidth,
+            scrollbarWidth: "thin",
+            scrollbarColor: "#cbd5e1 transparent",
+          }}
+          data-testid="kb-doc-sidebar"
+        >
           <div className="bg-white rounded-lg border border-[#E2E8F0] p-4">
-            <div className="text-[10px] uppercase tracking-wider font-semibold text-[#94A3B8] mb-3">Navigate</div>
-            <Link to={`/knowledge-base/${slug}`} className="flex items-center gap-1.5 text-xs text-[#0D9373] hover:underline py-1">
-              <ArrowLeft className="w-3 h-3" /> All {doc.category?.name} documents
-            </Link>
-          </div>
-          {doc.related?.length > 0 && (
-            <div className="bg-white rounded-lg border border-[#E2E8F0] p-4">
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-[#94A3B8] mb-3">Related</div>
-              <div className="flex flex-col gap-2">
-                {doc.related.map((r) => (
-                  <Link key={r.id} to={`/knowledge-base/${slug}/${r.id}`} className="text-xs text-[#1D6FE8] hover:underline leading-snug">{r.title}</Link>
-                ))}
-              </div>
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-[#94A3B8] mb-3">In this document</div>
+            <div className="flex flex-col gap-0.5">
+              {headings.map((h) => (
+                <a key={h.id} href={`#${h.id}`} onClick={(e) => { e.preventDefault(); document.getElementById(h.id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+                  className={`text-xs py-1.5 px-2 rounded transition-colors leading-snug ${activeAnchor === h.id ? "bg-[#F0FDF4] text-[#0D9373] font-medium border-l-2 border-[#0D9373]" : "text-[#475569] hover:bg-[#F8FAFC]"} ${h.level === 3 ? "pl-4" : ""}`}
+                  data-testid={`toc-${h.id}`}>{h.text}</a>
+              ))}
             </div>
-          )}
+          </div>
         </aside>
+        )}
 
-        <main className="flex-1 min-w-0">
+        {isWide && headings.length > 0 && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize table of contents"
+            onMouseDown={startTocDrag}
+            data-testid="kb-toc-resizer"
+            className="hidden lg:block shrink-0 sticky top-20 self-start"
+            style={{
+              width: 6,
+              height: "calc(100vh - 6rem)",
+              cursor: "col-resize",
+              background: isTocDragging ? "#1DB589" : "transparent",
+              transition: isTocDragging ? "none" : "background-color 120ms ease",
+            }}
+            onMouseEnter={(e) => {
+              if (!isTocDragging) e.currentTarget.style.background = "rgba(29,181,137,0.4)";
+            }}
+            onMouseLeave={(e) => {
+              if (!isTocDragging) e.currentTarget.style.background = "transparent";
+            }}
+          />
+        )}
+
+        <main className="flex-1 min-w-0 lg:pl-6">
           <div className="bg-white border border-[#E2E8F0] rounded-lg px-5 py-3 mb-5 flex flex-wrap items-center gap-3 text-xs text-[#64748B]">
             <Users className="w-4 h-4" />
             <span className="font-medium text-[#475569]">Written for:</span>
@@ -287,7 +376,28 @@ export default function KBDoc() {
               </div>
             )}
           </div>
+          {!isThreeCol && (
+            <div className="mt-5 flex flex-col gap-5" data-testid="kb-doc-right-rail-below">
+              {rightRailContent}
+            </div>
+          )}
         </main>
+
+        {isThreeCol && (
+          <aside
+            className="flex flex-col gap-5 shrink-0 sticky top-20 self-start max-h-[calc(100vh-6rem)] overflow-y-auto pl-6"
+            style={{
+              width: 280,
+              minWidth: 280,
+              maxWidth: 280,
+              scrollbarWidth: "thin",
+              scrollbarColor: "#cbd5e1 transparent",
+            }}
+            data-testid="kb-doc-right-rail"
+          >
+            {rightRailContent}
+          </aside>
+        )}
       </div>
     </div>
   );

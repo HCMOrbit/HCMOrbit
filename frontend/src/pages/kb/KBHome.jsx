@@ -172,7 +172,8 @@ export default function KBHome() {
           </div>
         </section>
 
-        {/* Featured (kept, full-width) */}
+        {/* Featured (kept, full-width) — only render when there's at least one */}
+        {featured.length > 0 && (
         <section data-testid="kb-featured-section">
           <h2 className="font-heading text-xl font-semibold text-[#0A1628] inline-flex items-center gap-2 mb-6">
             <Sparkles className="w-5 h-5 text-[#0D9373]" /> Featured this week
@@ -202,6 +203,7 @@ export default function KBHome() {
             ))}
           </div>
         </section>
+        )}
       </div>
     </div>
   );
