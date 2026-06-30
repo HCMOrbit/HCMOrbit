@@ -4,7 +4,7 @@ import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Users, Share2,
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import NavHeader from "../../components/NavHeader";
-import { DocTypeBadge, DifficultyBadge, VersionPill } from "../../components/kb/KBBadges";
+import { DocTypeBadge, VersionPill } from "../../components/kb/KBBadges";
 import GroupBadge from "../../components/GroupBadge";
 import { api, timeAgo, formatApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -110,20 +110,28 @@ export default function KBDoc() {
             <ChevronRight className="w-3 h-3" />
             <Link to={`/knowledge-base/${slug}`} className="text-white/80 hover:text-white hover:underline">{doc.category?.name}</Link>
             <ChevronRight className="w-3 h-3" />
-            <span className="truncate text-white/70">{doc.title.slice(0, 60)}</span>
+            <span className="truncate" style={{ color: "#F5B731", fontWeight: 600 }}>{doc.title.slice(0, 60)}</span>
           </nav>
           <div className="flex flex-wrap items-center gap-1.5 mb-4">
             <DocTypeBadge type={doc.doc_type} />
-            <DifficultyBadge level={doc.difficulty} />
+            {doc.difficulty && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider capitalize"
+                style={{ background: "#fdf3dc", color: "#b5841a" }}
+                data-testid="kb-doc-difficulty-gold"
+              >
+                {doc.difficulty}
+              </span>
+            )}
             <VersionPill version={doc.workday_version} />
             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20">{doc.category?.name}</span>
           </div>
           <h1 className="font-heading text-2xl lg:text-3xl font-bold tracking-tight" data-testid="doc-title">{doc.title}</h1>
           {(doc.reference_id || doc.read_time) && (
-            <div className="mt-2 text-xs text-white/55 font-mono flex items-center gap-2 flex-wrap" data-testid="doc-ref-strip">
-              {doc.reference_id && <span>{doc.reference_id}</span>}
+            <div className="mt-2 text-xs font-mono flex items-center gap-2 flex-wrap" data-testid="doc-ref-strip">
+              {doc.reference_id && <span style={{ color: "#F5B731" }}>{doc.reference_id}</span>}
               {doc.reference_id && doc.read_time && <span className="text-white/30">·</span>}
-              {doc.read_time && <span>{doc.read_time} read</span>}
+              {doc.read_time && <span className="text-white/55">{doc.read_time} read</span>}
             </div>
           )}
           <p className="mt-3 text-white/70 leading-relaxed max-w-3xl">{doc.summary}</p>
