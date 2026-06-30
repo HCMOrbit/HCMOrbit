@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import NavHeader from "../../components/NavHeader";
 import { DocTypeBadge, VersionPill } from "../../components/kb/KBBadges";
+import useResizable from "../../components/kb/useResizable";
 import GroupBadge from "../../components/GroupBadge";
 import { api, timeAgo, formatApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
@@ -22,6 +23,29 @@ export default function KBDoc() {
   const [voteJustSaved, setVoteJustSaved] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [activeAnchor, setActiveAnchor] = useState("");
+
+  // Resizable TOC — same hook as the category sidebar, distinct storage key.
+  const { width: tocWidth, startDrag: startTocDrag, isDragging: isTocDragging } = useResizable({
+    storageKey: "kbTocWidth",
+    defaultWidth: 260,
+    min: 200,
+    max: 420,
+  });
+
+  // Match the TOC's existing visibility breakpoint (Tailwind `lg` = 1024px).
+  // Below lg the TOC is hidden, so the handle is too — no UI fallback needed
+  // beyond that. The 768px mobile guard is naturally satisfied because lg
+  // already hides everything narrower than 1024px.
+  const [isWide, setIsWide] = useState(
+    typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const handler = (e) => setIsWide(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  const effectiveTocWidth = isWide ? tocWidth : 250;
 
   const load = useCallback(() => {
     api.get(`/kb/docs/${docId}`).then((r) => setDoc(r.data)).catch(() => {});
@@ -154,8 +178,18 @@ export default function KBDoc() {
         </div>
       </section>
 
-      <div className="max-w-[1300px] mx-auto px-4 lg:px-8 py-6 flex gap-6">
-        <aside className="w-[250px] shrink-0 hidden lg:flex flex-col gap-5 sticky top-20 self-start max-h-[calc(100vh-6rem)] overflow-y-auto pr-1" data-testid="kb-doc-sidebar">
+      <div className="max-w-[1300px] mx-auto px-4 lg:px-8 py-6 flex gap-0">
+        <aside
+          className="shrink-0 hidden lg:flex flex-col gap-5 sticky top-20 self-start max-h-[calc(100vh-6rem)] overflow-y-auto"
+          style={{
+            width: effectiveTocWidth,
+            minWidth: effectiveTocWidth,
+            maxWidth: effectiveTocWidth,
+            scrollbarWidth: "thin",
+            scrollbarColor: "#cbd5e1 transparent",
+          }}
+          data-testid="kb-doc-sidebar"
+        >
           {headings.length > 0 && (
             <div className="bg-white rounded-lg border border-[#E2E8F0] p-4">
               <div className="text-[10px] uppercase tracking-wider font-semibold text-[#94A3B8] mb-3">In this document</div>
@@ -186,7 +220,31 @@ export default function KBDoc() {
           )}
         </aside>
 
-        <main className="flex-1 min-w-0">
+        {isWide && (
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize table of contents"
+            onMouseDown={startTocDrag}
+            data-testid="kb-toc-resizer"
+            className="hidden lg:block shrink-0 sticky top-20 self-start"
+            style={{
+              width: 6,
+              height: "calc(100vh - 6rem)",
+              cursor: "col-resize",
+              background: isTocDragging ? "#1DB589" : "transparent",
+              transition: isTocDragging ? "none" : "background-color 120ms ease",
+            }}
+            onMouseEnter={(e) => {
+              if (!isTocDragging) e.currentTarget.style.background = "rgba(29,181,137,0.4)";
+            }}
+            onMouseLeave={(e) => {
+              if (!isTocDragging) e.currentTarget.style.background = "transparent";
+            }}
+          />
+        )}
+
+        <main className="flex-1 min-w-0 lg:pl-6">
           <div className="bg-white border border-[#E2E8F0] rounded-lg px-5 py-3 mb-5 flex flex-wrap items-center gap-3 text-xs text-[#64748B]">
             <Users className="w-4 h-4" />
             <span className="font-medium text-[#475569]">Written for:</span>
