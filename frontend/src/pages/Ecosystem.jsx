@@ -726,14 +726,6 @@ export default function Ecosystem() {
             {news.slice(0, 6).map((n) => <NewsTile key={n.id || n.url} n={n} />)}
           </div>
         </section>
-
-        {/* Certification watch — 3-col tile grid */}
-        <section data-testid="certs-section">
-          <SectionHeader icon={ClipboardList} title="Certification watch" viewAllHref="/ecosystem/certifications" dataTestId="certs-section-header" />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="certs-list">
-            {certs.slice(0, 6).map((c) => <CertTile key={c.id} c={c} />)}
-          </div>
-        </section>
       </main>
     </div>
   );
