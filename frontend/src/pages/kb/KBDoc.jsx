@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Link, useParams, useLocation } from "react-router-dom";
-import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Share2, MessageSquare, Info, Lightbulb, AlertTriangle } from "lucide-react";
+import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Share2, Eye, MessageSquare, Info, Lightbulb, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import NavHeader from "../../components/NavHeader";
@@ -182,9 +182,6 @@ export default function KBDoc() {
               <button onClick={share} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-share-btn">
                 <Share2 className="w-3.5 h-3.5" /> Share
               </button>
-              <span className="text-xs text-white/55 pl-1 counter" data-testid="kb-view-count">
-                {doc.view_count} views
-              </span>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 mb-4">
@@ -200,6 +197,14 @@ export default function KBDoc() {
             )}
             <VersionPill version={doc.workday_version} />
             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20">{doc.category?.name}</span>
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20"
+              data-testid="kb-view-count"
+            >
+              <Eye className="w-3 h-3" />
+              <span className="counter">{doc.view_count}</span>
+              <span>views</span>
+            </span>
           </div>
           <h1 className="font-heading text-2xl lg:text-3xl font-bold tracking-tight" data-testid="doc-title">{doc.title}</h1>
           {(doc.reference_id || doc.read_time) && (
