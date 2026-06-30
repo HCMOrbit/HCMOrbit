@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Link, useParams, useLocation } from "react-router-dom";
-import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Users, Share2, MessageSquare, Info, Lightbulb, AlertTriangle } from "lucide-react";
+import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Share2, Eye, MessageSquare, Info, Lightbulb, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import NavHeader from "../../components/NavHeader";
 import { DocTypeBadge, VersionPill } from "../../components/kb/KBBadges";
 import useResizable from "../../components/kb/useResizable";
-import GroupBadge from "../../components/GroupBadge";
 import { api, timeAgo, formatApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { loginHref } from "../../lib/redirect";
@@ -168,13 +167,23 @@ export default function KBDoc() {
       {/* Full-width dark hero */}
       <section className="bg-[#0A1628] text-white" data-testid="kb-doc-hero">
         <div className="max-w-[1300px] mx-auto px-4 lg:px-8 pt-5 pb-8">
-          <nav className="text-xs flex items-center gap-1.5 mb-5 text-white/60" data-testid="kb-doc-breadcrumb">
-            <Link to="/knowledge-base" className="text-white/80 hover:text-white hover:underline">Knowledge Base</Link>
-            <ChevronRight className="w-3 h-3" />
-            <Link to={`/knowledge-base/${slug}`} className="text-white/80 hover:text-white hover:underline">{doc.category?.name}</Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="truncate" style={{ color: "#F5B731", fontWeight: 600 }}>{doc.title.slice(0, 60)}</span>
-          </nav>
+          <div className="flex items-center gap-3 mb-5">
+            <nav className="text-xs flex items-center gap-1.5 text-white/60 flex-1 min-w-0" data-testid="kb-doc-breadcrumb">
+              <Link to="/knowledge-base" className="text-white/80 hover:text-white hover:underline">Knowledge Base</Link>
+              <ChevronRight className="w-3 h-3" />
+              <Link to={`/knowledge-base/${slug}`} className="text-white/80 hover:text-white hover:underline">{doc.category?.name}</Link>
+              <ChevronRight className="w-3 h-3" />
+              <span className="truncate" style={{ color: "#F5B731", fontWeight: 600 }}>{doc.title.slice(0, 60)}</span>
+            </nav>
+            <div className="shrink-0 flex items-center gap-2">
+              <button onClick={toggleBookmark} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-bookmark-btn">
+                <Bookmark className="w-3.5 h-3.5" fill={bookmarked ? "currentColor" : "none"} /> {bookmarked ? "Saved" : "Save"}
+              </button>
+              <button onClick={share} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-share-btn">
+                <Share2 className="w-3.5 h-3.5" /> Share
+              </button>
+            </div>
+          </div>
           <div className="flex flex-wrap items-center gap-1.5 mb-4">
             <DocTypeBadge type={doc.doc_type} />
             {doc.difficulty && (
@@ -188,6 +197,14 @@ export default function KBDoc() {
             )}
             <VersionPill version={doc.workday_version} />
             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20">{doc.category?.name}</span>
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20"
+              data-testid="kb-view-count"
+            >
+              <Eye className="w-3 h-3" />
+              <span className="counter">{doc.view_count}</span>
+              <span>views</span>
+            </span>
           </div>
           <h1 className="font-heading text-2xl lg:text-3xl font-bold tracking-tight" data-testid="doc-title">{doc.title}</h1>
           {(doc.reference_id || doc.read_time) && (
@@ -198,22 +215,6 @@ export default function KBDoc() {
             </div>
           )}
           <p className="mt-3 text-white/70 leading-relaxed max-w-3xl">{doc.summary}</p>
-          <div className="mt-5 pt-5 border-t border-white/10 flex flex-wrap items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-medium">{(doc.author?.full_name || "U")[0].toUpperCase()}</div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium flex items-center gap-2">
-                {doc.author?.full_name}
-                <GroupBadge group={doc.author?.group_type} />
-              </div>
-              <div className="text-xs text-white/50 mt-0.5"><span className="counter">{doc.author?.reputation_score}</span> rep</div>
-            </div>
-            <button onClick={toggleBookmark} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-bookmark-btn">
-              <Bookmark className="w-3.5 h-3.5" fill={bookmarked ? "currentColor" : "none"} /> {bookmarked ? "Saved" : "Save"}
-            </button>
-            <button onClick={share} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-share-btn">
-              <Share2 className="w-3.5 h-3.5" /> Share
-            </button>
-          </div>
         </div>
       </section>
 
@@ -268,13 +269,6 @@ export default function KBDoc() {
         )}
 
         <main className="flex-1 min-w-0 lg:pl-6">
-          <div className="bg-white border border-[#E2E8F0] rounded-lg px-5 py-3 mb-5 flex flex-wrap items-center gap-3 text-xs text-[#64748B]">
-            <Users className="w-4 h-4" />
-            <span className="font-medium text-[#475569]">Written for:</span>
-            {(doc.target_groups || []).map((g) => <GroupBadge key={g} group={g} />)}
-            <span className="ml-auto counter">{doc.view_count} views</span>
-          </div>
-
           <article className="bg-white border border-[#E2E8F0] rounded-lg p-6 lg:p-8 kb-prose" data-testid="doc-body">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
               h2: ({ children }) => {
