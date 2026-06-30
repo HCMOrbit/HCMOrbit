@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Sparkles, LayoutGrid, Search, ArrowRight } from "lucide-react";
 import NavHeader from "../../components/NavHeader";
 import { DocTypeBadge, DifficultyBadge, TYPE_BORDER, CAT_BG } from "../../components/kb/KBBadges";
@@ -22,7 +22,7 @@ const setChipRest = (el) => {
   el.style.setProperty("border", "1px solid rgba(255,255,255,0.28)", "important");
 };
 
-function KBHero({ totalDocs }) {
+function KBHero({ totalDocs, onSearch }) {
   const [q, setQ] = useState("");
   const searchBtnRef = useRef(null);
   const chipRefs = useRef({});
@@ -32,6 +32,17 @@ function KBHero({ totalDocs }) {
   }, []);
 
   const countLabel = totalDocs != null ? totalDocs : 937;
+
+  const submit = (e) => {
+    if (e) e.preventDefault();
+    const term = q.trim();
+    if (!term) return; // empty-query guard
+    onSearch(term);
+  };
+  const runChip = (term) => {
+    setQ(term);
+    onSearch(term);
+  };
 
   return (
     <section
@@ -73,7 +84,7 @@ function KBHero({ totalDocs }) {
         </h1>
 
         <form
-          onSubmit={(e) => e.preventDefault()}
+          onSubmit={submit}
           className="mx-auto flex items-center gap-2"
           style={{ maxWidth: 560 }}
           data-testid="kb-hero-search-form"
@@ -118,7 +129,7 @@ function KBHero({ totalDocs }) {
               key={c}
               type="button"
               ref={(el) => { chipRefs.current[c] = el; }}
-              onClick={() => setQ(c)}
+              onClick={() => runChip(c)}
               data-testid={`kb-hero-chip-${c.toLowerCase().replace(/\s+/g, "-")}`}
               className="text-[12.5px] font-medium"
               style={{ padding: "5px 12px", borderRadius: 9999, cursor: "pointer" }}
@@ -137,6 +148,7 @@ export default function KBHome() {
   const [featured, setFeatured] = useState([]);
   const [categories, setCategories] = useState([]);
   const [showAll, setShowAll] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.get("/kb/stats").then((r) => setKbStats(r.data)).catch(() => {});
@@ -155,11 +167,19 @@ export default function KBHome() {
   const rest = ordered.slice(VISIBLE_COUNT);
   const mostActiveSlug = populated[0]?.slug;
 
+  // Wire search to the app's existing per-category search route. Without a
+  // global search page, the most-active populated category is the closest
+  // entry point — the same route KBCategory.jsx pushes to on its own search.
+  const runSearch = (term) => {
+    if (!mostActiveSlug) return; // no docs yet → no-op
+    navigate(`/knowledge-base/${mostActiveSlug}/search?q=${encodeURIComponent(term)}`);
+  };
+
   return (
     <div className="min-h-screen bg-[#F1F5F9]" data-testid="kb-home">
       <NavHeader />
       <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-8 space-y-10">
-        <KBHero totalDocs={kbStats.total_docs} />
+        <KBHero totalDocs={kbStats.total_docs} onSearch={runSearch} />
 
         {/* Browse by functional area (full-width) */}
         <section data-testid="kb-browse-section">
