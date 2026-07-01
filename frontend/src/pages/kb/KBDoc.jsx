@@ -78,6 +78,20 @@ export default function KBDoc() {
     });
   }, [doc?.body]);
 
+  // Fallback read-time: if the doc doesn't carry one, estimate from body length
+  // using 200 wpm and round to a 5-min window ("~10 min read", "5-10 min read").
+  const readTime = useMemo(() => {
+    if (doc?.read_time) return doc.read_time;
+    if (!doc?.body) return null;
+    const words = doc.body.trim().split(/\s+/).filter(Boolean).length;
+    if (words < 40) return null;
+    const mins = Math.max(1, Math.round(words / 200));
+    if (mins <= 3) return `${mins} min`;
+    const lo = Math.max(1, mins - 2);
+    const hi = mins + 2;
+    return `${lo}-${hi} min`;
+  }, [doc?.read_time, doc?.body]);
+
   useEffect(() => {
     if (!headings.length) return;
     const onScroll = () => {
@@ -205,13 +219,13 @@ export default function KBDoc() {
               <span className="counter">{doc.view_count}</span>
               <span>views</span>
             </span>
-            {doc.read_time && (
+            {readTime && (
               <span
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20"
                 data-testid="kb-read-time"
               >
                 <Clock className="w-3 h-3" />
-                <span>{doc.read_time} read</span>
+                <span>{readTime} read</span>
               </span>
             )}
           </div>
