@@ -58,17 +58,56 @@ export const STAGE_ORDER = [
 ];
 
 /**
- * role -> module filter. From Role_Auto_Map. The role selector drives which
- * module's KBs load. "*" means no module restriction (architect-style roles).
+ * role -> filter object. Mirrors backend table `role_auto_map` (04_Role_Auto_Map).
+ * Filters: "*" = wildcard; "A|B" = OR; matched case-insensitive CONTAINS.
+ * When the backend lands, load this from `role_auto_map` — the shape is the same.
  */
-export const ROLE_MODULE_MAP = {
-  "Payroll Consultant": "Payroll",
-  "Security Consultant": "Security & Compliance",
-  "Reporting Analyst": "Analytics & Reporting",
-  "Senior HRIS Analyst": "Core HCM",
+export const ROLE_AUTO_MAP = {
+  "Workday Payroll Consultant":     { moduleFilter: "Payroll",             subModuleFilter: "*", technicalFocusFilter: "*" },
+  "Workday Security Consultant":    { moduleFilter: "Security",            subModuleFilter: "*", technicalFocusFilter: "*" },
+  "Workday Reporting Analyst":      { moduleFilter: "Reporting|Analytics", subModuleFilter: "*", technicalFocusFilter: "*" },
+  "Workday Integration Consultant": { moduleFilter: "Integration",         subModuleFilter: "*", technicalFocusFilter: "*" },
+  "Senior HRIS Analyst":            { moduleFilter: "Core HCM",            subModuleFilter: "*", technicalFocusFilter: "Design|Configuration|Troubleshooting|Governance" },
+  "Workday HCM Consultant":         { moduleFilter: "Core HCM",            subModuleFilter: "*", technicalFocusFilter: "Design|Configuration|Governance" },
+  "Workday Solution Architect":     { moduleFilter: "*",                   subModuleFilter: "*", technicalFocusFilter: "Architecture|Design|Governance|Controls" },
 };
 
-export const ROLES = Object.keys(ROLE_MODULE_MAP);
+// Public dropdown labels -> canonical role_auto_map keys.
+// Keeps existing short labels working; add new roles by extending this alias map.
+export const ROLE_ALIASES = {
+  "Payroll Consultant":     "Workday Payroll Consultant",
+  "Security Consultant":    "Workday Security Consultant",
+  "Reporting Analyst":      "Workday Reporting Analyst",
+  "Integration Consultant": "Workday Integration Consultant",
+  "HCM Consultant":         "Workday HCM Consultant",
+  "Solution Architect":     "Workday Solution Architect",
+  "Senior HRIS Analyst":    "Senior HRIS Analyst",
+};
+
+function resolveRoleKey(role) {
+  if (ROLE_AUTO_MAP[role]) return role;          // already canonical
+  if (ROLE_ALIASES[role]) return ROLE_ALIASES[role];
+  return null;
+}
+
+// Dropdown options: existing 4 short labels first (no regressions), then the
+// newly-enabled roles. Order intentional.
+export const ROLES = [
+  "Payroll Consultant",
+  "Security Consultant",
+  "Reporting Analyst",
+  "Integration Consultant",
+  "HCM Consultant",
+  "Senior HRIS Analyst",
+  "Solution Architect",
+];
+
+// Case-insensitive CONTAINS match for one field against a "*" | "A|B|C" filter.
+function matchesFilter(value, filter) {
+  if (!filter || filter === "*") return true;
+  const v = String(value || "").toLowerCase();
+  return filter.split("|").some((term) => v.includes(term.trim().toLowerCase()));
+}
 
 // Content types surfaced in "What's included". Only KB exists in the registry
 // today; the rest are future artifact types and will report a live count of 0
@@ -97,7 +136,7 @@ const DIFF_ORDER = ["Intermediate", "Advanced", "Expert"];
  * Field mapping (backend -> registry shape used by getStudyPlan):
  *   reference_id           -> kb_id, document_id (fallback to uuid `id`)
  *   title                  -> title
- *   category.name (looked  -> module        (matches ROLE_MODULE_MAP values)
+ *   category.name (looked  -> module        (compared via ROLE_AUTO_MAP filter)
  *     up from /kb/categories)
  *   sub_module             -> sub_module
  *   derived (tags/sub)     -> technical_focus (see deriveFocus)
@@ -107,7 +146,7 @@ const DIFF_ORDER = ["Intermediate", "Advanced", "Expert"];
  *   /knowledge-base/{slug} -> source_url
  *     /{id}
  */
-async function fetchKbRows({ module }) {
+async function fetchKbRows(filter) {
   try {
     const [docsRes, catsRes] = await Promise.all([
       api.get("/kb/docs?include_drafts=true&limit=500"),
@@ -143,7 +182,11 @@ async function fetchKbRows({ module }) {
       };
     });
 
-    return module === "*" ? rows : rows.filter((r) => r.module === module);
+    return rows.filter((r) =>
+      matchesFilter(r.module, filter.moduleFilter) &&
+      matchesFilter(r.sub_module, filter.subModuleFilter) &&
+      matchesFilter(r.technical_focus, filter.technicalFocusFilter)
+    );
   } catch (err) {
     console.error("[studyPlan] fetchKbRows failed:", err);
     return [];
@@ -151,8 +194,11 @@ async function fetchKbRows({ module }) {
 }
 
 export async function getStudyPlan(role) {
-  const module = ROLE_MODULE_MAP[role] || "*";
-  const rows = await fetchKbRows({ module });
+  const roleKey = resolveRoleKey(role);
+  const filter = roleKey
+    ? ROLE_AUTO_MAP[roleKey]
+    : { moduleFilter: "*", subModuleFilter: "*", technicalFocusFilter: "*" };
+  const rows = await fetchKbRows(filter);
 
   // ---- roadmap spine: group rows into the 6 fixed stages ----
   const stages = STAGE_ORDER.map((s, i) => {
@@ -188,7 +234,7 @@ export async function getStudyPlan(role) {
 
   return {
     role,
-    module,
+    module: filter.moduleFilter,
     totalKbs: rows.length,
     publishedKbs: rows.filter((r) => r.status === "Published").length,
     stages,
