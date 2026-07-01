@@ -6,10 +6,11 @@
  */
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import {
   ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Circle, Info, Sparkles,
   BarChart3, Building2, Landmark, Store, Cpu, Factory, GraduationCap,
-  Briefcase, Gavel, Users, Flame, Banknote, Shield, Clock, Plug, Code,
+  Briefcase, Gavel, Users, Flame, Banknote, Shield, Clock, Plug, Code, Share2,
 } from "lucide-react";
 import NavHeader from "../../components/NavHeader";
 import { api } from "../../lib/api";
@@ -308,6 +309,29 @@ export default function EcosystemIndustryPulseCompare() {
 
   const swap = () => { const a = industryA; setIndustryA(industryB); setIndustryB(a); };
 
+  const shareLink = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        // Fallback: hidden textarea + document.execCommand (older browsers / insecure contexts)
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        if (!ok) throw new Error("execCommand copy failed");
+      }
+      toast.success("Comparison link copied");
+    } catch (e) {
+      toast.error("Could not copy link");
+    }
+  };
+
   const A = payload?.industryA;
   const B = payload?.industryB;
   const nameA = A?.industry || industryA;
@@ -348,6 +372,15 @@ export default function EcosystemIndustryPulseCompare() {
                 style={{ color: P.sub }} data-testid="cmp-back-link">
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Industry Pulse
           </Link>
+          <button
+            onClick={shareLink}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition"
+            style={{ background: P.navy, color: "#fff", border: "none", cursor: "pointer" }}
+            data-testid="cmp-share-btn"
+            title="Copy link to this comparison"
+          >
+            <Share2 className="w-3.5 h-3.5" /> Share this comparison
+          </button>
           {payload?.is_sample_data && (
             <div className="ml-auto rounded-lg px-3 py-1.5 text-xs flex items-center gap-1.5"
                  style={{ background: P.amberSoft, color: P.amberText }} data-testid="cmp-sample-badge">
