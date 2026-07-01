@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth";
-import ImpersonationBanner from "@/components/ImpersonationBanner";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -131,7 +130,6 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <ScrollToHash />
-        <ImpersonationBanner />
         <AppRoutes />
         <GlobalFooter />
         <CookieBanner />

@@ -135,16 +135,6 @@ async def create_post(payload: PostIn, user: dict = Depends(get_current_user)):
     posts_count = await db.posts.count_documents({"author_id": user["user_id"], "type": payload.type})
     if posts_count == 1 and payload.type == "question":
         await update_reputation(user["user_id"], 5)
-    if user.get("impersonator_user_id"):
-        await db.admin_logs.insert_one({
-            "id": str(uuid.uuid4()),
-            "admin_id": user["impersonator_user_id"],
-            "admin_username": user.get("impersonator_username"),
-            "action": "impersonation.post_created",
-            "target_type": "post", "target_id": post_id,
-            "note": f"as @{user.get('username')}: {payload.title[:80]}",
-            "created_at": now_iso(),
-        })
     return doc
 
 
@@ -237,16 +227,6 @@ async def create_answer(post_id: str, payload: AnswerIn, user: dict = Depends(ge
     ans_count = await db.answers.count_documents({"author_id": user["user_id"]})
     if ans_count == 1:
         await update_reputation(user["user_id"], 5)
-    if user.get("impersonator_user_id"):
-        await db.admin_logs.insert_one({
-            "id": str(uuid.uuid4()),
-            "admin_id": user["impersonator_user_id"],
-            "admin_username": user.get("impersonator_username"),
-            "action": "impersonation.answer_created",
-            "target_type": "answer", "target_id": doc["id"],
-            "note": f"as @{user.get('username')} on post {post_id[:8]}",
-            "created_at": now_iso(),
-        })
     if post["author_id"] != user["user_id"]:
         await create_notification(
             post["author_id"], "answer",
