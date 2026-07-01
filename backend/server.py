@@ -22,6 +22,9 @@ from routes.feedback import router as feedback_router
 from routes.ecosystem import router as ecosystem_router
 from routes.contact import router as contact_router
 from routes.stats import router as stats_router
+from routes.intel import router as intel_router
+from routes.admin_intel import router as admin_intel_router
+from routes.admin_intel_ingest import router as admin_intel_ingest_router
 from welcome_emails import process_welcome_queue
 from jobs.rss_fetch import fetch_workday_news
 from jobs.event_archive import archive_stale_events
@@ -43,6 +46,9 @@ api.include_router(feedback_router)
 api.include_router(ecosystem_router)
 api.include_router(contact_router)
 api.include_router(stats_router)
+api.include_router(intel_router)
+api.include_router(admin_intel_router)
+api.include_router(admin_intel_ingest_router)
 
 
 @api.get("/")
@@ -114,6 +120,26 @@ async def on_startup():
     # Password reset tokens — TTL index auto-prunes expired records
     await db.password_reset_tokens.create_index("token", unique=True)
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
+    # Industry Pulse — intelligence collections
+    await db.intel_module_scores.create_index("id", unique=True)
+    await db.intel_module_scores.create_index([("industry", 1), ("module", 1)])
+    await db.intel_module_scores.create_index("status")
+    await db.intel_go_lives.create_index("id", unique=True)
+    await db.intel_go_lives.create_index([("industry", 1), ("announcement_date", -1)])
+    await db.intel_go_lives.create_index("status")
+    await db.intel_hiring_signals.create_index("id", unique=True)
+    await db.intel_hiring_signals.create_index([("industry", 1), ("role", 1)])
+    await db.intel_hiring_signals.create_index("status")
+    await db.intel_trends.create_index([("industry", 1), ("rank", 1)])
+    await db.intel_trends.create_index("status")
+    await db.intel_events.create_index("id", unique=True)
+    await db.intel_events.create_index([("industry_tags", 1), ("start_date", 1)])
+    await db.intel_events.create_index("status")
+    await db.intel_sources.create_index("id", unique=True)
+    await db.intel_crawl_runs.create_index("id", unique=True)
+    await db.intel_crawl_runs.create_index([("run_date", -1)])
+    from seed_intel import seed_intel
+    await seed_intel(db, now_iso)
     from seed_data import seed_all
     await seed_all(db, hash_password)
     from seed_kb import seed_kb

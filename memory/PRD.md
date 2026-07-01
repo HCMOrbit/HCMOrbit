@@ -81,10 +81,21 @@ HCMOrbit is an independent professional Q&A community for the HCM (Workday) ecos
 - New placeholder pages `/career-hub` and `/connect` (Connect is now fully functional)
 
 ### P1 — Next up
+- **Industry Pulse — Phase 2 crawler** (real RSS/HTML crawler for approved public sources, robots.txt respected, scheduled nightly; the admin ingestion + approval queues are already live from Phase 1)
 - Custom domain `hcmorbit.com` setup (platform-level — needs support_agent guidance)
-- Admin moderation tools: post moderation actions, user impersonation, reporting workflows (from original PRD)
+- Admin moderation tools: post moderation actions, reporting workflows (from original PRD). *Admin impersonation removed per user request Feb 2026.*
 - Production run of `migrate_seed_kb_engagement.py` against Atlas (user-driven; preview pod lacks prod `MONGO_URL`)
-- Flesh out `/career-hub` and `/connect` placeholder pages into full features (job board, contact form)
+- Flesh out `/connect` placeholder page (contact form etc.)
+
+### Recently shipped (Feb 2026)
+- **Ecosystem → Industry Pulse dashboard v2** (`/ecosystem/industry-pulse`) — dark-navy hero, industry filter chips (8 industries), industry summary card with live KPIs, CSS-only stacked module adoption bars for 14 modules, high-demand + still-adopting sidebar cards, top trends + go-lives + hiring roles + upcoming events row. All data served from `/api/intel/industry-pulse` — zero hardcoded content in React.
+- **6 new MongoDB collections** for the intelligence layer: `intel_module_scores`, `intel_go_lives`, `intel_hiring_signals`, `intel_trends`, `intel_events`, `intel_sources`, `intel_crawl_runs`. Every seeded row tagged `status: "sample_data"`; admin overrides flip to `status: "approved"` and are preserved across seed re-runs.
+- **Admin CMS** at `/admin/ecosystem-intelligence` — four tabs: Sources CRUD (+ Phase-2-stub crawl trigger), Go-Lives approval queue, Events approval queue, Module Scores inline override (sum-to-100 enforced backend-side).
+- **Ecosystem nav dropdown** — replaced the `/ecosystem` landing with a 3-item About-menu-style dropdown (Industry Pulse / Community News / Upcoming Events). Legacy `/ecosystem`, `/ecosystem/events`, `/ecosystem/news` all redirect to the new paths.
+- **Career Hub cleaned up** — Industry Pulse tab removed from Career Hub; it now lives only under Ecosystem. Career Hub is now Home / Career paths / Interview prep.
+- **Interview prep "By role" wired** — `InterviewTab.jsx` now consumes `getStudyPlan()` when view === "role", with a 6-stage roadmap, "What's included" tiles, and Recommended KB guides. Empty-state guard fixes the "4–0 hrs" bug for empty roles.
+- **Study plan role model overhaul** — `ROLE_MODULE_MAP` replaced with `ROLE_AUTO_MAP` (module + subModule + technicalFocus filters, OR / wildcard / CONTAINS matching), aliased short labels preserved (`Payroll Consultant` etc.), 7 roles in the dropdown.
+- **Admin impersonation removed** — backend route deleted, frontend UI + banner removed, session flag reader in `dependencies.get_current_user` left untouched by user request (dead code path only readable by legacy JWTs, which expire within 2h).
 
 ### P2 — Soon
 - Add `/app/backend/tests` pytest suite for the new route structure (refresh KB tests to reflect admin-only authoring policy)

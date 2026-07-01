@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, FileText, Flag, Layers, Settings as SettingsIcon, ShieldCheck, ArrowLeft, BookOpen, Mail, Calendar as CalendarIcon, Inbox } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Flag, Layers, Settings as SettingsIcon, ShieldCheck, ArrowLeft, BookOpen, Mail, Calendar as CalendarIcon, Inbox, TrendingUp } from "lucide-react";
 import NavHeader from "./NavHeader";
 import { useAuth } from "../lib/auth";
 import { loginHref } from "../lib/redirect";
@@ -29,6 +29,7 @@ export default function AdminLayout({ children, pendingReports = 0 }) {
     { to: "/admin/knowledge-base", label: "Knowledge Base", icon: BookOpen },
     { to: "/admin/email-previews", label: "Email Previews", icon: Mail },
     { to: "/admin/ecosystem", label: "Ecosystem", icon: CalendarIcon },
+    { to: "/admin/ecosystem-intelligence", label: "Industry Pulse", icon: TrendingUp },
     { to: "/admin/contact", label: "Contact", icon: Inbox },
     { to: "/admin/settings", label: "Settings", icon: SettingsIcon },
   ];

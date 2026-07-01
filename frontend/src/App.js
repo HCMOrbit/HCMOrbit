@@ -25,8 +25,10 @@ import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminKnowledgeBase from "@/pages/admin/AdminKnowledgeBase";
 import AdminEmailPreviews from "@/pages/admin/AdminEmailPreviews";
 import AdminEcosystem, { RedirectToEvents, RedirectToCertifications } from "@/pages/admin/AdminEcosystem";
+import AdminEcosystemIntelligence from "@/pages/admin/AdminEcosystemIntelligence";
 import AdminContact from "@/pages/admin/AdminContact";
 import EcosystemIndustryPulse from "@/pages/ecosystem/EcosystemIndustryPulse";
+import EcosystemIndustryPulseCompare from "@/pages/ecosystem/EcosystemIndustryPulseCompare";
 import EcosystemEvents from "@/pages/ecosystem/EcosystemEvents";
 import EcosystemNews from "@/pages/ecosystem/EcosystemNews";
 import EcosystemCertifications from "@/pages/ecosystem/EcosystemCertifications";
@@ -88,6 +90,7 @@ function AppRoutes() {
       <Route path="/admin/knowledge-base" element={<AdminKnowledgeBase />} />
       <Route path="/admin/email-previews" element={<AdminEmailPreviews />} />
       <Route path="/admin/ecosystem" element={<AdminEcosystem />} />
+      <Route path="/admin/ecosystem-intelligence" element={<AdminEcosystemIntelligence />} />
       <Route path="/admin/ecosystem-events" element={<RedirectToEvents />} />
       <Route path="/admin/ecosystem-certifications" element={<RedirectToCertifications />} />
       <Route path="/admin/contact" element={<AdminContact />} />
@@ -103,6 +106,7 @@ function AppRoutes() {
       <Route path="/why-hcmorbit" element={<WhyHCMOrbit />} />
       <Route path="/ecosystem" element={<Navigate to="/ecosystem/industry-pulse" replace />} />
       <Route path="/ecosystem/industry-pulse" element={<EcosystemIndustryPulse />} />
+      <Route path="/ecosystem/industry-pulse/compare" element={<EcosystemIndustryPulseCompare />} />
       <Route path="/ecosystem/upcoming-events" element={<EcosystemEvents />} />
       <Route path="/ecosystem/community-news" element={<EcosystemNews />} />
       <Route path="/ecosystem/events" element={<Navigate to="/ecosystem/upcoming-events" replace />} />
