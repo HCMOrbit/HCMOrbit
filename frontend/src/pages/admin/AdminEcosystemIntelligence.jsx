@@ -10,12 +10,13 @@
  * Uses existing AdminLayout so it inherits the sidebar / access guard.
  */
 import React, { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, RefreshCcw, Check, X, Edit3, Save, Link as LinkIcon, ExternalLink, Loader2, Send } from "lucide-react";
+import { Plus, Trash2, RefreshCcw, Check, X, Edit3, Save, Link as LinkIcon, ExternalLink, Loader2, Send, Activity, Database, Clock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import AdminLayout from "../../components/AdminLayout";
 import { api, formatApiError } from "../../lib/api";
 
 const TABS = [
+  { id: "operations", label: "Operations" },
   { id: "ingest", label: "Ingest URL" },
   { id: "sources", label: "Sources" },
   { id: "go-lives", label: "Go-Lives" },
@@ -34,7 +35,7 @@ const SOURCE_TYPES = [
 ];
 
 export default function AdminEcosystemIntelligence() {
-  const [tab, setTab] = useState("ingest");
+  const [tab, setTab] = useState("operations");
   return (
     <AdminLayout>
       <div className="mb-6" data-testid="admin-intel-page">
@@ -58,6 +59,7 @@ export default function AdminEcosystemIntelligence() {
         ))}
       </div>
 
+      {tab === "operations" && <OperationsTab />}
       {tab === "ingest" && <IngestTab />}
       {tab === "sources" && <SourcesTab />}
       {tab === "go-lives" && <GoLivesTab />}
@@ -65,6 +67,162 @@ export default function AdminEcosystemIntelligence() {
       {tab === "scores" && <ScoresTab />}
     </AdminLayout>
   );
+}
+
+// ---------- Operations dashboard --------------------------------------------
+function OperationsTab() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true);
+    return api.get("/admin/intel/operations")
+      .then((r) => { setData(r.data); setLoading(false); })
+      .catch((e) => { toast.error(formatApiError(e)); setLoading(false); });
+  };
+  useEffect(() => { load(); }, []);
+
+  if (loading && !data) {
+    return <div className="rounded-xl bg-white border border-[#E2E8F0] p-8 text-center text-sm text-[#94A3B8]">Loading operations dashboard…</div>;
+  }
+  if (!data) return null;
+
+  const { todays_activity: t, crawler_health: c, recent_activity: rec } = data;
+  return (
+    <div className="space-y-5" data-testid="admin-intel-operations">
+      {/* Header + refresh */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-bold text-[#0A1628]">Industry Pulse operations</h2>
+          <p className="text-xs text-[#64748B]">Live counts of ingestion + crawler activity.</p>
+        </div>
+        <button onClick={load} className="inline-flex items-center gap-2 px-3 py-2 rounded bg-[#F1F5F9] hover:bg-[#E2E8F0] text-sm text-[#0F172A] font-medium" data-testid="admin-intel-ops-refresh">
+          <RefreshCcw className="w-4 h-4" /> Refresh
+        </button>
+      </div>
+
+      {/* Today's Activity */}
+      <div className="rounded-xl bg-white border border-[#E2E8F0] p-5" data-testid="admin-intel-ops-today">
+        <div className="flex items-center gap-2 mb-4">
+          <Activity className="w-4 h-4 text-[#0D9373]" />
+          <h3 className="text-sm font-bold text-[#0A1628]">Today&apos;s activity</h3>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <OpsStat label="URLs Submitted" value={t.submitted} accent="#0F172A" testId="ops-submitted" />
+          <OpsStat label="Published" value={t.published} accent="#166534" testId="ops-published" />
+          <OpsStat label="Pending" value={t.pending} accent="#92400E" testId="ops-pending" />
+          <OpsStat label="Rejected" value={t.rejected} accent="#B91C1C" testId="ops-rejected" />
+        </div>
+      </div>
+
+      {/* Crawler Health */}
+      <div className="rounded-xl bg-white border border-[#E2E8F0] p-5" data-testid="admin-intel-ops-crawler">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Database className="w-4 h-4 text-[#0D9373]" />
+            <h3 className="text-sm font-bold text-[#0A1628]">Crawler health</h3>
+          </div>
+          {!c.crawler_live && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold" style={{ background: "#FEF3C7", color: "#92400E" }} data-testid="ops-crawler-badge">
+              <AlertTriangle className="w-3 h-3" /> Awaiting Phase 2B
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+          <OpsStat label="Sources Enabled" value={c.sources_enabled} accent="#0F172A" testId="ops-sources-enabled" />
+          <OpsStat label="Last Crawl" value={fmtCrawlTime(c.last_crawl_at)} accent="#0F172A" small testId="ops-last-crawl" />
+          <OpsStat label="Records Found" value={c.records_found} accent="#0F172A" testId="ops-records-found" muted={!c.crawler_live} />
+          <OpsStat label="Published" value={c.records_published} accent="#166534" testId="ops-crawler-published" muted={!c.crawler_live} />
+          <OpsStat label="Duplicates" value={c.duplicates} accent="#475569" testId="ops-duplicates" muted={!c.crawler_live} />
+          <OpsStat label="Errors" value={c.errors} accent="#B91C1C" testId="ops-errors" muted={!c.crawler_live} />
+        </div>
+        <p className="text-xs text-[#94A3B8] mt-3">{c.phase_note}</p>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="rounded-xl bg-white border border-[#E2E8F0] p-5" data-testid="admin-intel-ops-recent">
+        <div className="flex items-center gap-2 mb-4">
+          <Clock className="w-4 h-4 text-[#0D9373]" />
+          <h3 className="text-sm font-bold text-[#0A1628]">Recent activity</h3>
+        </div>
+        {rec.length === 0 ? (
+          <div className="text-xs text-[#94A3B8] py-6 text-center">No ingested items yet. Head to the <button onClick={() => { window.dispatchEvent(new CustomEvent("intel-tab-jump", { detail: "ingest" })); }} className="text-[#0D9373] font-semibold underline">Ingest URL</button> tab to submit one.</div>
+        ) : (
+          <div className="divide-y divide-[#F1F5F9]">
+            {rec.map((r, i) => (
+              <RecentRow key={i} row={r} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function OpsStat({ label, value, accent, testId, small, muted }) {
+  return (
+    <div className="rounded-lg p-3" style={{ background: "#F8FAFC", opacity: muted ? 0.55 : 1 }} data-testid={testId}>
+      <div className="text-[11px] text-[#64748B] uppercase tracking-wider">{label}</div>
+      <div className={small ? "text-sm font-bold mt-1" : "text-2xl font-bold mt-1"} style={{ color: accent }}>{value ?? 0}</div>
+    </div>
+  );
+}
+
+function RecentRow({ row }) {
+  const badgeColor = statusColor(row.status);
+  const label = signalLabel(row.signal_type);
+  return (
+    <div className="flex items-center gap-3 py-2.5 text-sm">
+      <div className="text-xs text-[#94A3B8] w-12 flex-shrink-0">{fmtTime(row.created_at)}</div>
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-[#0F172A] truncate">{row.title}</div>
+        <div className="text-xs text-[#64748B]">
+          {row.source_url && (
+            <a href={row.source_url} target="_blank" rel="noreferrer" className="text-[#0D9373] hover:underline">
+              {(new URL(row.source_url)).hostname}
+            </a>
+          )}
+          {row.ingested_by && <> · <span>@{row.ingested_by}</span></>}
+        </div>
+      </div>
+      <span className="text-xs" style={{ color: "#64748B" }}>→ {label}</span>
+      <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold" style={{ background: badgeColor.bg, color: badgeColor.fg }}>
+        {row.status}
+      </span>
+    </div>
+  );
+}
+
+function statusColor(s) {
+  if (s === "approved" || s === "published") return { bg: "#DCFCE7", fg: "#166534" };
+  if (s === "pending") return { bg: "#FEF3C7", fg: "#92400E" };
+  if (s === "rejected") return { bg: "#FEE2E2", fg: "#B91C1C" };
+  return { bg: "#F1F5F9", fg: "#475569" };
+}
+function signalLabel(t) {
+  if (t === "go_live") return "Go-Lives";
+  if (t === "event") return "Events";
+  if (t === "source") return "Sources";
+  if (t === "news") return "News";
+  return t;
+}
+function fmtTime(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+  } catch { return "—"; }
+}
+function fmtCrawlTime(iso) {
+  if (!iso) return "Never";
+  try {
+    const d = new Date(iso);
+    const today = new Date();
+    const sameDay = d.toDateString() === today.toDateString();
+    return sameDay
+      ? d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
+      : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  } catch { return "—"; }
 }
 
 // ---------- Ingest URL ------------------------------------------------------

@@ -22,6 +22,101 @@ from dependencies import require_admin
 router = APIRouter()
 
 
+# ---------- Operations dashboard -------------------------------------------
+@router.get("/admin/intel/operations")
+async def operations_overview(_: dict = Depends(require_admin)):
+    """Ops dashboard payload: today's activity, crawler health, recent activity."""
+    today_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    async def _count_today(coll, extra_status: str | None = None):
+        q: dict = {"created_at": {"$regex": f"^{today_iso}"}, "ingested_by": {"$exists": True}}
+        if extra_status:
+            q["status"] = extra_status
+        return await coll.count_documents(q)
+
+    # Today's activity — union of all ingested rows across collections.
+    submitted = (
+        await _count_today(db.intel_go_lives)
+        + await _count_today(db.intel_events)
+        + await _count_today(db.intel_sources)
+        + await db.ecosystem_news.count_documents({
+            "created_at": {"$regex": f"^{today_iso}"}, "ingested_by": {"$exists": True}
+        })
+    )
+    published = (
+        await _count_today(db.intel_go_lives, "approved")
+        + await _count_today(db.intel_events, "approved")
+        + await db.ecosystem_news.count_documents({
+            "created_at": {"$regex": f"^{today_iso}"}, "ingested_by": {"$exists": True}, "is_published": True
+        })
+    )
+    pending = (
+        await _count_today(db.intel_go_lives, "pending")
+        + await _count_today(db.intel_events, "pending")
+        + await _count_today(db.intel_sources, "pending")
+        + await db.ecosystem_news.count_documents({
+            "created_at": {"$regex": f"^{today_iso}"}, "ingested_by": {"$exists": True}, "is_published": False
+        })
+    )
+    rejected = (
+        await _count_today(db.intel_go_lives, "rejected")
+        + await _count_today(db.intel_events, "rejected")
+    )
+
+    todays_activity = {
+        "submitted": submitted,
+        "published": published,
+        "pending": pending,
+        "rejected": rejected,
+    }
+
+    # Crawler health — real numbers today; empty state for stats that only the
+    # scheduled crawler (Phase 2B) will populate.
+    sources_enabled = await db.intel_sources.count_documents({"enabled": True})
+    last_run = None
+    async for r in db.intel_crawl_runs.find().sort("run_date", -1).limit(1):
+        last_run = r
+    crawler_health = {
+        "sources_enabled": sources_enabled,
+        "last_crawl_at": last_run.get("run_date") if last_run else None,
+        "last_crawl_status": last_run.get("status") if last_run else "never_run",
+        "records_found": last_run.get("records_found") if last_run else 0,
+        "records_published": last_run.get("records_created") if last_run else 0,
+        "duplicates": last_run.get("records_updated") if last_run else 0,
+        "errors": len(last_run.get("errors") or []) if last_run else 0,
+        "crawler_live": False,   # flips true when Phase 2B ships
+        "phase_note": "Manual ingestion only — scheduled crawler arrives in Phase 2B.",
+    }
+
+    # Recent activity — 10 most recent ingested items across all collections.
+    async def _pluck(coll_name, coll, target_label_fn):
+        rows = []
+        async for r in coll.find({"ingested_by": {"$exists": True}}).sort("created_at", -1).limit(10):
+            rows.append({
+                "created_at": r.get("created_at"),
+                "title": target_label_fn(r),
+                "signal_type": coll_name,
+                "status": r.get("status") or ("published" if r.get("is_published") else "pending"),
+                "source_url": r.get("source_url") or r.get("url"),
+                "ingested_by": r.get("ingested_by"),
+            })
+        return rows
+
+    all_recent = (
+        await _pluck("go_live", db.intel_go_lives, lambda r: r.get("customer_name") or "Untitled go-live")
+        + await _pluck("event", db.intel_events, lambda r: r.get("title") or "Untitled event")
+        + await _pluck("source", db.intel_sources, lambda r: r.get("source_name") or "Unnamed source")
+        + await _pluck("news", db.ecosystem_news, lambda r: r.get("title") or "Untitled news")
+    )
+    all_recent.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+
+    return {
+        "todays_activity": todays_activity,
+        "crawler_health": crawler_health,
+        "recent_activity": all_recent[:12],
+    }
+
+
 # ---------- Sources ---------------------------------------------------------
 class SourceIn(BaseModel):
     source_name: str
