@@ -110,7 +110,7 @@ export default function SubmitEventModal({ onClose }) {
             </h4>
             <p className="text-sm text-[#64748B] mb-6 max-w-md mx-auto">
               We&apos;ll review and publish it shortly. Keep an eye on{" "}
-              <span className="font-medium text-[#0A1628]">/ecosystem/events</span> for it to appear.
+              <span className="font-medium text-[#0A1628]">/ecosystem/upcoming-events</span> for it to appear.
             </p>
             <button
               onClick={onClose}

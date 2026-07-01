@@ -713,7 +713,7 @@ export default function Ecosystem() {
 
         {/* Upcoming events — one earliest future event per type (RUG → Conference → Webinar). */}
         <section className="mb-12" data-testid="events-section">
-          <SectionHeader icon={Calendar} title="Upcoming events" viewAllHref="/ecosystem/events" dataTestId="events-section-header" />
+          <SectionHeader icon={Calendar} title="Upcoming events" viewAllHref="/ecosystem/upcoming-events" dataTestId="events-section-header" />
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="events-list">
             {featuredEvents.map((ev) => <EventCard key={ev.id} ev={ev} />)}
           </div>
@@ -721,7 +721,7 @@ export default function Ecosystem() {
 
         {/* Community news — 3-col tile grid */}
         <section className="mb-12" data-testid="news-section">
-          <SectionHeader icon={Newspaper} title="Community news" viewAllHref="/ecosystem/news" dataTestId="news-section-header" />
+          <SectionHeader icon={Newspaper} title="Community news" viewAllHref="/ecosystem/community-news" dataTestId="news-section-header" />
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="news-list">
             {news.slice(0, 6).map((n) => <NewsTile key={n.id || n.url} n={n} />)}
           </div>

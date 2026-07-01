@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
-import { Bell, PlusCircle, LogOut, User, ChevronDown, Search, ShieldCheck, Sparkles, UserRound, X, MessageSquare } from "lucide-react";
+import { Bell, PlusCircle, LogOut, User, ChevronDown, Search, ShieldCheck, Sparkles, UserRound, X, MessageSquare, TrendingUp, Newspaper, Calendar } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import GroupBadge from "./GroupBadge";
@@ -46,6 +46,82 @@ function NavItem({ to, label, hasCaret = false, testid }) {
         </>
       )}
     </NavLink>
+  );
+}
+
+// -- Ecosystem dropdown menu --------------------------------------------------
+function EcosystemMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const location = useLocation();
+  const isActive = location.pathname.startsWith("/ecosystem");
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref} data-testid="nav-ecosystem">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`relative inline-flex items-center gap-1 py-2 text-[15px] font-bold whitespace-nowrap transition-colors ${isActive ? "text-[#0A1628]" : "text-[#0A1628]/80 hover:text-[#0A1628]"}`}
+        data-testid="nav-ecosystem-trigger"
+        aria-expanded={open}
+      >
+        Ecosystem <ChevronDown className={`w-3.5 h-3.5 opacity-70 transition-transform ${open ? "rotate-180" : ""}`} />
+        <span aria-hidden className={`pointer-events-none absolute left-0 right-0 -bottom-[14px] h-[3px] rounded-full bg-[#0D9373] transition-opacity ${isActive ? "opacity-100" : "opacity-0"}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 mt-4 w-72 bg-white border border-[#E2E8F0] rounded-xl shadow-xl z-40 overflow-hidden" data-testid="nav-ecosystem-menu">
+          <Link
+            to="/ecosystem/industry-pulse"
+            onClick={() => setOpen(false)}
+            className="flex items-start gap-3 px-4 py-3 hover:bg-[#F8FAFC]"
+            data-testid="nav-ecosystem-industry"
+          >
+            <div className="w-8 h-8 rounded-md bg-[#0D9373]/10 text-[#0D9373] flex items-center justify-center shrink-0">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-[#0A1628]">Industry Pulse</div>
+              <div className="text-xs text-[#64748B] mt-0.5 leading-snug">Demand signals, hot modules, and recent go-lives.</div>
+            </div>
+          </Link>
+          <Link
+            to="/ecosystem/community-news"
+            onClick={() => setOpen(false)}
+            className="flex items-start gap-3 px-4 py-3 hover:bg-[#F8FAFC] border-t border-[#F1F5F9]"
+            data-testid="nav-ecosystem-news"
+          >
+            <div className="w-8 h-8 rounded-md bg-[#0D9373]/10 text-[#0D9373] flex items-center justify-center shrink-0">
+              <Newspaper className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-[#0A1628]">Community News</div>
+              <div className="text-xs text-[#64748B] mt-0.5 leading-snug">Product updates, releases, and community stories.</div>
+            </div>
+          </Link>
+          <Link
+            to="/ecosystem/upcoming-events"
+            onClick={() => setOpen(false)}
+            className="flex items-start gap-3 px-4 py-3 hover:bg-[#F8FAFC] border-t border-[#F1F5F9]"
+            data-testid="nav-ecosystem-events"
+          >
+            <div className="w-8 h-8 rounded-md bg-[#0D9373]/10 text-[#0D9373] flex items-center justify-center shrink-0">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-[#0A1628]">Upcoming Events</div>
+              <div className="text-xs text-[#64748B] mt-0.5 leading-snug">RUGs, conferences, and webinars worth attending.</div>
+            </div>
+          </Link>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -216,7 +292,7 @@ export default function NavHeader() {
             <NavItem to="/career-hub" label="Career Hub" testid="nav-career" />
             <NavItem to="/study-plan" label="Study Plan" testid="nav-study-plan" />
             <NavItem to="/knowledge-base" label="Knowledge Base" hasCaret testid="nav-kb" />
-            <NavItem to="/ecosystem" label="Ecosystem" hasCaret testid="nav-ecosystem" />
+            <EcosystemMenu />
             <NavItem to="/community" label="Community" testid="nav-home" />
             <AboutMenu />
           </nav>

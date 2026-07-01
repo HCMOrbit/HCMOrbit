@@ -380,7 +380,7 @@ export default function EventsPanel() {
               rows={4}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Short blurb about the event — shown as a preview on the event card and in full on /ecosystem/events."
+              placeholder="Short blurb about the event — shown as a preview on the event card and in full on /ecosystem/upcoming-events."
               className={`${ecoInputCls} resize-y leading-relaxed`}
               data-testid="event-form-description"
             />
