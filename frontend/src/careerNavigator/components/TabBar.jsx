@@ -4,7 +4,6 @@ const TABS = [
   { id: "home",         label: "Home" },
   { id: "paths",        label: "Career paths" },
   { id: "interview",    label: "Interview prep" },
-  { id: "industry",     label: "Industry pulse" },
 ];
 
 /**
