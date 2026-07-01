@@ -10,7 +10,7 @@
  * (and no component) changes. See the TODO below.
  */
 
-import KB_REGISTRY from "../data/kbRegistry";
+import { api } from "../lib/api";
 
 /**
  * technical_focus -> study stage. Stored as data, not branching logic, so a new
@@ -85,20 +85,74 @@ const CONTENT_TYPES = [
 const DIFF_ORDER = ["Intermediate", "Advanced", "Expert"];
 
 /**
- * The data seam. Swap this one function for an API call later.
- * TODO(backend): replace body with
- *   const res = await fetch(`/api/study-plan?role=${role}&module=${module}`);
- *   return res.json();  // already-filtered rows in the same shape
+ * The data seam. Fetches live rows from the KB backend and maps them to the
+ * exact shape kbRegistry.js returns, so getStudyPlan() needs zero changes.
+ *
+ * Endpoint: GET /api/kb/docs?include_drafts=true&limit=500
+ *   - `include_drafts=true` is critical: Study Plan greys unpublished rows as
+ *     "KB in production", so we need BOTH published and draft docs.
+ *   - Draft rows come back with a lightweight projection (no body/summary),
+ *     so this call is safe to make from the public Study Plan page.
+ *
+ * Field mapping (backend -> registry shape used by getStudyPlan):
+ *   reference_id           -> kb_id, document_id (fallback to uuid `id`)
+ *   title                  -> title
+ *   category.name (looked  -> module        (matches ROLE_MODULE_MAP values)
+ *     up from /kb/categories)
+ *   sub_module             -> sub_module
+ *   derived (tags/sub)     -> technical_focus (see deriveFocus)
+ *   difficulty             -> difficulty
+ *   is_featured            -> interview_weight ("High" if true, else "Medium")
+ *   is_published           -> status ("Published" | "Planned")
+ *   /knowledge-base/{slug} -> source_url
+ *     /{id}
  */
-function fetchKbRows({ module }) {
-  return KB_REGISTRY.filter((r) =>
-    module === "*" ? true : r.module === module
-  );
+async function fetchKbRows({ module }) {
+  try {
+    const [docsRes, catsRes] = await Promise.all([
+      api.get("/kb/docs?include_drafts=true&limit=500"),
+      api.get("/kb/categories"),
+    ]);
+    const nameBySlug = {};
+    (catsRes.data || []).forEach((c) => { nameBySlug[c.slug] = c.name; });
+
+    const focusKeys = Object.keys(STUDY_STAGE_MAP);
+    const deriveFocus = (d) => {
+      const tags = (d.tags || []).map((t) => String(t).toLowerCase());
+      for (const k of focusKeys) if (tags.includes(k.toLowerCase())) return k;
+      const sub = String(d.sub_module || "").toLowerCase();
+      for (const k of focusKeys) if (sub.includes(k.toLowerCase())) return k;
+      return "";
+    };
+
+    const rows = (docsRes.data?.docs || []).map((d) => {
+      const moduleName = nameBySlug[d.category_slug] || d.category_slug || "";
+      const slug = d.category_slug || "unknown";
+      return {
+        kb_id: d.reference_id || d.id,
+        document_id: d.reference_id || d.id,
+        title: d.title,
+        module: moduleName,
+        sub_module: d.sub_module || "",
+        technical_focus: deriveFocus(d),
+        difficulty: d.difficulty || "",
+        interview_weight: d.is_featured ? "High" : "Medium",
+        status: d.is_published ? "Published" : "Planned",
+        source_url: `/knowledge-base/${slug}/${d.id}`,
+        artifact_type: "KB",
+      };
+    });
+
+    return module === "*" ? rows : rows.filter((r) => r.module === module);
+  } catch (err) {
+    console.error("[studyPlan] fetchKbRows failed:", err);
+    return [];
+  }
 }
 
-export function getStudyPlan(role) {
+export async function getStudyPlan(role) {
   const module = ROLE_MODULE_MAP[role] || "*";
-  const rows = fetchKbRows({ module });
+  const rows = await fetchKbRows({ module });
 
   // ---- roadmap spine: group rows into the 6 fixed stages ----
   const stages = STAGE_ORDER.map((s, i) => {

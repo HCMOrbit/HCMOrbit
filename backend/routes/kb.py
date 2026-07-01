@@ -162,8 +162,14 @@ async def kb_list_docs(
     version: Optional[str] = None,
     author_id: Optional[str] = None,
     limit: int = 50,
+    include_drafts: bool = False,
 ):
-    query = {"is_published": True}
+    # Default (public browse/search): only published docs, full row shape.
+    # `include_drafts=true` is used by the Study Plan registry aggregator so
+    # it can grey unpublished ("Planned") entries. In that mode we deliberately
+    # project OUT `body` and other author-facing fields so drafts don't leak
+    # copy to the public — only lightweight registry metadata is returned.
+    query = {} if include_drafts else {"is_published": True}
     if author_id:
         query["author_id"] = author_id
     if category:
@@ -194,6 +200,18 @@ async def kb_list_docs(
             {"tags": {"$regex": f"^{esc}", "$options": "i"}},
         ]
     total = await db.kb_docs.count_documents(query)
+    if include_drafts:
+        # Lightweight projection — safe metadata only, never body/summary.
+        projection = {
+            "_id": 0, "id": 1, "reference_id": 1, "title": 1,
+            "category_id": 1, "category_slug": 1, "sub_module": 1,
+            "tags": 1, "difficulty": 1, "doc_type": 1,
+            "is_published": 1, "is_featured": 1,
+        }
+        docs = await db.kb_docs.find(query, projection).sort("updated_at", -1).limit(limit).to_list(limit)
+        # Skip enrich_docs — the registry projection intentionally excludes
+        # `author_id`, and downstream consumers don't need author metadata.
+        return {"docs": docs, "total": total}
     docs = await db.kb_docs.find(query, {"_id": 0}).sort("view_count", -1).limit(limit).to_list(limit)
     return {"docs": await enrich_docs(docs), "total": total}
 
