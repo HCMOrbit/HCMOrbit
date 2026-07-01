@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Calendar, X, Plus } from "lucide-react";
+import { Calendar, X, Plus, MapPin, ExternalLink, Repeat } from "lucide-react";
 import NavHeader from "../../components/NavHeader";
 import EcosystemSubpageHero from "../../components/ecosystem/EcosystemSubpageHero";
-import { EventCard } from "../Ecosystem";
 import SubmitEventModal from "./SubmitEventModal";
 import { api } from "../../lib/api";
 
@@ -37,6 +36,103 @@ function eventMonthKey(dateStr) {
 /** Tolerate both API (`event_type`) and placeholder (`category`) shapes. */
 function eventType(ev) {
   return ev.event_type || ev.category || null;
+}
+
+// ── Compact event tile ─────────────────────────────────────────────────────
+
+const TYPE_TINT = {
+  RUG:        { bg: "#0D9373", label: "RUG" },
+  Conference: { bg: "#F59E0B", label: "Conference" },
+  Webinar:    { bg: "#3B82F6", label: "Webinar" },
+  DEFAULT:    { bg: "#475569", label: "Event" },
+};
+
+function parseLocalYmd(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || "");
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+}
+
+function formatEventDate(ev) {
+  if (ev.is_on_demand) return "On demand";
+  const raw = ev.next_date || ev.date || "";
+  if (!raw) return "TBD";
+  if (raw.includes("·")) return raw; // pre-formatted placeholder shape
+  const d = parseLocalYmd(raw) || new Date(raw);
+  if (Number.isNaN(d.getTime())) return raw;
+  const base = d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return ev.time ? `${base} · ${ev.time}` : base;
+}
+
+function EventTile({ ev }) {
+  const type = eventType(ev) || "DEFAULT";
+  const tint = TYPE_TINT[type] || TYPE_TINT.DEFAULT;
+  const url = ev.url || ev.register_url || "#";
+  const hasExternalUrl = url && url !== "#";
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImage = !!ev.image_url && !imgFailed;
+  const dateLine = formatEventDate(ev);
+  const locationLine = ev.is_on_demand
+    ? "Anytime"
+    : (ev.location || (ev.virtual ? "Virtual" : ""));
+
+  return (
+    <a
+      href={url}
+      target={hasExternalUrl ? "_blank" : undefined}
+      rel="noopener noreferrer"
+      className="group bg-white border border-[#E2E8F0] rounded-[14px] overflow-hidden flex flex-col shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-[#0D9373]/40 transition-all duration-200"
+      data-testid={`event-tile-${ev.id}`}
+    >
+      {/* Image / banner — 150px, cover, rounded via card overflow-hidden */}
+      <div
+        className="h-[150px] relative overflow-hidden flex items-center justify-center"
+        style={{ background: tint.bg }}
+      >
+        {showImage ? (
+          <img
+            src={ev.image_url}
+            alt=""
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <Calendar className="w-10 h-10 text-white/85" strokeWidth={1.5} />
+        )}
+        <div className="absolute top-3 left-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/95 text-[11px] font-semibold text-[#0A1628]">
+          {tint.label}
+        </div>
+        {ev.is_recurring && (
+          <div className="absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/95 text-[11px] font-semibold text-[#475569]">
+            <Repeat className="w-3 h-3" /> Recurring
+          </div>
+        )}
+      </div>
+
+      {/* Body */}
+      <div className="p-4 flex flex-col gap-1.5 flex-1">
+        <h3 className="font-heading text-[15px] font-semibold text-[#0A1628] leading-snug line-clamp-2 group-hover:text-[#0D9373] transition-colors">
+          {ev.title || "(untitled event)"}
+        </h3>
+        <div className="text-xs text-[#475569] flex items-center gap-1.5">
+          <Calendar className="w-3.5 h-3.5 flex-shrink-0" /> <span className="truncate">{dateLine}</span>
+        </div>
+        {locationLine && (
+          <div className="text-xs text-[#475569] flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5 flex-shrink-0" /> <span className="truncate">{locationLine}</span>
+          </div>
+        )}
+        <div className="mt-auto pt-2 flex items-center justify-between text-xs text-[#94A3B8]">
+          <span className="truncate">{ev.host || ev.sponsor || ""}</span>
+          {hasExternalUrl && (
+            <span className="inline-flex items-center gap-1 text-[#0D9373] font-semibold flex-shrink-0">
+              Details <ExternalLink className="w-3 h-3" />
+            </span>
+          )}
+        </div>
+      </div>
+    </a>
+  );
 }
 
 // ── Filter Bar ─────────────────────────────────────────────────────────────
@@ -234,10 +330,10 @@ export default function EcosystemEvents() {
           </div>
         ) : (
           <div
-            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"
+            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
             data-testid="events-list"
           >
-            {filtered.map((ev) => <EventCard key={ev.id} ev={ev} expanded />)}
+            {filtered.map((ev) => <EventTile key={ev.id} ev={ev} />)}
           </div>
         )}
       </main>
