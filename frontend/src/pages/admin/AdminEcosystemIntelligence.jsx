@@ -10,12 +10,13 @@
  * Uses existing AdminLayout so it inherits the sidebar / access guard.
  */
 import React, { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, RefreshCcw, Check, X, Edit3, Save } from "lucide-react";
+import { Plus, Trash2, RefreshCcw, Check, X, Edit3, Save, Link as LinkIcon, ExternalLink, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 import AdminLayout from "../../components/AdminLayout";
 import { api, formatApiError } from "../../lib/api";
 
 const TABS = [
+  { id: "ingest", label: "Ingest URL" },
   { id: "sources", label: "Sources" },
   { id: "go-lives", label: "Go-Lives" },
   { id: "events", label: "Events" },
@@ -33,7 +34,7 @@ const SOURCE_TYPES = [
 ];
 
 export default function AdminEcosystemIntelligence() {
-  const [tab, setTab] = useState("sources");
+  const [tab, setTab] = useState("ingest");
   return (
     <AdminLayout>
       <div className="mb-6" data-testid="admin-intel-page">
@@ -57,11 +58,328 @@ export default function AdminEcosystemIntelligence() {
         ))}
       </div>
 
+      {tab === "ingest" && <IngestTab />}
       {tab === "sources" && <SourcesTab />}
       {tab === "go-lives" && <GoLivesTab />}
       {tab === "events" && <EventsTab />}
       {tab === "scores" && <ScoresTab />}
     </AdminLayout>
+  );
+}
+
+// ---------- Ingest URL ------------------------------------------------------
+const MODULES = [
+  "Core HCM", "Payroll", "Financials", "Absence", "Recruiting", "Time Tracking",
+  "Benefits", "Talent & Performance", "Learning", "Prism Analytics",
+  "Workday Extend", "Workday AI / Illuminate", "Integrations", "Security",
+];
+const SIGNAL_TYPES = [
+  { id: "go_live", label: "Customer go-live" },
+  { id: "event", label: "Event / RUG / webinar" },
+  { id: "news", label: "News / press release" },
+  { id: "source", label: "New crawl source" },
+];
+
+function IngestTab() {
+  const [url, setUrl] = useState("");
+  const [fetching, setFetching] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [fetchError, setFetchError] = useState(null);
+
+  // classification state
+  const [signalType, setSignalType] = useState("go_live");
+  const [industry, setIndustry] = useState("Healthcare");
+  const [modules, setModules] = useState([]);
+  const [industryTags, setIndustryTags] = useState([]);
+  // type-specific
+  const [customerName, setCustomerName] = useState("");
+  const [region, setRegion] = useState("Americas");
+  const [announcementDate, setAnnouncementDate] = useState("");
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventType, setEventType] = useState("Webinar");
+  const [eventStart, setEventStart] = useState("");
+  const [eventEnd, setEventEnd] = useState("");
+  const [eventLocation, setEventLocation] = useState("");
+  const [eventVirtual, setEventVirtual] = useState(true);
+  const [sourceName, setSourceName] = useState("");
+  const [sourceType, setSourceType] = useState("press_release");
+  const [confidence, setConfidence] = useState(65);
+  const [notes, setNotes] = useState("");
+
+  const doFetch = async () => {
+    setFetchError(null);
+    setPreview(null);
+    if (!url.trim()) { toast.error("Paste a URL first"); return; }
+    setFetching(true);
+    try {
+      const res = await api.post("/admin/intel/ingest/fetch", { url: url.trim() });
+      setPreview(res.data);
+      // Prefill from preview
+      setCustomerName(res.data.title || "");
+      setEventTitle(res.data.title || "");
+      setSourceName(res.data.site_name || "");
+      setAnnouncementDate((res.data.published_at || "").slice(0, 10));
+      setEventStart((res.data.published_at || "").slice(0, 10));
+      toast.success("Metadata fetched");
+    } catch (e) {
+      setFetchError(formatApiError(e));
+      toast.error(formatApiError(e));
+    } finally { setFetching(false); }
+  };
+
+  const toggleModule = (m) => setModules((prev) => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]);
+  const toggleIndustryTag = (i) => setIndustryTags((prev) => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]);
+
+  const doPublish = async () => {
+    if (!preview) { toast.error("Fetch metadata first"); return; }
+    setPublishing(true);
+    const classification = {
+      signal_type: signalType,
+      industry,
+      modules,
+      industry_tags: industryTags,
+      customer_name: customerName,
+      region,
+      announcement_date: announcementDate,
+      event_title: eventTitle,
+      event_type: eventType,
+      event_start_date: eventStart,
+      event_end_date: eventEnd,
+      event_location: eventLocation,
+      event_virtual: eventVirtual,
+      source_name: sourceName,
+      source_type: sourceType,
+      confidence_score: confidence,
+      notes,
+    };
+    try {
+      const res = await api.post("/admin/intel/ingest/publish", { preview, classification });
+      toast.success(`Sent to ${res.data.collection} (status: ${res.data.status})`);
+      // Reset the form for the next URL
+      setUrl(""); setPreview(null); setModules([]); setIndustryTags([]);
+      setCustomerName(""); setEventTitle(""); setNotes("");
+    } catch (e) { toast.error(formatApiError(e)); }
+    finally { setPublishing(false); }
+  };
+
+  return (
+    <div className="space-y-5" data-testid="admin-intel-ingest">
+      <div className="bg-white rounded-xl border border-[#E2E8F0] p-5">
+        <h2 className="text-base font-bold text-[#0A1628]">Ingest a public URL</h2>
+        <p className="text-xs text-[#64748B] mb-4">
+          Paste a public URL (press release, blog, event page). We fetch its Open Graph metadata,
+          respect robots.txt, and route the classified record to the pending queue for approval.
+          No login-protected or private pages.
+        </p>
+
+        <div className="flex gap-2 flex-wrap">
+          <input
+            type="url"
+            className="flex-1 min-w-[280px] px-3 py-2 border border-[#CBD5E0] rounded text-sm"
+            placeholder="https://example.com/press/customer-story"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            data-testid="admin-intel-ingest-url"
+          />
+          <button
+            onClick={doFetch}
+            disabled={fetching}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded bg-[#0D9373] text-white text-sm font-semibold disabled:opacity-60"
+            data-testid="admin-intel-ingest-fetch"
+          >
+            {fetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <LinkIcon className="w-4 h-4" />}
+            {fetching ? "Fetching…" : "Fetch metadata"}
+          </button>
+        </div>
+        {fetchError && (
+          <div className="mt-3 p-3 rounded text-xs" style={{ background: "#FEE2E2", color: "#B91C1C" }} data-testid="admin-intel-ingest-error">
+            {fetchError}
+          </div>
+        )}
+      </div>
+
+      {preview && (
+        <div className="bg-white rounded-xl border border-[#E2E8F0] p-5 space-y-4" data-testid="admin-intel-ingest-preview">
+          {/* Preview card */}
+          <div className="rounded-lg border border-[#E2E8F0] p-4 flex gap-4 items-start">
+            {preview.image && (
+              <img src={preview.image} alt="" className="w-24 h-24 object-cover rounded-md flex-shrink-0" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+            )}
+            <div className="min-w-0 flex-1">
+              <a href={preview.url} target="_blank" rel="noreferrer" className="text-xs text-[#0D9373] font-medium flex items-center gap-1 hover:underline">
+                {preview.site_name} <ExternalLink className="w-3 h-3" />
+              </a>
+              <div className="text-base font-bold text-[#0A1628] mt-1">{preview.title || "(no title)"}</div>
+              <p className="text-xs text-[#475569] mt-1 leading-snug">{preview.description || preview.excerpt || "(no description)"}</p>
+              {preview.published_at && (
+                <div className="text-[11px] text-[#94A3B8] mt-2">Published: {preview.published_at}</div>
+              )}
+            </div>
+          </div>
+
+          {/* Classification */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <Field label="Signal type">
+              <select className="input" value={signalType} onChange={(e) => setSignalType(e.target.value)} data-testid="admin-intel-ingest-signal-type">
+                {SIGNAL_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Confidence (0-100)">
+              <input type="number" className="input" min="0" max="100" value={confidence} onChange={(e) => setConfidence(parseInt(e.target.value || 0, 10))} />
+            </Field>
+          </div>
+
+          {/* Type-specific fields */}
+          {signalType === "go_live" && (
+            <div className="grid md:grid-cols-2 gap-4 pt-3 border-t border-[#F1F5F9]">
+              <Field label="Customer name"><input className="input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} data-testid="ingest-customer-name" /></Field>
+              <Field label="Industry">
+                <select className="input" value={industry} onChange={(e) => setIndustry(e.target.value)} data-testid="ingest-industry">
+                  {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
+                </select>
+              </Field>
+              <Field label="Region">
+                <select className="input" value={region} onChange={(e) => setRegion(e.target.value)}>
+                  {["Americas", "EMEA", "APAC"].map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </Field>
+              <Field label="Announcement date (YYYY-MM-DD)"><input className="input" value={announcementDate} onChange={(e) => setAnnouncementDate(e.target.value)} /></Field>
+              <div className="md:col-span-2">
+                <div className="text-xs font-medium text-[#475569] mb-1.5">Modules mentioned</div>
+                <ModulePillGroup value={modules} onToggle={toggleModule} />
+              </div>
+            </div>
+          )}
+
+          {signalType === "event" && (
+            <div className="grid md:grid-cols-2 gap-4 pt-3 border-t border-[#F1F5F9]">
+              <Field label="Event title"><input className="input" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} data-testid="ingest-event-title" /></Field>
+              <Field label="Event type">
+                <select className="input" value={eventType} onChange={(e) => setEventType(e.target.value)}>
+                  {["Conference", "Webinar", "RUG", "Workshop", "Partner Event", "Roundtable"].map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </Field>
+              <Field label="Start date"><input className="input" value={eventStart} onChange={(e) => setEventStart(e.target.value)} /></Field>
+              <Field label="End date"><input className="input" value={eventEnd} onChange={(e) => setEventEnd(e.target.value)} /></Field>
+              <Field label="Location"><input className="input" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} /></Field>
+              <label className="flex items-end gap-2 text-sm text-[#475569] pb-2">
+                <input type="checkbox" checked={eventVirtual} onChange={(e) => setEventVirtual(e.target.checked)} /> Virtual event
+              </label>
+              <div className="md:col-span-2">
+                <div className="text-xs font-medium text-[#475569] mb-1.5">Industry tags</div>
+                <IndustryTagGroup value={industryTags} onToggle={toggleIndustryTag} />
+              </div>
+              <div className="md:col-span-2">
+                <div className="text-xs font-medium text-[#475569] mb-1.5">Module tags</div>
+                <ModulePillGroup value={modules} onToggle={toggleModule} />
+              </div>
+            </div>
+          )}
+
+          {signalType === "news" && (
+            <div className="grid md:grid-cols-2 gap-4 pt-3 border-t border-[#F1F5F9]">
+              <div className="md:col-span-2 text-xs text-[#64748B]">
+                News items are added to the community-news feed with <strong>is_published: false</strong>.
+                Approve them from that surface to make them live.
+              </div>
+              <div className="md:col-span-2">
+                <div className="text-xs font-medium text-[#475569] mb-1.5">Industry tags</div>
+                <IndustryTagGroup value={industryTags} onToggle={toggleIndustryTag} />
+              </div>
+              <div className="md:col-span-2">
+                <div className="text-xs font-medium text-[#475569] mb-1.5">Module tags</div>
+                <ModulePillGroup value={modules} onToggle={toggleModule} />
+              </div>
+            </div>
+          )}
+
+          {signalType === "source" && (
+            <div className="grid md:grid-cols-2 gap-4 pt-3 border-t border-[#F1F5F9]">
+              <Field label="Source name"><input className="input" value={sourceName} onChange={(e) => setSourceName(e.target.value)} /></Field>
+              <Field label="Source type">
+                <select className="input" value={sourceType} onChange={(e) => setSourceType(e.target.value)}>
+                  {SOURCE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </Field>
+              <div className="md:col-span-2 text-xs text-[#64748B]">
+                New sources are saved <strong>disabled</strong> until Phase 2B enables the crawler.
+                You can turn them on manually from the Sources tab.
+              </div>
+            </div>
+          )}
+
+          <Field label="Notes (optional)">
+            <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything the reviewer should know" />
+          </Field>
+
+          <div className="flex items-center gap-3 pt-3 border-t border-[#F1F5F9]">
+            <button
+              onClick={doPublish}
+              disabled={publishing}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded bg-[#0A1628] text-white text-sm font-semibold disabled:opacity-60"
+              data-testid="admin-intel-ingest-publish"
+            >
+              {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Send to approval queue
+            </button>
+            <span className="text-xs text-[#94A3B8]">Row is created with <code>status: &quot;pending&quot;</code>. Approve it from the corresponding tab.</span>
+          </div>
+
+          <style>{`.input { width: 100%; padding: 8px 10px; border: 1px solid #CBD5E0; border-radius: 6px; background: #fff; font-size: 13px; }`}</style>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ModulePillGroup({ value, onToggle }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {MODULES.map((m) => {
+        const on = value.includes(m);
+        return (
+          <button
+            key={m}
+            type="button"
+            onClick={() => onToggle(m)}
+            className="px-2.5 py-1 rounded-full text-xs font-medium border transition"
+            style={{
+              borderColor: on ? "#0D9373" : "#CBD5E0",
+              background: on ? "rgba(13, 147, 115, 0.12)" : "#fff",
+              color: on ? "#0D9373" : "#475569",
+            }}
+          >
+            {m}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function IndustryTagGroup({ value, onToggle }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {INDUSTRIES.map((i) => {
+        const on = value.includes(i);
+        return (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onToggle(i)}
+            className="px-2.5 py-1 rounded-full text-xs font-medium border transition"
+            style={{
+              borderColor: on ? "#6366F1" : "#CBD5E0",
+              background: on ? "rgba(99, 102, 241, 0.12)" : "#fff",
+              color: on ? "#4F46E5" : "#475569",
+            }}
+          >
+            {i}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
