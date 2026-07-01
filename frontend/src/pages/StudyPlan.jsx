@@ -8,8 +8,9 @@
  * Brand: #1B3A6B (brand blue) / #2E75B6 (accent). Arial. No external UI library.
  */
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import getStudyPlan, { ROLES } from "../services/studyPlan";
+import NavHeader from "../components/NavHeader";
 
 const T = {
   brand: "#1B3A6B",
@@ -51,10 +52,29 @@ function Icon({ d, size = 16, color = "currentColor", style }) {
 export default function StudyPlan() {
   const [role, setRole] = useState("Payroll Consultant");
   const [openStage, setOpenStage] = useState(0);
-  const plan = useMemo(() => getStudyPlan(role), [role]);
+  const [plan, setPlan] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getStudyPlan(role).then((p) => { if (!cancelled) setPlan(p); });
+    return () => { cancelled = true; };
+  }, [role]);
+
+  if (!plan) {
+    return (
+      <>
+        <NavHeader />
+        <div style={{ fontFamily: "Arial, sans-serif", color: T.sub, background: T.page, minHeight: "100vh", padding: "24px" }}>
+          <div style={{ maxWidth: 1180, margin: "0 auto" }}>Loading your study plan…</div>
+        </div>
+      </>
+    );
+  }
 
   return (
-    <div style={{ fontFamily: "Arial, sans-serif", color: T.ink, background: T.page, minHeight: "100vh", padding: "24px" }}>
+    <>
+      <NavHeader />
+      <div style={{ fontFamily: "Arial, sans-serif", color: T.ink, background: T.page, minHeight: "100vh", padding: "24px" }}>
       <div style={{ maxWidth: 1180, margin: "0 auto" }}>
         {/* breadcrumb + title */}
         <div style={{ fontSize: 13, color: T.sub, marginBottom: 6 }}>
@@ -154,6 +174,7 @@ export default function StudyPlan() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

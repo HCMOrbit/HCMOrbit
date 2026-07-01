@@ -5,10 +5,9 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-import jwt
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 
-from core import db, now_iso, JWT_SECRET, JWT_ALGORITHM
+from core import db, now_iso
 from schemas import (
     MemberPatchIn, PostPatchIn, ReportPatchIn,
     SpaceCreateIn, SpacePatchIn,
@@ -158,31 +157,6 @@ async def admin_update_member(user_id: str, payload: MemberPatchIn, admin: dict 
     for k, v in updates.items():
         await log_admin_action(admin, f"member.{k}={v}", "user", user_id, note=target.get("username"))
     return await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
-
-
-@router.post("/admin/members/{user_id}/impersonate")
-async def admin_impersonate(user_id: str, admin: dict = Depends(require_admin)):
-    """Issue a short-lived token that lets the admin act as the target user.
-    The token carries an `impersonator` claim so we can surface a banner and audit posts.
-    Cannot impersonate another admin (safety)."""
-    target = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
-    if not target:
-        raise HTTPException(404, "User not found")
-    if target.get("is_admin") and target["user_id"] != admin["user_id"]:
-        raise HTTPException(403, "Cannot impersonate another admin")
-    payload = {
-        "sub": user_id,
-        "type": "impersonation",
-        "impersonator": admin["user_id"],
-        "impersonator_username": admin.get("username"),
-        "exp": datetime.now(timezone.utc) + timedelta(hours=2),
-    }
-    token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-    await log_admin_action(
-        admin, "member.impersonate_start", "user", user_id,
-        note=f"@{target.get('username')}",
-    )
-    return {"token": token, "user": target, "expires_in_hours": 2}
 
 
 @router.delete("/admin/members/{user_id}")

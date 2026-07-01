@@ -1,12 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
-import { MoreVertical, Search as SearchIcon, ExternalLink, UserCog } from "lucide-react";
+import { MoreVertical, Search as SearchIcon, ExternalLink } from "lucide-react";
 import AdminLayout from "../../components/AdminLayout";
 import GroupBadge from "../../components/GroupBadge";
 import ConfirmModal from "../../components/ConfirmModal";
 import { api, timeAgo, formatApiError } from "../../lib/api";
-import { useAuth } from "../../lib/auth";
 import { toast } from "sonner";
 
 const GROUPS = ["aspirant", "practitioner", "employer"];
@@ -22,8 +20,6 @@ export default function AdminMembers() {
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const [confirm, setConfirm] = useState(null);
   const [groupModal, setGroupModal] = useState(null);
-  const { refresh } = useAuth();
-  const navigate = useNavigate();
 
   const load = useCallback(() => {
     const params = new URLSearchParams({ page, page_size: 25 });
@@ -54,21 +50,6 @@ export default function AdminMembers() {
       toast.success("Account deleted.");
       load();
     } catch (e) { toast.error(formatApiError(e)); }
-    setConfirm(null);
-  };
-
-  const impersonate = async (u) => {
-    try {
-      const { data } = await api.post(`/admin/members/${u.user_id}/impersonate`);
-      // Save the admin's own token so we can switch back
-      const adminToken = localStorage.getItem("hcm_token");
-      if (adminToken) localStorage.setItem("hcm_admin_token", adminToken);
-      localStorage.setItem("hcm_token", data.token);
-      await refresh();
-      toast.success(`Now posting as @${u.username}. Tap "Stop impersonating" in the banner to return.`);
-      navigate("/community");
-    } catch (e) { toast.error(formatApiError(e)); }
-    setOpenMenuId(null);
     setConfirm(null);
   };
 
@@ -160,15 +141,6 @@ export default function AdminMembers() {
                           <ExternalLink className="w-3.5 h-3.5" /> View profile
                         </a>
                         <button onClick={() => { setGroupModal(u); setOpenMenuId(null); }} className="w-full text-left px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC]">Change group</button>
-                        {!u.is_admin && (
-                          <button
-                            onClick={() => { setConfirm({ type: "impersonate", user: u }); setOpenMenuId(null); }}
-                            className="w-full text-left px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC] flex items-center gap-2"
-                            data-testid={`impersonate-${u.username}`}
-                          >
-                            <UserCog className="w-3.5 h-3.5" /> Impersonate
-                          </button>
-                        )}
                         {u.is_suspended ? (
                           <button onClick={() => patchUser(u.user_id, { is_suspended: false }, "Account unsuspended")} className="w-full text-left px-3 py-2 text-sm text-[#0F172A] hover:bg-[#F8FAFC]">Unsuspend</button>
                         ) : (
@@ -201,15 +173,6 @@ export default function AdminMembers() {
           </div>
         </div>
       )}
-
-      <ConfirmModal
-        open={confirm?.type === "impersonate"}
-        title={`Impersonate @${confirm?.user?.username}?`}
-        message="You'll act as this user — every post, answer, comment, and vote you make will appear under their name. A banner will remind you. The action is logged in admin actions and the token expires in 2 hours."
-        confirmLabel="Start impersonating"
-        onClose={() => setConfirm(null)}
-        onConfirm={() => impersonate(confirm.user)}
-      />
 
       <ConfirmModal
         open={confirm?.type === "suspend"}
