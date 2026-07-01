@@ -82,11 +82,17 @@ def _hiring_demand_summary(hiring: list[dict]) -> tuple[str, int]:
 async def industry_pulse(industry: str = Query(...)):
     if industry not in INDUSTRIES:
         raise HTTPException(404, "Unknown industry")
+    payload = await _build_industry_payload(industry)
+    if not payload:
+        raise HTTPException(404, "No module scores for industry — seed data may not have run")
+    return payload
 
+
+async def _build_industry_payload(industry: str) -> dict | None:
     scores_cur = db.intel_module_scores.find({"industry": industry})
     scores = [_strip(d) async for d in scores_cur]
     if not scores:
-        raise HTTPException(404, "No module scores for industry — seed data may not have run")
+        return None
 
     # Module bars, sorted the same way as the reference UI: high adoption desc.
     module_scores = sorted(scores, key=lambda s: s.get("high_adoption_percent", 0), reverse=True)
@@ -159,4 +165,102 @@ async def industry_pulse(industry: str = Query(...)):
         "is_sample_data": True,
         "disclaimer": DISCLAIMER,
         "high_demand_hint": INDUSTRY_HIGH_DEMAND.get(industry, []),
+    }
+
+
+# ---------- Compare endpoint ------------------------------------------------
+def _classify_delta(a_high: int, b_high: int) -> tuple[str, int]:
+    """Return (winner, absolute_delta). Winner is 'A', 'B', or 'similar'."""
+    diff = a_high - b_high
+    if abs(diff) < 8:
+        return "similar", abs(diff)
+    return ("A" if diff > 0 else "B", abs(diff))
+
+
+def _module_deltas(a_scores: list[dict], b_scores: list[dict]) -> list[dict]:
+    b_by_module = {s["module"]: s for s in b_scores}
+    rows = []
+    for a in a_scores:
+        b = b_by_module.get(a["module"])
+        if not b:
+            continue
+        winner, delta = _classify_delta(a["high_adoption_percent"], b["high_adoption_percent"])
+        rows.append({
+            "module": a["module"],
+            "a_high": a["high_adoption_percent"],
+            "a_adopting": a["adopting_percent"],
+            "a_early": a["early_adoption_percent"],
+            "a_demand": a["demand_level"],
+            "b_high": b["high_adoption_percent"],
+            "b_adopting": b["adopting_percent"],
+            "b_early": b["early_adoption_percent"],
+            "b_demand": b["demand_level"],
+            "delta": delta,          # absolute pt difference in high_adoption
+            "higher": winner,        # "A" | "B" | "similar"
+        })
+    # Sort by combined activity (highest sum first), so the interesting modules land on top.
+    rows.sort(key=lambda r: r["a_high"] + r["b_high"], reverse=True)
+    return rows
+
+
+def _generate_insight(industry_a: str, industry_b: str, module_deltas: list[dict],
+                      a_payload: dict, b_payload: dict) -> str:
+    """Auto-generate a short comparative narrative from the deltas."""
+    a_wins = [d for d in module_deltas if d["higher"] == "A"]
+    b_wins = [d for d in module_deltas if d["higher"] == "B"]
+    similar = [d for d in module_deltas if d["higher"] == "similar"]
+
+    a_top = sorted(a_wins, key=lambda d: d["delta"], reverse=True)[:3]
+    b_top = sorted(b_wins, key=lambda d: d["delta"], reverse=True)[:3]
+
+    parts = []
+    if a_top:
+        mods = ", ".join(f"{d['module']} (+{d['delta']}pt)" for d in a_top)
+        parts.append(f"{industry_a} leads on {mods}.")
+    if b_top:
+        mods = ", ".join(f"{d['module']} (+{d['delta']}pt)" for d in b_top)
+        parts.append(f"{industry_b} leads on {mods}.")
+    if similar:
+        parts.append(f"{len(similar)} module{'s' if len(similar) != 1 else ''} track within 7pt across both.")
+
+    a_hiring = a_payload["summary"]["active_job_postings"]
+    b_hiring = b_payload["summary"]["active_job_postings"]
+    if a_hiring and b_hiring:
+        if a_hiring > b_hiring * 1.15:
+            parts.append(f"Hiring signal is {int((a_hiring / max(b_hiring, 1) - 1) * 100)}% stronger in {industry_a}.")
+        elif b_hiring > a_hiring * 1.15:
+            parts.append(f"Hiring signal is {int((b_hiring / max(a_hiring, 1) - 1) * 100)}% stronger in {industry_b}.")
+
+    if not parts:
+        return f"{industry_a} and {industry_b} show broadly similar Workday adoption profiles across the 14 tracked modules."
+    return " ".join(parts)
+
+
+@router.get("/intel/industry-pulse/compare")
+async def industry_pulse_compare(
+    industryA: str = Query(...),
+    industryB: str = Query(...),
+):
+    if industryA not in INDUSTRIES:
+        raise HTTPException(404, f"Unknown industry: {industryA}")
+    if industryB not in INDUSTRIES:
+        raise HTTPException(404, f"Unknown industry: {industryB}")
+    if industryA == industryB:
+        raise HTTPException(400, "Pick two different industries")
+
+    a_payload = await _build_industry_payload(industryA)
+    b_payload = await _build_industry_payload(industryB)
+    if not a_payload or not b_payload:
+        raise HTTPException(404, "Missing seed data for one or both industries")
+
+    module_deltas = _module_deltas(a_payload["module_scores"], b_payload["module_scores"])
+    insight = _generate_insight(industryA, industryB, module_deltas, a_payload, b_payload)
+
+    return {
+        "industryA": a_payload,
+        "industryB": b_payload,
+        "module_deltas": module_deltas,
+        "insight": insight,
+        "is_sample_data": True,
+        "disclaimer": DISCLAIMER,
     }

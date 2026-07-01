@@ -28,6 +28,7 @@ import AdminEcosystem, { RedirectToEvents, RedirectToCertifications } from "@/pa
 import AdminEcosystemIntelligence from "@/pages/admin/AdminEcosystemIntelligence";
 import AdminContact from "@/pages/admin/AdminContact";
 import EcosystemIndustryPulse from "@/pages/ecosystem/EcosystemIndustryPulse";
+import EcosystemIndustryPulseCompare from "@/pages/ecosystem/EcosystemIndustryPulseCompare";
 import EcosystemEvents from "@/pages/ecosystem/EcosystemEvents";
 import EcosystemNews from "@/pages/ecosystem/EcosystemNews";
 import EcosystemCertifications from "@/pages/ecosystem/EcosystemCertifications";
@@ -105,6 +106,7 @@ function AppRoutes() {
       <Route path="/why-hcmorbit" element={<WhyHCMOrbit />} />
       <Route path="/ecosystem" element={<Navigate to="/ecosystem/industry-pulse" replace />} />
       <Route path="/ecosystem/industry-pulse" element={<EcosystemIndustryPulse />} />
+      <Route path="/ecosystem/industry-pulse/compare" element={<EcosystemIndustryPulseCompare />} />
       <Route path="/ecosystem/upcoming-events" element={<EcosystemEvents />} />
       <Route path="/ecosystem/community-news" element={<EcosystemNews />} />
       <Route path="/ecosystem/events" element={<Navigate to="/ecosystem/upcoming-events" replace />} />

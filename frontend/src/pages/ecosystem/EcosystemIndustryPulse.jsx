@@ -11,8 +11,9 @@ import {
   TrendingUp, TrendingDown, Minus, Flame, Sparkles, Banknote, Shield,
   Users, ChevronDown, BarChart3, Building2, Landmark, Store, Cpu,
   Factory, GraduationCap, Briefcase, Clock, Plug, Code, Gavel, Info, ArrowRight,
-  Calendar as CalendarIcon, MapPin, Circle,
+  Calendar as CalendarIcon, MapPin, Circle, GitCompare,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import NavHeader from "../../components/NavHeader";
 import { api } from "../../lib/api";
 
@@ -379,7 +380,12 @@ function HighDemandCard({ industry, items }) {
           </div>
         ))}
       </div>
-      <button className="mt-4 text-xs font-semibold inline-flex items-center gap-1" style={{ color: P.teal }}>
+      <button
+        onClick={() => window.location.assign(`/ecosystem/industry-pulse/compare?industryA=${encodeURIComponent(industry)}&industryB=${industry === "Financial Services" ? "Healthcare" : "Financial Services"}`)}
+        className="mt-4 text-xs font-semibold inline-flex items-center gap-1"
+        style={{ color: P.teal, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+        data-testid="ip-view-all-demand"
+      >
         View all module demand <ArrowRight className="w-3 h-3" />
       </button>
     </div>
@@ -585,13 +591,21 @@ export default function EcosystemIndustryPulse() {
       />
 
       {showSampleBadge && (
-        <div className="max-w-[1280px] mx-auto px-6 lg:px-10 mt-4">
-          <div className="rounded-lg p-3 text-xs flex items-center gap-2"
+        <div className="max-w-[1280px] mx-auto px-6 lg:px-10 mt-4 flex items-center gap-3 flex-wrap">
+          <div className="flex-1 min-w-[280px] rounded-lg p-3 text-xs flex items-center gap-2"
                style={{ background: P.amberSoft, color: P.amberText }}
                data-testid="ip-sample-badge">
             <Info className="w-4 h-4 flex-shrink-0" />
             <span><strong>Sample Data</strong> — Public intelligence engine coming soon. The dashboard below is populated with realistic sample data across all industries so we can validate flows before the Phase 2 crawler goes live.</span>
           </div>
+          <Link
+            to={`/ecosystem/industry-pulse/compare?industryA=${encodeURIComponent(activeIndustry)}&industryB=${activeIndustry === "Financial Services" ? "Healthcare" : "Financial Services"}`}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap"
+            style={{ background: P.navy, color: "#fff" }}
+            data-testid="ip-compare-cta"
+          >
+            <GitCompare className="w-4 h-4" /> Compare industries
+          </Link>
         </div>
       )}
 
