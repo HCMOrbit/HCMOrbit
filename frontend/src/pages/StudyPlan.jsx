@@ -10,6 +10,7 @@
 
 import React, { useEffect, useState } from "react";
 import getStudyPlan, { ROLES } from "../services/studyPlan";
+import NavHeader from "../components/NavHeader";
 
 const T = {
   brand: "#1B3A6B",
@@ -61,14 +62,19 @@ export default function StudyPlan() {
 
   if (!plan) {
     return (
-      <div style={{ fontFamily: "Arial, sans-serif", color: T.sub, background: T.page, minHeight: "100vh", padding: "24px" }}>
-        <div style={{ maxWidth: 1180, margin: "0 auto" }}>Loading your study plan…</div>
-      </div>
+      <>
+        <NavHeader />
+        <div style={{ fontFamily: "Arial, sans-serif", color: T.sub, background: T.page, minHeight: "100vh", padding: "24px" }}>
+          <div style={{ maxWidth: 1180, margin: "0 auto" }}>Loading your study plan…</div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div style={{ fontFamily: "Arial, sans-serif", color: T.ink, background: T.page, minHeight: "100vh", padding: "24px" }}>
+    <>
+      <NavHeader />
+      <div style={{ fontFamily: "Arial, sans-serif", color: T.ink, background: T.page, minHeight: "100vh", padding: "24px" }}>
       <div style={{ maxWidth: 1180, margin: "0 auto" }}>
         {/* breadcrumb + title */}
         <div style={{ fontSize: 13, color: T.sub, marginBottom: 6 }}>
@@ -168,6 +174,7 @@ export default function StudyPlan() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
