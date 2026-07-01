@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth";
 import Landing from "@/pages/Landing";
@@ -26,7 +26,7 @@ import AdminKnowledgeBase from "@/pages/admin/AdminKnowledgeBase";
 import AdminEmailPreviews from "@/pages/admin/AdminEmailPreviews";
 import AdminEcosystem, { RedirectToEvents, RedirectToCertifications } from "@/pages/admin/AdminEcosystem";
 import AdminContact from "@/pages/admin/AdminContact";
-import Ecosystem from "@/pages/Ecosystem";
+import EcosystemIndustryPulse from "@/pages/ecosystem/EcosystemIndustryPulse";
 import EcosystemEvents from "@/pages/ecosystem/EcosystemEvents";
 import EcosystemNews from "@/pages/ecosystem/EcosystemNews";
 import EcosystemCertifications from "@/pages/ecosystem/EcosystemCertifications";
@@ -101,9 +101,12 @@ function AppRoutes() {
       <Route path="/terms" element={<Terms />} />
       <Route path="/cookies" element={<Cookies />} />
       <Route path="/why-hcmorbit" element={<WhyHCMOrbit />} />
-      <Route path="/ecosystem" element={<Ecosystem />} />
-      <Route path="/ecosystem/events" element={<EcosystemEvents />} />
-      <Route path="/ecosystem/news" element={<EcosystemNews />} />
+      <Route path="/ecosystem" element={<Navigate to="/ecosystem/industry-pulse" replace />} />
+      <Route path="/ecosystem/industry-pulse" element={<EcosystemIndustryPulse />} />
+      <Route path="/ecosystem/upcoming-events" element={<EcosystemEvents />} />
+      <Route path="/ecosystem/community-news" element={<EcosystemNews />} />
+      <Route path="/ecosystem/events" element={<Navigate to="/ecosystem/upcoming-events" replace />} />
+      <Route path="/ecosystem/news" element={<Navigate to="/ecosystem/community-news" replace />} />
       <Route path="/ecosystem/certifications" element={<EcosystemCertifications />} />
       <Route path="/about/why-hcmorbit" element={<WhyHCMOrbit />} />
       <Route path="/career-hub" element={<CareerNavigator />} />
