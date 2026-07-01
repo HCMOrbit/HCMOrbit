@@ -214,7 +214,6 @@ export default function KBDoc() {
               {doc.read_time && <span className="text-white/55">{doc.read_time} read</span>}
             </div>
           )}
-          <p className="mt-3 text-white/70 leading-relaxed max-w-3xl">{doc.summary}</p>
         </div>
       </section>
 
