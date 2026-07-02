@@ -362,9 +362,6 @@ function RolePanelSkeleton() {
 
 function RoleStudyPanel({ role, onRoleChange, plan }) {
   const [openStage, setOpenStage] = useState(0);
-  const empty = !!plan && plan.totalKbs === 0;
-  const estimatedHours = empty ? "—" : plan?.estimatedHours;
-  const difficultyRange = empty ? "—" : plan?.difficultyRange;
 
   return (
     <div style={{ marginTop: 18, fontFamily: "Arial, sans-serif" }} data-testid="career-interview-role-panel">
@@ -422,8 +419,8 @@ function RoleStudyPanel({ role, onRoleChange, plan }) {
             ))}
 
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-              <MetricTile label="Estimated time" value={estimatedHours} />
-              <MetricTile label="Difficulty" value={difficultyRange} />
+              <MetricTile label="Estimated time" value={plan.estimatedHours} />
+              <MetricTile label="Difficulty" value={plan.difficultyRange} />
             </div>
           </section>
 

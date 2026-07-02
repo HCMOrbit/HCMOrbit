@@ -259,6 +259,7 @@ function difficultyRange(rows) {
 // Rough study-time estimate: ~0.2h per KB, banded. Replace with real per-module
 // hours from the Learning Tracks workbook when that table is wired in.
 function estimateHours(rows) {
+  if (!rows || rows.length === 0) return "—";
   const lo = Math.max(4, Math.round(rows.length * 0.18));
   const hi = Math.round(rows.length * 0.24);
   return `${lo}–${hi} hrs`;
