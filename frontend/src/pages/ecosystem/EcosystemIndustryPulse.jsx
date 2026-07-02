@@ -109,65 +109,90 @@ function TrendArrow({ direction }) {
 // ---------- hero -------------------------------------------------------------
 function Hero() {
   return (
-    <section
-      className="relative overflow-hidden"
-      style={{
-        background: `linear-gradient(180deg, ${P.navy} 0%, ${P.navyDark} 100%)`,
-        color: "#fff",
-      }}
-      data-testid="ip-hero"
-    >
-      {/* Faint chart background */}
-      <svg
-        aria-hidden
-        className="pointer-events-none absolute right-0 top-6 opacity-40 hidden md:block"
-        width="580" height="360" viewBox="0 0 580 360" fill="none"
+    <div className="max-w-[1280px] mx-auto px-6 lg:px-10 pt-8">
+      <section
+        className="relative overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, #0a1628 0%, #0d2d3a 100%)",
+          borderRadius: 18,
+          padding: "38px 32px 44px",
+          color: "#fff",
+        }}
+        data-testid="ip-hero"
       >
-        <defs>
-          <linearGradient id="ipLine" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor={P.teal} stopOpacity="0.05" />
-            <stop offset="1" stopColor={P.teal} stopOpacity="0.8" />
-          </linearGradient>
-        </defs>
-        <path d="M0,300 L60,290 L120,270 L180,260 L240,230 L300,200 L360,170 L420,140 L480,90 L540,50 L580,20"
-              stroke="url(#ipLine)" strokeWidth="2" fill="none" />
-        <path d="M0,320 L80,310 L160,295 L240,280 L320,255 L400,220 L480,180 L580,130"
-              stroke={P.teal} strokeOpacity="0.25" strokeWidth="1.5" fill="none" />
-        {[[540,50], [480,90], [420,140], [360,170], [300,200], [240,230]].map(([x,y]) => (
-          <circle key={`${x}-${y}`} cx={x} cy={y} r="3" fill={P.teal} />
-        ))}
-      </svg>
+        {/* Faint chart background — kept from previous design as an ambient
+            decoration. Amber tint on the top line matches the new eyebrow. */}
+        <svg
+          aria-hidden
+          className="pointer-events-none absolute right-0 top-6 opacity-40 hidden md:block"
+          width="580" height="360" viewBox="0 0 580 360" fill="none"
+        >
+          <defs>
+            <linearGradient id="ipLine" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor={P.teal} stopOpacity="0.05" />
+              <stop offset="1" stopColor={P.teal} stopOpacity="0.8" />
+            </linearGradient>
+          </defs>
+          <path d="M0,300 L60,290 L120,270 L180,260 L240,230 L300,200 L360,170 L420,140 L480,90 L540,50 L580,20"
+                stroke="url(#ipLine)" strokeWidth="2" fill="none" />
+          <path d="M0,320 L80,310 L160,295 L240,280 L320,255 L400,220 L480,180 L580,130"
+                stroke={P.teal} strokeOpacity="0.25" strokeWidth="1.5" fill="none" />
+          {[[540,50], [480,90], [420,140], [360,170], [300,200], [240,230]].map(([x,y]) => (
+            <circle key={`${x}-${y}`} cx={x} cy={y} r="3" fill={P.teal} />
+          ))}
+        </svg>
 
-      <div className="max-w-[1280px] mx-auto px-6 lg:px-10 pt-14 pb-16 relative">
-        <nav className="text-xs mb-6 text-white/60" data-testid="ip-breadcrumb">
-          <a href="/" className="hover:text-white/90">Home</a>
-          <span className="mx-2">›</span>
-          <a href="/ecosystem/industry-pulse" className="hover:text-white/90" style={{ color: P.tealLight }}>Ecosystem</a>
-          <span className="mx-2">›</span>
-          <span className="text-white/90">Industry Pulse</span>
-        </nav>
-        <div className="text-[11px] uppercase tracking-[0.18em] font-bold mb-3" style={{ color: P.tealLight }}>
-          Industry Pulse
+        <div className="relative">
+          <nav className="text-xs flex items-center gap-1.5 mb-5 text-white/70" data-testid="ip-breadcrumb">
+            <a href="/" className="hover:text-white">Home</a>
+            <span>›</span>
+            <a href="/ecosystem" className="hover:text-white" style={{ color: "#F5B731" }}>Ecosystem</a>
+            <span>›</span>
+            <span className="text-white">Industry Pulse</span>
+          </nav>
+          <div
+            data-testid="ip-eyebrow"
+            style={{
+              color: "#F5B731",
+              fontSize: 15,
+              fontWeight: 600,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              marginBottom: 14,
+            }}
+          >
+            Industry Pulse
+          </div>
+          <h1
+            className="font-heading"
+            style={{
+              color: "#ffffff",
+              fontSize: 44,
+              fontWeight: 700,
+              lineHeight: 1.1,
+              letterSpacing: "-0.01em",
+              marginBottom: 16,
+            }}
+          >
+            Where Workday is moving
+          </h1>
+          <p className="text-white/70 text-base max-w-2xl leading-relaxed mb-6">
+            Track where the Workday ecosystem is growing through hiring demand, customer
+            implementations, product adoption, partner activity, community trends, AI
+            innovation, and upcoming events.
+          </p>
+          <div className="inline-flex items-center gap-2 rounded-full px-4 py-2 border"
+               style={{ borderColor: "rgba(29, 181, 137, 0.4)", background: "rgba(13, 147, 115, 0.15)" }}
+               data-testid="ip-live-badge">
+            <Circle className="w-2.5 h-2.5 fill-current" style={{ color: P.tealLight }} />
+            <span className="text-sm font-medium" style={{ color: P.tealLight }}>Live Ecosystem Intelligence</span>
+          </div>
+          <div className="mt-4 text-xs text-white/50">
+            Based on aggregated public signals. Not official Workday data.
+          </div>
         </div>
-        <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-bold leading-[1.08] mb-5 max-w-3xl">
-          Where Workday is moving
-        </h1>
-        <p className="text-white/70 text-base max-w-2xl leading-relaxed mb-6">
-          Track where the Workday ecosystem is growing through hiring demand, customer
-          implementations, product adoption, partner activity, community trends, AI
-          innovation, and upcoming events.
-        </p>
-        <div className="inline-flex items-center gap-2 rounded-full px-4 py-2 border"
-             style={{ borderColor: "rgba(29, 181, 137, 0.4)", background: "rgba(13, 147, 115, 0.15)" }}
-             data-testid="ip-live-badge">
-          <Circle className="w-2.5 h-2.5 fill-current" style={{ color: P.tealLight }} />
-          <span className="text-sm font-medium" style={{ color: P.tealLight }}>Live Ecosystem Intelligence</span>
-        </div>
-        <div className="mt-4 text-xs text-white/50">
-          Based on aggregated public signals. Not official Workday data.
-        </div>
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }
 
