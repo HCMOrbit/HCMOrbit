@@ -6,6 +6,13 @@ import {
 import { TRACKS, INTERVIEW_SETS } from "../data";
 import StatRow from "../components/StatRow";
 import getStudyPlan, { ROLES } from "../../services/studyPlan";
+import {
+  T as SP_T,
+  Stage,
+  ContentTile,
+  Chip,
+  cardStyle,
+} from "../studyPlanShared";
 
 const ICONS = {
   cash: Banknote,
