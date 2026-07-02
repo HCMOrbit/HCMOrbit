@@ -6,6 +6,13 @@ import {
 import { TRACKS, INTERVIEW_SETS } from "../data";
 import StatRow from "../components/StatRow";
 import getStudyPlan, { ROLES } from "../../services/studyPlan";
+import {
+  T as SP_T,
+  Stage,
+  ContentTile,
+  Chip,
+  cardStyle,
+} from "../studyPlanShared";
 
 const ICONS = {
   cash: Banknote,
@@ -319,9 +326,8 @@ InterviewTab.heroProps = {
 };
 
 // -------- Role mode: study plan panel ----------------------------------------
-// Replicates StudyPlan.jsx's stage/tile/guide markup. A later route-retirement
-// step will lift these to a shared component. Palette is StudyPlan's, kept
-// intentionally so the two surfaces stay visually identical until that step.
+// Local palette/components kept intentionally alongside the shared ones from
+// studyPlanShared.jsx so the surface stays visually stable.
 const RT = {
   brand: "#1B3A6B",
   accent: "#2E75B6",
@@ -356,9 +362,6 @@ function RolePanelSkeleton() {
 
 function RoleStudyPanel({ role, onRoleChange, plan }) {
   const [openStage, setOpenStage] = useState(0);
-  const empty = !!plan && plan.totalKbs === 0;
-  const estimatedHours = empty ? "—" : plan?.estimatedHours;
-  const difficultyRange = empty ? "—" : plan?.difficultyRange;
 
   return (
     <div style={{ marginTop: 18, fontFamily: "Arial, sans-serif" }} data-testid="career-interview-role-panel">
@@ -416,8 +419,8 @@ function RoleStudyPanel({ role, onRoleChange, plan }) {
             ))}
 
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-              <MetricTile label="Estimated time" value={estimatedHours} />
-              <MetricTile label="Difficulty" value={difficultyRange} />
+              <MetricTile label="Estimated time" value={plan.estimatedHours} />
+              <MetricTile label="Difficulty" value={plan.difficultyRange} />
             </div>
           </section>
 
