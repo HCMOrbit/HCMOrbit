@@ -1,0 +1,43 @@
+{
+  "summary": "Verified KB doc read-time chip fix on both target URLs. PECI doc (read_time=null) shows fallback '2 min read'; core-hcm doc shows persisted '25-30 min read' verbatim. Chip is adjacent to view-count chip, uses identical pill styling, and includes Clock icon. Hero contains no excerpt/summary paragraph. No console errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "KBDoc.jsx is 603 lines — approaching the 700-line split threshold. Consider extracting Hero, TOC sidebar, and RightRail into separate components in a future refactor.",
+    "readTime useMemo fallback logic (200 wpm, ±2 min window) is sensible; only fires when doc.read_time is falsy so persisted DB values always win — verified with core-hcm doc showing '25-30 min read' verbatim."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "100%"},
+  "test_credentials": "not required (public routes)",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "KB doc pages tested at /knowledge-base/{slug}/{docId}. Chip testids: kb-view-count, kb-read-time. Hero testid: kb-doc-hero. Fallback readTime is computed client-side in KBDoc.jsx lines 83-93. Both target URLs verified passing on iteration 9.",
+  "verification_details": {
+    "peci_doc": {
+      "url": "/knowledge-base/integration-platform/6ec11e32-4f04-4889-b371-7ecc880a1fdc",
+      "chip_text": "2 min read",
+      "pattern_matches": true,
+      "adjacent_to_view_count": true,
+      "styles_match_view_chip": true,
+      "clock_icon_present": true,
+      "hero_paragraphs_count": 0
+    },
+    "core_hcm_doc": {
+      "url": "/knowledge-base/core-hcm/6cb6bb2d-175a-4f02-93a9-284ecb8b33cc",
+      "chip_text": "25-30 min read",
+      "matches_expected_persisted_value": true,
+      "adjacent_to_view_count": true,
+      "styles_match_view_chip": true,
+      "clock_icon_present": true,
+      "hero_paragraphs_count": 0
+    },
+    "console_errors": 0
+  }
+}

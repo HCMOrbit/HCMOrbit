@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Link, useParams, useLocation } from "react-router-dom";
-import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Share2, Eye, MessageSquare, Info, Lightbulb, AlertTriangle } from "lucide-react";
+import { ChevronRight, ArrowLeft, Bookmark, ThumbsUp, ThumbsDown, Share2, Eye, Clock, MessageSquare, Info, Lightbulb, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import NavHeader from "../../components/NavHeader";
@@ -77,6 +77,20 @@ export default function KBDoc() {
       return { id: slugify(text), text, level };
     });
   }, [doc?.body]);
+
+  // Fallback read-time: if the doc doesn't carry one, estimate from body length
+  // using 200 wpm and round to a 5-min window ("~10 min read", "5-10 min read").
+  const readTime = useMemo(() => {
+    if (doc?.read_time) return doc.read_time;
+    if (!doc?.body) return null;
+    const words = doc.body.trim().split(/\s+/).filter(Boolean).length;
+    if (words < 40) return null;
+    const mins = Math.max(1, Math.round(words / 200));
+    if (mins <= 3) return `${mins} min`;
+    const lo = Math.max(1, mins - 2);
+    const hi = mins + 2;
+    return `${lo}-${hi} min`;
+  }, [doc?.read_time, doc?.body]);
 
   useEffect(() => {
     if (!headings.length) return;
@@ -205,16 +219,22 @@ export default function KBDoc() {
               <span className="counter">{doc.view_count}</span>
               <span>views</span>
             </span>
+            {readTime && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20"
+                data-testid="kb-read-time"
+              >
+                <Clock className="w-3 h-3" />
+                <span>{readTime} read</span>
+              </span>
+            )}
           </div>
           <h1 className="font-heading text-2xl lg:text-3xl font-bold tracking-tight" data-testid="doc-title">{doc.title}</h1>
-          {(doc.reference_id || doc.read_time) && (
+          {doc.reference_id && (
             <div className="mt-2 text-xs font-mono flex items-center gap-2 flex-wrap" data-testid="doc-ref-strip">
-              {doc.reference_id && <span style={{ color: "#F5B731" }}>{doc.reference_id}</span>}
-              {doc.reference_id && doc.read_time && <span className="text-white/30">·</span>}
-              {doc.read_time && <span className="text-white/55">{doc.read_time} read</span>}
+              <span style={{ color: "#F5B731" }}>{doc.reference_id}</span>
             </div>
           )}
-          <p className="mt-3 text-white/70 leading-relaxed max-w-3xl">{doc.summary}</p>
         </div>
       </section>
 
