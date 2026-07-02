@@ -17,6 +17,7 @@ import feedparser
 import httpx
 
 from core import db
+from services.news_scoring import compute_workday_score, status_for_score
 
 log = logging.getLogger("rss_fetch")
 
@@ -137,15 +138,40 @@ def _parse_feed_sync(url: str):
     return feedparser.parse(url, request_headers={"User-Agent": "HCMOrbit-RSS/1.0"})
 
 
+async def _grandfather_existing_docs() -> int:
+    """One-time backfill for docs that predate the scoring feature.
+
+    Any `ecosystem_news` document missing a `status` field is treated as
+    grandfathered — marked `status="published"` with `workday_score=None`
+    so admins can distinguish "not scored (legacy)" from "scored 0".
+    Runs on every fetch but is a no-op after the first pass.
+    """
+    result = await db.ecosystem_news.update_many(
+        {"status": {"$exists": False}},
+        {
+            "$set": {
+                "status": "published",
+                "workday_score": None,
+                "score_breakdown": None,
+                "grandfathered_at": datetime.now(timezone.utc).isoformat(),
+            }
+        },
+    )
+    return result.modified_count
+
+
 async def fetch_workday_news() -> dict:
     """Fetch all configured RSS feeds, upsert into ecosystem_news, prune to top N.
 
     Returns a stats dict for logging / monitoring.
     """
+    grandfathered = await _grandfather_existing_docs()
+
     total_new = 0
     total_seen = 0
     total_skipped_stale = 0
     total_scraped = 0
+    counts_by_status = {"published": 0, "pending_review": 0, "rejected": 0}
     failures: list[str] = []
 
     # If we already have KEEP_RECENT items, only consider entries at least as new
@@ -188,6 +214,14 @@ async def fetch_workday_news() -> dict:
                 summary = _truncate(entry.get("summary") or entry.get("description"))
                 image_url = _extract_image_url(entry)
                 fetched_at = datetime.now(timezone.utc).isoformat()
+                # Score the article once, at ingestion. Stored in `$setOnInsert`
+                # so it's frozen for the doc's lifetime — later fetches will not
+                # rescore or re-status it (matches "grandfather existing" spec).
+                score, breakdown = compute_workday_score(
+                    title=title, summary=summary, url=url, source=feed_cfg["name"],
+                )
+                status = status_for_score(score)
+                counts_by_status[status] += 1
                 # `image_url` + `image_resolved_at` go in $setOnInsert so they
                 # are written exactly once per article and never overwritten on
                 # subsequent RSS runs — gives us a permanent cache per the spec
@@ -199,6 +233,10 @@ async def fetch_workday_news() -> dict:
                             "first_seen_at": fetched_at,
                             "image_url": image_url,
                             "image_resolved_at": fetched_at,
+                            "workday_score": score,
+                            "score_breakdown": breakdown,
+                            "status": status,
+                            "scored_at": fetched_at,
                         },
                         "$set": {
                             "title": title,
@@ -238,7 +276,13 @@ async def fetch_workday_news() -> dict:
 
     log.info(
         f"RSS fetch complete — seen={total_seen} new={total_new} scraped_og={total_scraped} "
-        f"pruned={pruned} skipped_stale={total_skipped_stale} failures={failures or 'none'}"
+        f"pruned={pruned} skipped_stale={total_skipped_stale} grandfathered={grandfathered} "
+        f"status_new={counts_by_status} failures={failures or 'none'}"
     )
-    return {"seen": total_seen, "new": total_new, "scraped_og": total_scraped,
-            "pruned": pruned, "skipped_stale": total_skipped_stale, "failures": failures}
+    return {
+        "seen": total_seen, "new": total_new, "scraped_og": total_scraped,
+        "pruned": pruned, "skipped_stale": total_skipped_stale,
+        "grandfathered": grandfathered,
+        "status_new": counts_by_status,
+        "failures": failures,
+    }

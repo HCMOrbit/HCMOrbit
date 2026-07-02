@@ -56,15 +56,101 @@ def _check_submit_rate_limit(request: Request) -> None:
 
 @router.get("/ecosystem/news")
 async def list_ecosystem_news(limit: int = Query(5, ge=1, le=50)):
-    """Return the `limit` most-recent ecosystem news items, newest first."""
+    """Return the `limit` most-recent published ecosystem news items, newest first.
+
+    Items in `pending_review` or `rejected` status are excluded — they only
+    appear in the admin News Review tab.
+    """
     cursor = (
         db.ecosystem_news
-        .find({}, {"_id": 0, "title": 1, "url": 1, "published_at": 1, "summary": 1, "source": 1, "image_url": 1})
+        .find(
+            {"status": "published"},
+            {"_id": 0, "title": 1, "url": 1, "published_at": 1, "summary": 1, "source": 1, "image_url": 1},
+        )
         .sort("published_at", -1)
         .limit(limit)
     )
     items = await cursor.to_list(limit)
     return {"items": items}
+
+
+NEWS_ADMIN_PROJECTION = {
+    "_id": 0, "id": 1, "title": 1, "url": 1, "published_at": 1, "summary": 1,
+    "source": 1, "image_url": 1, "workday_score": 1, "score_breakdown": 1,
+    "status": 1, "scored_at": 1, "first_seen_at": 1, "reviewed_by": 1,
+    "reviewed_at": 1, "review_action": 1,
+}
+
+VALID_NEWS_STATUSES = {"published", "pending_review", "rejected"}
+
+
+@router.get("/admin/ecosystem/news")
+async def list_ecosystem_news_admin(
+    status: Optional[str] = Query(None, description="Filter by status: pending_review, published, rejected"),
+    limit: int = Query(100, ge=1, le=500),
+    admin: dict = Depends(require_admin),
+):
+    """List news for the admin News Review tab.
+
+    Without `status`, returns pending_review first, then rejected, then
+    published — the most useful default order for moderators.
+    """
+    query: dict = {}
+    if status:
+        if status not in VALID_NEWS_STATUSES:
+            raise HTTPException(400, f"status must be one of {sorted(VALID_NEWS_STATUSES)}")
+        query["status"] = status
+    cursor = (
+        db.ecosystem_news
+        .find(query, NEWS_ADMIN_PROJECTION)
+        .sort([("status", 1), ("published_at", -1)])
+        .limit(limit)
+    )
+    items = await cursor.to_list(limit)
+    counts = {
+        "pending_review": await db.ecosystem_news.count_documents({"status": "pending_review"}),
+        "published": await db.ecosystem_news.count_documents({"status": "published"}),
+        "rejected": await db.ecosystem_news.count_documents({"status": "rejected"}),
+    }
+    return {"items": items, "counts": counts}
+
+
+class NewsActionBody(BaseModel):
+    url: str
+
+
+async def _set_news_status(url: str, new_status: str, admin: dict, action_label: str) -> dict:
+    doc = await db.ecosystem_news.find_one({"url": url}, {"_id": 0, "url": 1, "title": 1})
+    if not doc:
+        raise HTTPException(404, "News item not found")
+    await db.ecosystem_news.update_one(
+        {"url": url},
+        {"$set": {
+            "status": new_status,
+            "reviewed_by": admin["username"],
+            "reviewed_at": now_iso(),
+            "review_action": action_label,
+        }},
+    )
+    await log_admin_action(
+        admin, f"ecosystem_news_{action_label}",
+        note=f"{doc.get('title', '')[:80]}",
+    )
+    return {"ok": True, "status": new_status, "url": url}
+
+
+@router.post("/admin/ecosystem/news/approve")
+async def admin_approve_news(body: NewsActionBody, admin: dict = Depends(require_admin)):
+    """Approve a news item — status becomes `published` and it shows on the
+    public /ecosystem/community-news feed."""
+    return await _set_news_status(body.url, "published", admin, "approve")
+
+
+@router.post("/admin/ecosystem/news/reject")
+async def admin_reject_news(body: NewsActionBody, admin: dict = Depends(require_admin)):
+    """Reject a news item — status becomes `rejected`, kept in DB for audit
+    but hidden from the public feed."""
+    return await _set_news_status(body.url, "rejected", admin, "reject")
 
 
 # ── Events (admin-managed) ─────────────────────────────────────────────────
