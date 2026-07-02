@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ArrowUp } from "lucide-react";
 import NavHeader from "./NavHeader";
+import PageHero from "./PageHero";
 
 export default function LegalLayout({ title, updated, intro, children }) {
   const [showTop, setShowTop] = useState(false);
@@ -14,13 +15,17 @@ export default function LegalLayout({ title, updated, intro, children }) {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <NavHeader />
+      <PageHero
+        eyebrow="Legal"
+        title={title}
+        description={intro}
+        testId="legal-hero"
+      >
+        <div className="mt-4 text-xs text-white/50">Last updated: {updated}</div>
+      </PageHero>
       <main className="flex-1">
-        <div className="max-w-[720px] mx-auto px-6 py-14">
-          <div className="text-xs uppercase tracking-wider text-[#0D9373] font-semibold">Legal</div>
-          <h1 className="font-heading text-3xl lg:text-4xl font-bold text-[#0A1628] mt-2">{title}</h1>
-          <div className="text-xs text-[#64748B] mt-2">Last updated: {updated}</div>
-          {intro && <p className="mt-6 text-[15px] text-[#64748B] leading-[1.8]">{intro}</p>}
-          <div className="legal-body mt-8">{children}</div>
+        <div className="max-w-[720px] mx-auto px-6 py-10">
+          <div className="legal-body">{children}</div>
         </div>
       </main>
       {showTop && (

@@ -178,16 +178,28 @@ export default function KBDoc() {
     <div className="min-h-screen bg-[#F1F5F9]" data-testid="kb-doc">
       <NavHeader />
 
-      {/* Full-width dark hero */}
-      <section className="bg-[#0A1628] text-white" data-testid="kb-doc-hero">
-        <div className="max-w-[1300px] mx-auto px-4 lg:px-8 pt-5 pb-8">
+      {/* Rounded-card hero — matches KB Home hero style (135° gradient, 18px
+          radius, amber eyebrow line, white font-heading title). Wider (1300)
+          than the site-wide PageHero because the body has a TOC sidebar and
+          the two edges must line up. */}
+      <div className="max-w-[1300px] mx-auto px-4 lg:px-8 pt-8">
+        <section
+          className="relative overflow-hidden"
+          style={{
+            background: "linear-gradient(135deg, #0a1628 0%, #0d2d3a 100%)",
+            borderRadius: 18,
+            padding: "28px 32px 32px",
+            color: "#ffffff",
+          }}
+          data-testid="kb-doc-hero"
+        >
           <div className="flex items-center gap-3 mb-5">
             <nav className="text-xs flex items-center gap-1.5 text-white/60 flex-1 min-w-0" data-testid="kb-doc-breadcrumb">
-              <Link to="/knowledge-base" className="text-white/80 hover:text-white hover:underline">Knowledge Base</Link>
+              <Link to="/knowledge-base" className="hover:text-white hover:underline" style={{ color: "#F5B731" }}>Knowledge Base</Link>
               <ChevronRight className="w-3 h-3" />
-              <Link to={`/knowledge-base/${slug}`} className="text-white/80 hover:text-white hover:underline">{doc.category?.name}</Link>
+              <Link to={`/knowledge-base/${slug}`} className="hover:text-white hover:underline" style={{ color: "#F5B731" }}>{doc.category?.name}</Link>
               <ChevronRight className="w-3 h-3" />
-              <span className="truncate" style={{ color: "#F5B731", fontWeight: 600 }}>{doc.title.slice(0, 60)}</span>
+              <span className="truncate text-white">{doc.title.slice(0, 60)}</span>
             </nav>
             <div className="shrink-0 flex items-center gap-2">
               <button onClick={toggleBookmark} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-xs font-medium" data-testid="kb-bookmark-btn">
@@ -197,6 +209,14 @@ export default function KBDoc() {
                 <Share2 className="w-3.5 h-3.5" /> Share
               </button>
             </div>
+          </div>
+          <div
+            style={{
+              color: "#F5B731", fontSize: 13, fontWeight: 600,
+              letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 10,
+            }}
+          >
+            {doc.category?.name || "Knowledge Base"}
           </div>
           <div className="flex flex-wrap items-center gap-1.5 mb-4">
             <DocTypeBadge type={doc.doc_type} />
@@ -210,7 +230,6 @@ export default function KBDoc() {
               </span>
             )}
             <VersionPill version={doc.workday_version} />
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20">{doc.category?.name}</span>
             <span
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-white/10 border border-white/20"
               data-testid="kb-view-count"
@@ -235,8 +254,8 @@ export default function KBDoc() {
               <span style={{ color: "#F5B731" }}>{doc.reference_id}</span>
             </div>
           )}
-        </div>
-      </section>
+        </section>
+      </div>
 
       <div className="max-w-[1300px] mx-auto px-4 lg:px-8 py-6 flex gap-0">
         {headings.length > 0 && (

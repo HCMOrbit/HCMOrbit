@@ -79,19 +79,38 @@ export default function KBSearch() {
   return (
     <div className="min-h-screen bg-[#F1F5F9]" data-testid="kb-search">
       <NavHeader />
-      <section className="bg-[#0A1628] text-white">
-        <div className="max-w-[1200px] mx-auto px-6 lg:px-8 py-10">
-          <nav className="text-xs flex items-center gap-1.5 mb-4 text-white/70">
-            <Link to="/knowledge-base" className="text-[#0D9373] hover:underline">Knowledge Base</Link>
+      <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-8">
+        <section
+          className="relative overflow-hidden"
+          style={{
+            background: "linear-gradient(135deg, #0a1628 0%, #0d2d3a 100%)",
+            borderRadius: 18,
+            padding: "38px 32px",
+            color: "#ffffff",
+          }}
+          data-testid="kb-search-hero"
+        >
+          <nav className="text-xs flex items-center gap-1.5 mb-5 text-white/70">
+            <Link to="/knowledge-base" className="hover:text-white" style={{ color: "#F5B731" }}>Knowledge Base</Link>
             <ChevronRight className="w-3 h-3" />
-            {cat && <Link to={`/knowledge-base/${slug}`} className="text-[#0D9373] hover:underline">{cat.name}</Link>}
+            {cat && <Link to={`/knowledge-base/${slug}`} className="hover:text-white" style={{ color: "#F5B731" }}>{cat.name}</Link>}
             <ChevronRight className="w-3 h-3" />
             <span className="text-white">Search results</span>
           </nav>
+          <div
+            style={{
+              color: "#F5B731", fontSize: 15, fontWeight: 600,
+              letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 14,
+            }}
+          >
+            {cat ? cat.name : "Knowledge Base"}
+          </div>
           {cat && (
             <div className="flex items-center gap-3 mb-5">
               <CategoryIcon slug={cat.slug} icon={cat.icon} />
-              <h1 className="font-heading text-2xl font-semibold">{cat.name} · Search</h1>
+              <h1 className="font-heading" style={{ color: "#fff", fontSize: 36, fontWeight: 700, lineHeight: 1.1, letterSpacing: "-0.01em" }}>
+                Search this area
+              </h1>
             </div>
           )}
           <form onSubmit={submit} className="flex gap-2 max-w-2xl">
@@ -100,10 +119,10 @@ export default function KBSearch() {
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search within ${cat?.name || ""}...`} data-testid="search-input"
                 className="w-full pl-10 pr-4 py-2.5 bg-white/10 border border-white/20 rounded text-sm placeholder:text-white/40 focus:bg-white/15 focus:border-white/40 outline-none" />
             </div>
-            <button type="submit" className="px-5 py-2.5 rounded bg-[#0D9373] hover:bg-[#0b7c61] text-sm font-medium">Search</button>
+            <button type="submit" className="px-5 py-2.5 rounded text-sm font-semibold" style={{ background: "#F5B731", color: "#0a1628" }}>Search</button>
           </form>
-        </div>
-      </section>
+        </section>
+      </div>
 
       <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-6 flex gap-5">
         <aside className="w-[170px] shrink-0 hidden md:block bg-white rounded-lg border border-[#E2E8F0] p-4 h-fit sticky top-20" data-testid="kb-sidebar">

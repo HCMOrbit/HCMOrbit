@@ -1,17 +1,20 @@
 import React from "react";
 
 /**
- * Standardized dark navy hero header used across all top-level pages.
+ * Standardized page hero used across the entire site.
  *
- * Visual spec (locked, matches /ecosystem hero):
- *  - background:   bg-[#0A1628] text-white
- *  - container:    max-w-[1200px] mx-auto px-6 lg:px-8 py-12 lg:py-14
- *  - eyebrow:      text-xs uppercase tracking-[0.18em] text-[#0D9373] font-bold mb-3
- *  - h1:           font-heading text-4xl sm:text-5xl font-bold tracking-tight leading-[1.1]
- *  - description:  mt-4 text-base lg:text-lg text-white/70 max-w-2xl leading-relaxed
+ * Locked visual language — mirrors the Knowledge Base home hero (`KBHome`) so
+ * every top-level page shares one identity:
+ *   – 135° navy gradient card (#0a1628 → #0d2d3a), 18px border-radius, 38×32 pad
+ *   – amber eyebrow (#F5B731) — uppercase, 15px, letter-spacing 0.14em
+ *   – white `font-heading` h1, 44px, weight 700
+ *   – description in white/70, max 2xl width
+ *   – card sits inside a max-w-[1200px] container with pt-8, giving it the
+ *     signature "floating rounded panel" feel on any page background.
  *
- * Pass `breadcrumb` as a ReactNode (rendered before the eyebrow) and `children`
- * for additional in-hero content (stats, CTAs, search forms, etc.).
+ * Slots:
+ *   – `breadcrumb`  — rendered above the eyebrow (e.g. Home › Ecosystem › X)
+ *   – `children`    — rendered below the description (badges, CTAs, search)
  */
 export default function PageHero({
   eyebrow,
@@ -20,27 +23,61 @@ export default function PageHero({
   breadcrumb,
   children,
   className = "",
+  containerClassName = "",
   testId = "page-hero",
 }) {
   return (
-    <section className={`bg-[#0A1628] text-white ${className}`} data-testid={testId}>
-      <div className="max-w-[1200px] mx-auto px-6 lg:px-8 py-12 lg:py-14">
+    <div className={`max-w-[1200px] mx-auto px-4 lg:px-8 pt-8 ${containerClassName}`}>
+      <section
+        data-testid={testId}
+        className={`relative overflow-hidden ${className}`}
+        style={{
+          background: "linear-gradient(135deg, #0a1628 0%, #0d2d3a 100%)",
+          borderRadius: 18,
+          padding: "38px 32px",
+          color: "#ffffff",
+        }}
+      >
         {breadcrumb}
         {eyebrow && (
-          <div className="text-xs uppercase tracking-[0.18em] text-[#0D9373] font-bold mb-3" data-testid={`${testId}-eyebrow`}>
+          <div
+            data-testid={`${testId}-eyebrow`}
+            style={{
+              color: "#F5B731",
+              fontSize: 15,
+              fontWeight: 600,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              marginBottom: 14,
+            }}
+          >
             {eyebrow}
           </div>
         )}
-        <h1 className="font-heading text-4xl sm:text-5xl font-bold tracking-tight leading-[1.1]" data-testid={`${testId}-title`}>
+        <h1
+          className="font-heading"
+          style={{
+            color: "#ffffff",
+            fontSize: 44,
+            fontWeight: 700,
+            lineHeight: 1.1,
+            letterSpacing: "-0.01em",
+            marginBottom: description ? 16 : 0,
+          }}
+          data-testid={`${testId}-title`}
+        >
           {title}
         </h1>
         {description && (
-          <p className="mt-4 text-base lg:text-lg text-white/70 max-w-2xl leading-relaxed" data-testid={`${testId}-description`}>
+          <p
+            className="text-base lg:text-lg text-white/70 max-w-2xl leading-relaxed"
+            data-testid={`${testId}-description`}
+          >
             {description}
           </p>
         )}
         {children}
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }
