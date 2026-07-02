@@ -88,6 +88,7 @@ HCMOrbit is an independent professional Q&A community for the HCM (Workday) ecos
 - Flesh out `/connect` placeholder page (contact form etc.)
 
 ### Recently shipped (Feb 2026)
+- **Study Plan route retired** — standalone `/study-plan` route and page (`StudyPlan.jsx`) fully removed. Shared primitives (`T`, `Stage`, `ContentTile`, `Chip`, `cardStyle`) live in `careerNavigator/studyPlanShared.jsx` and are consumed by `InterviewTab.jsx`'s "By role" mode. Nav link removed from `NavHeader.jsx`.
 - **Ecosystem → Industry Pulse dashboard v2** (`/ecosystem/industry-pulse`) — dark-navy hero, industry filter chips (8 industries), industry summary card with live KPIs, CSS-only stacked module adoption bars for 14 modules, high-demand + still-adopting sidebar cards, top trends + go-lives + hiring roles + upcoming events row. All data served from `/api/intel/industry-pulse` — zero hardcoded content in React.
 - **6 new MongoDB collections** for the intelligence layer: `intel_module_scores`, `intel_go_lives`, `intel_hiring_signals`, `intel_trends`, `intel_events`, `intel_sources`, `intel_crawl_runs`. Every seeded row tagged `status: "sample_data"`; admin overrides flip to `status: "approved"` and are preserved across seed re-runs.
 - **Admin CMS** at `/admin/ecosystem-intelligence` — four tabs: Sources CRUD (+ Phase-2-stub crawl trigger), Go-Lives approval queue, Events approval queue, Module Scores inline override (sum-to-100 enforced backend-side).

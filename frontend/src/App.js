@@ -35,7 +35,6 @@ import EcosystemCertifications from "@/pages/ecosystem/EcosystemCertifications";
 import KBHome from "@/pages/kb/KBHome";
 import KBCategory from "@/pages/kb/KBCategory";
 import KBSearch from "@/pages/kb/KBSearch";
-import StudyPlan from "@/pages/StudyPlan";
 import KBGlobalSearch from "@/pages/kb/KBGlobalSearch";
 import KBDoc from "@/pages/kb/KBDoc";
 import NewKBDoc from "@/pages/kb/NewKBDoc";
@@ -114,7 +113,6 @@ function AppRoutes() {
       <Route path="/ecosystem/certifications" element={<EcosystemCertifications />} />
       <Route path="/about/why-hcmorbit" element={<WhyHCMOrbit />} />
       <Route path="/career-hub" element={<CareerNavigator />} />
-      <Route path="/study-plan" element={<StudyPlan />} />
       <Route path="/connect" element={<Connect />} />
     </Routes>
   );

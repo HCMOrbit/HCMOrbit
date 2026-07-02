@@ -326,9 +326,8 @@ InterviewTab.heroProps = {
 };
 
 // -------- Role mode: study plan panel ----------------------------------------
-// Replicates StudyPlan.jsx's stage/tile/guide markup. A later route-retirement
-// step will lift these to a shared component. Palette is StudyPlan's, kept
-// intentionally so the two surfaces stay visually identical until that step.
+// Local palette/components kept intentionally alongside the shared ones from
+// studyPlanShared.jsx so the surface stays visually stable.
 const RT = {
   brand: "#1B3A6B",
   accent: "#2E75B6",
