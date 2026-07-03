@@ -182,7 +182,7 @@ export default function KBDoc() {
           radius, amber eyebrow line, white font-heading title). Wider (1300)
           than the site-wide PageHero because the body has a TOC sidebar and
           the two edges must line up. */}
-      <div className="max-w-[1300px] mx-auto px-4 lg:px-8 pt-8">
+      <div className="max-w-[1300px] mx-auto px-6 lg:px-8 pt-8">
         <section
           className="relative overflow-hidden"
           style={{
@@ -257,7 +257,7 @@ export default function KBDoc() {
         </section>
       </div>
 
-      <div className="max-w-[1300px] mx-auto px-4 lg:px-8 py-6 flex gap-0">
+      <div className="max-w-[1300px] mx-auto px-6 lg:px-8 py-6 flex gap-0">
         {headings.length > 0 && (
         <aside
           className="shrink-0 hidden lg:flex flex-col gap-5 sticky top-20 self-start max-h-[calc(100vh-6rem)] overflow-y-auto"

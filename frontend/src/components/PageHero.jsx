@@ -24,10 +24,14 @@ export default function PageHero({
   children,
   className = "",
   containerClassName = "",
+  maxWidth = "1200px",
   testId = "page-hero",
 }) {
   return (
-    <div className={`max-w-[1200px] mx-auto px-4 lg:px-8 pt-8 ${containerClassName}`}>
+    <div
+      className={`mx-auto px-6 lg:px-8 pt-8 ${containerClassName}`}
+      style={{ maxWidth }}
+    >
       <section
         data-testid={testId}
         className={`relative overflow-hidden ${className}`}

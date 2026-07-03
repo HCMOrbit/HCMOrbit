@@ -10,7 +10,7 @@ import { ChevronRight } from "lucide-react";
  */
 export default function EcosystemSubpageHero({ eyebrow, title, description, current }) {
   return (
-    <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-8">
+    <div className="max-w-[1200px] mx-auto px-6 lg:px-8 pt-8">
       <section
         data-testid="ecosystem-subpage-hero"
         style={{

@@ -79,7 +79,7 @@ export default function KBSearch() {
   return (
     <div className="min-h-screen bg-[#F1F5F9]" data-testid="kb-search">
       <NavHeader />
-      <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-8">
+      <div className="max-w-[1200px] mx-auto px-6 lg:px-8 pt-8">
         <section
           className="relative overflow-hidden"
           style={{
@@ -124,7 +124,7 @@ export default function KBSearch() {
         </section>
       </div>
 
-      <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-6 flex gap-5">
+      <div className="max-w-[1200px] mx-auto px-6 lg:px-8 py-6 flex gap-5">
         <aside className="w-[170px] shrink-0 hidden md:block bg-white rounded-lg border border-[#E2E8F0] p-4 h-fit sticky top-20" data-testid="kb-sidebar">
           <FilterGroup label="Type" items={TYPES.map((t) => ({ ...t, count: typeCounts[t.id] || 0 }))} value={type} onChange={setType} />
           <div className="border-t border-[#F1F5F9] my-3" />

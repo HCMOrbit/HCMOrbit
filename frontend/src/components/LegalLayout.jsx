@@ -13,18 +13,19 @@ export default function LegalLayout({ title, updated, intro, children }) {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen bg-white">
       <NavHeader />
       <PageHero
         eyebrow="Legal"
         title={title}
         description={intro}
+        maxWidth="900px"
         testId="legal-hero"
       >
         <div className="mt-4 text-xs text-white/50">Last updated: {updated}</div>
       </PageHero>
-      <main className="flex-1">
-        <div className="max-w-[720px] mx-auto px-6 py-10">
+      <main>
+        <div className="max-w-[900px] mx-auto px-6 lg:px-8 py-10">
           <div className="legal-body">{children}</div>
         </div>
       </main>

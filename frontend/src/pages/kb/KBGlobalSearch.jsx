@@ -49,7 +49,7 @@ export default function KBGlobalSearch() {
   return (
     <div className="min-h-screen bg-[#F1F5F9]" data-testid="kb-global-search">
       <NavHeader />
-      <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-8">
+      <div className="max-w-[1200px] mx-auto px-6 lg:px-8 pt-8">
         <section
           className="relative overflow-hidden"
           style={{
@@ -100,7 +100,7 @@ export default function KBGlobalSearch() {
         </section>
       </div>
 
-      <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-6">
+      <div className="max-w-[1200px] mx-auto px-6 lg:px-8 py-6">
         {!q ? (
           <div className="bg-white border border-[#E2E8F0] rounded-lg p-10 text-center text-sm text-[#64748B]" data-testid="kb-global-search-prompt">
             Type a term above to search the full Knowledge Base.

@@ -149,7 +149,7 @@ function Credential({ value, label }) {
 
       {/* Hero — matches KB hero style: 135° navy gradient, 18px rounded card,
           amber eyebrow. Decorative dot grid + green glow kept for depth. */}
-      <div className="max-w-[1200px] mx-auto px-4 lg:px-8 pt-8" data-testid="hero-section-wrap">
+      <div className="max-w-[1200px] mx-auto px-6 lg:px-8 pt-8" data-testid="hero-section-wrap">
         <section
           className="relative overflow-hidden"
           style={{
