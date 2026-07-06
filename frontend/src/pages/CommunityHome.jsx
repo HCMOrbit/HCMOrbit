@@ -38,6 +38,7 @@ export default function CommunityHome() {
         eyebrow="HCMOrbit Community"
         title="Community feed"
         description="Signal over noise. The best answers, not the most recent."
+        maxWidth="1440px"
         testId="community-hero"
       />
       <CommunityLayout>

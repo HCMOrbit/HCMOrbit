@@ -49,21 +49,34 @@ export default function KBGlobalSearch() {
   return (
     <div className="min-h-screen bg-[#F1F5F9]" data-testid="kb-global-search">
       <NavHeader />
-      <section className="bg-[#0A1628] text-white">
-        <div className="max-w-[1200px] mx-auto px-6 lg:px-8 py-10">
-          <nav className="text-xs flex items-center gap-1.5 mb-4 text-white/70">
+      <div className="max-w-[1200px] mx-auto px-6 lg:px-8 pt-8">
+        <section
+          className="relative overflow-hidden"
+          style={{
+            background: "linear-gradient(135deg, #0a1628 0%, #0d2d3a 100%)",
+            borderRadius: 18,
+            padding: "38px 32px",
+            color: "#ffffff",
+          }}
+          data-testid="kb-global-search-hero"
+        >
+          <nav className="text-xs flex items-center gap-1.5 mb-5 text-white/70">
             <Link to="/knowledge-base" className="hover:underline" style={{ color: "#F5B731" }}>Knowledge Base</Link>
             <ChevronRight className="w-3 h-3" />
-            <span style={{ color: "#F5B731", fontWeight: 600 }}>Search results</span>
+            <span className="text-white">Search results</span>
           </nav>
           <div
-            className="text-[11px] font-semibold mb-2"
-            style={{ color: "#F5B731", letterSpacing: "0.14em", textTransform: "uppercase" }}
+            style={{
+              color: "#F5B731", fontSize: 15, fontWeight: 600,
+              letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 14,
+            }}
             data-testid="kb-global-search-eyebrow"
           >
             Knowledge Base
           </div>
-          <h1 className="font-heading text-2xl font-semibold mb-5">Search all guides</h1>
+          <h1 className="font-heading" style={{ color: "#fff", fontSize: 44, fontWeight: 700, lineHeight: 1.1, letterSpacing: "-0.01em", marginBottom: 24 }}>
+            Search all guides
+          </h1>
           <form onSubmit={submit} className="flex gap-2 max-w-2xl">
             <div className="relative flex-1">
               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
@@ -77,22 +90,17 @@ export default function KBGlobalSearch() {
             </div>
             <button
               type="submit"
-              ref={(el) => {
-                if (!el) return;
-                el.style.setProperty("background", "#F5B731", "important");
-                el.style.setProperty("color", "#0a1628", "important");
-                el.style.setProperty("border", "none", "important");
-              }}
               data-testid="kb-global-search-submit"
               className="px-5 py-2.5 rounded text-sm font-semibold"
+              style={{ background: "#F5B731", color: "#0a1628" }}
             >
               Search
             </button>
           </form>
-        </div>
-      </section>
+        </section>
+      </div>
 
-      <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-6">
+      <div className="max-w-[1200px] mx-auto px-6 lg:px-8 py-6">
         {!q ? (
           <div className="bg-white border border-[#E2E8F0] rounded-lg p-10 text-center text-sm text-[#64748B]" data-testid="kb-global-search-prompt">
             Type a term above to search the full Knowledge Base.

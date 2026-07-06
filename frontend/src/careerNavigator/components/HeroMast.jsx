@@ -16,8 +16,8 @@ export default function HeroMast({ eyebrow, title, subtitle, rightPill, children
       data-testid="career-navigator-heromast"
       style={{
         background: "linear-gradient(135deg, #0a1628 0%, #0d2d3a 100%)",
-        borderRadius: 16,
-        padding: "22px 24px",
+        borderRadius: 18,
+        padding: "26px 28px",
         color: "#ffffff",
       }}
     >
@@ -25,14 +25,20 @@ export default function HeroMast({ eyebrow, title, subtitle, rightPill, children
         <div className="min-w-0">
           {eyebrow && (
             <div
-              className="text-[11px] font-semibold mb-2"
-              style={{ color: "#1DB589", letterSpacing: "1.4px", textTransform: "uppercase" }}
+              style={{
+                color: "#F5B731",
+                fontSize: 13,
+                fontWeight: 600,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                marginBottom: 10,
+              }}
             >
               {eyebrow}
             </div>
           )}
           {title && (
-            <h1 className="font-heading font-bold tracking-tight leading-[1.15] text-2xl sm:text-3xl">
+            <h1 className="font-heading font-bold tracking-tight leading-[1.12] text-2xl sm:text-[28px]">
               {title}
             </h1>
           )}

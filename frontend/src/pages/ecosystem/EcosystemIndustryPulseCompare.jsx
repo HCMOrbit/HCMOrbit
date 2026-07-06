@@ -94,43 +94,63 @@ function DeltaBadge({ higher, delta, nameA, nameB }) {
 // ---------- Hero -------------------------------------------------------------
 function Hero() {
   return (
-    <section className="relative overflow-hidden"
-             style={{ background: `linear-gradient(180deg, ${P.navy} 0%, ${P.navyDark} 100%)`, color: "#fff" }}
-             data-testid="cmp-hero">
-      <svg aria-hidden className="pointer-events-none absolute right-0 top-6 opacity-40 hidden md:block"
-           width="580" height="280" viewBox="0 0 580 280" fill="none">
-        <defs>
-          <linearGradient id="cmpLine" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor={P.teal} stopOpacity="0.05" />
-            <stop offset="1" stopColor={P.teal} stopOpacity="0.7" />
-          </linearGradient>
-        </defs>
-        <path d="M0,220 L80,210 L160,190 L240,170 L320,140 L400,110 L480,80 L580,40"
-              stroke="url(#cmpLine)" strokeWidth="2" fill="none" />
-        <path d="M0,240 L80,230 L160,220 L240,200 L320,180 L400,160 L480,140 L580,120"
-              stroke={P.bColor} strokeOpacity="0.35" strokeWidth="1.5" fill="none" />
-      </svg>
-      <div className="max-w-[1280px] mx-auto px-6 lg:px-10 pt-12 pb-12 relative">
-        <nav className="text-xs mb-5 text-white/60" data-testid="cmp-breadcrumb">
-          <a href="/" className="hover:text-white/90">Home</a>
-          <span className="mx-2">›</span>
-          <a href="/ecosystem/industry-pulse" className="hover:text-white/90" style={{ color: P.tealLight }}>Ecosystem</a>
-          <span className="mx-2">›</span>
-          <a href="/ecosystem/industry-pulse" className="hover:text-white/90" style={{ color: P.tealLight }}>Industry Pulse</a>
-          <span className="mx-2">›</span>
-          <span className="text-white/90">Compare</span>
-        </nav>
-        <div className="text-[11px] uppercase tracking-[0.18em] font-bold mb-3" style={{ color: P.tealLight }}>
-          Industry Pulse · Compare
+    <div className="max-w-[1280px] mx-auto px-6 lg:px-10 pt-8">
+      <section
+        className="relative overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, #0a1628 0%, #0d2d3a 100%)",
+          borderRadius: 18,
+          padding: "38px 32px",
+          color: "#fff",
+        }}
+        data-testid="cmp-hero"
+      >
+        <svg aria-hidden className="pointer-events-none absolute right-0 top-6 opacity-40 hidden md:block"
+             width="580" height="280" viewBox="0 0 580 280" fill="none">
+          <defs>
+            <linearGradient id="cmpLine" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor={P.teal} stopOpacity="0.05" />
+              <stop offset="1" stopColor={P.teal} stopOpacity="0.7" />
+            </linearGradient>
+          </defs>
+          <path d="M0,220 L80,210 L160,190 L240,170 L320,140 L400,110 L480,80 L580,40"
+                stroke="url(#cmpLine)" strokeWidth="2" fill="none" />
+          <path d="M0,240 L80,230 L160,220 L240,200 L320,180 L400,160 L480,140 L580,120"
+                stroke={P.bColor} strokeOpacity="0.35" strokeWidth="1.5" fill="none" />
+        </svg>
+        <div className="relative">
+          <nav className="text-xs flex items-center gap-1.5 mb-5 text-white/70" data-testid="cmp-breadcrumb">
+            <a href="/" className="hover:text-white">Home</a>
+            <span>›</span>
+            <a href="/ecosystem" className="hover:text-white" style={{ color: "#F5B731" }}>Ecosystem</a>
+            <span>›</span>
+            <a href="/ecosystem/industry-pulse" className="hover:text-white" style={{ color: "#F5B731" }}>Industry Pulse</a>
+            <span>›</span>
+            <span className="text-white">Compare</span>
+          </nav>
+          <div
+            style={{
+              color: "#F5B731", fontSize: 15, fontWeight: 600,
+              letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 14,
+            }}
+          >
+            Industry Pulse · Compare
+          </div>
+          <h1
+            className="font-heading"
+            style={{
+              color: "#ffffff", fontSize: 44, fontWeight: 700,
+              lineHeight: 1.1, letterSpacing: "-0.01em", marginBottom: 16,
+            }}
+          >
+            Compare industries side-by-side
+          </h1>
+          <p className="text-white/70 text-base max-w-2xl leading-relaxed">
+            Pick two industries to see how Workday module adoption, demand, and adoption opportunities differ across them.
+          </p>
         </div>
-        <h1 className="text-4xl sm:text-5xl lg:text-[52px] font-bold leading-[1.08] mb-4 max-w-3xl">
-          Compare industries side-by-side
-        </h1>
-        <p className="text-white/70 text-base max-w-2xl leading-relaxed">
-          Pick two industries to see how Workday module adoption, demand, and adoption opportunities differ across them.
-        </p>
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }
 

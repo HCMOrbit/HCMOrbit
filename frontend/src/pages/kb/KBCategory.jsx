@@ -76,6 +76,7 @@ export default function KBCategory() {
       {cat && (
         <PageHero
           testId="kb-category-hero"
+          maxWidth="1300px"
           breadcrumb={
             <nav className="text-xs flex items-center gap-1.5 mb-5 text-white/70" data-testid="breadcrumb">
               <Link to="/knowledge-base" className="hover:underline" style={{ color: "#F5B731" }}>Knowledge Base</Link>
@@ -125,7 +126,7 @@ export default function KBCategory() {
           </form>
         </PageHero>
       )}
-      <div className="max-w-[1300px] mx-auto px-4 lg:px-8 py-6 flex gap-0 md:gap-0" style={{ minHeight: "calc(100vh - 64px)" }}>
+      <div className="max-w-[1300px] mx-auto px-6 lg:px-8 py-6 flex gap-0 md:gap-0" style={{ minHeight: "calc(100vh - 64px)" }}>
         <KBSidebar activeSlug={slug} activeSubModule={activeSubModule} width={effectiveWidth} />
         {!isMobile && (
           <div

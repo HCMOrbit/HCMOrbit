@@ -1,13 +1,15 @@
 import React from "react";
 import { useSearchParams, Navigate } from "react-router-dom";
-import { Calendar, Award } from "lucide-react";
+import { Calendar, Award, Newspaper } from "lucide-react";
 import AdminLayout from "../../components/AdminLayout";
 import EventsPanel from "./EventsPanel";
 import CertificationsPanel from "./CertificationsPanel";
+import NewsReviewPanel from "./NewsReviewPanel";
 
 const TABS = [
-  { key: "events",         label: "Events",              icon: Calendar, panel: <EventsPanel /> },
-  { key: "certifications", label: "Certification Watch", icon: Award,    panel: <CertificationsPanel /> },
+  { key: "events",         label: "Events",              icon: Calendar,   panel: <EventsPanel /> },
+  { key: "news-review",    label: "News Review",         icon: Newspaper,  panel: <NewsReviewPanel /> },
+  { key: "certifications", label: "Certification Watch", icon: Award,      panel: <CertificationsPanel /> },
 ];
 
 export default function AdminEcosystem() {
