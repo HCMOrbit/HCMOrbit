@@ -190,9 +190,6 @@ function Credential({ value, label }) {
                   Become a Founding Member
                 </Link>
               </div>
-              <p className="mt-4 text-xs text-white/50 max-w-2xl leading-relaxed" data-testid="hero-trust">
-                Built by a Workday practitioner with 17+ years of enterprise HCM experience across implementations, integrations, and support.
-              </p>
             </div>
           </div>
         </section>
