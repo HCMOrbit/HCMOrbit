@@ -26,6 +26,7 @@ from routes.intel import router as intel_router
 from routes.admin_intel import router as admin_intel_router
 from routes.admin_intel_ingest import router as admin_intel_ingest_router
 from routes.admin_kb_index import router as admin_kb_index_router
+from routes.ask import router as ask_router
 from welcome_emails import process_welcome_queue
 from jobs.rss_fetch import fetch_workday_news
 from jobs.event_archive import archive_stale_events
@@ -51,6 +52,7 @@ api.include_router(intel_router)
 api.include_router(admin_intel_router)
 api.include_router(admin_intel_ingest_router)
 api.include_router(admin_kb_index_router)
+api.include_router(ask_router)
 
 
 @api.get("/")
