@@ -1,0 +1,38 @@
+{
+  "summary": "Verified new GET /api/admin/kb/section-diagnostic/{reference_id} endpoint plus regression suite for chunker, reindex, and /api/ask. All 22 targeted tests + 10 existing chunker unit tests pass. Diagnostic returns full expected JSON shape on TA-CAREER-KB-001..006 with section_count_detected=15, missed_lines=[], and diagnosis text 'no fix needed'. Auth gate returns 401 on unauth/bad-token. Unknown reference_id returns 404 with helpful message echoing the ref. Chunker still parses all 6 TA-CAREER articles to exactly 15 sections. POST /admin/kb/reindex/HCM-CORE-KB-001 responds with proper report shape (200 in preview — chunker succeeds, embedder errors are captured but call did not 500 here). POST /api/ask returns the locked contract shape {answer, tenant_check, sources, in_scope} and — as expected with empty VOYAGE_API_KEY — falls back gracefully with in_scope=false, sources=[]. Diagnostic is safe to ship for the user to run on Railway.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_kb_section_diagnostic.py",
+    "/app/backend/tests/test_kb_chunker.py",
+    "/app/test_reports/pytest/iter10_diagnostic.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "admin_kb_index.py imports `re as _re` inline at line 200 instead of at the top of the file — cosmetic; the comment says 'to avoid touching imports at top', but a top-level `import re` would be cleaner and is trivially safe.",
+    "_HEADING_CANDIDATE_RE is intentionally broad (accepts roman numerals, `.)`,`:` separators, optional 'Section ' prefix, hashes, bold). Good breadth for diagnostic use. Confirm this regex stays confined to the diagnostic path — it must NEVER be plugged into the real chunker or false positives will explode chunk counts.",
+    "The diagnostic response omits a `body_preview` field. For the user's real production debugging, seeing the first ~200 chars of body alongside missed_lines could speed up pattern identification — nice-to-have, not blocking.",
+    "chunk_article() flags is_malformed=True for section_count != 15 but still indexes what parsed — this is documented and correct. Confirmed the diagnostic uses the same _H1_RE object, so 'section_count_detected' in the diagnostic is guaranteed to match the malformed check upstream.",
+    "The 500-path in POST /admin/kb/reindex/{ref} raises HTTPException(500, {...dict...}) — FastAPI will serialize the dict into `detail`, which is correct. Regression test exercises the 200 (success) branch here because chunker succeeds even without a Voyage key (embeddings just skip); consider adding a smoke test that FORCES the 500 path in the future."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_kb_section_diagnostic.py (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (22/22 new + 10/10 chunker unit tests)",
+    "frontend": "N/A (backend-only per E1 request)"
+  },
+  "test_credentials": "admin@hcmorbit.com / Admin123! from /app/memory/test_credentials.md — login succeeded, admin session verified",
+  "seed_data_creation": "None — used existing TA-CAREER-KB-001..006 and HCM-CORE-KB-001 fixtures already in kb_docs",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Diagnostic endpoint: GET /api/admin/kb/section-diagnostic/{reference_id}, behind require_admin. Returns 200 with keys {reference_id, title, body_length, current_regex_pattern, section_count_detected, current_regex_matches, candidate_headings, missed_lines, diagnosis}. Returns 401 unauth, 404 unknown ref. Regression suite at /app/backend/tests/test_kb_section_diagnostic.py — reuse for future changes to chunker or admin_kb_index routes. Preview env has VOYAGE_API_KEY='' — /api/ask falls back with in_scope=false; do NOT flag as bug. Reindex of HCM-CORE-KB-001 returns 200 in preview because chunker succeeds independently of embedder — embedder errors show up inside report.errors but articles_indexed can still be >0.",
+  "rca_of_the_issue": "N/A — this iteration is investigation/tooling validation, not a bug fix. The 55 malformed TA articles (TA-ONB-*, TA-JOBREQ-*) reported by the user do not exist in the preview DB, so the actual pattern-mismatch cannot be reproduced here. The diagnostic endpoint E1 built and this test suite verifies is the correct next step: the user runs it on Railway against a malformed article and the returned `missed_lines` will reveal whether the fix is (a) trivial regex tweak or (b) genuine content backlog."
+}

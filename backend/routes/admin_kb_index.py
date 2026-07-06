@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from core import db
 from dependencies import log_admin_action, require_admin
+from services.kb_indexing.chunker import _H1_RE, chunk_article
 from services.kb_indexing.embedder import (
     EMBEDDING_DIM, EMBEDDING_MODEL, VOYAGE_API_URL,
 )
@@ -193,3 +194,105 @@ async def admin_kb_health(admin: dict = Depends(require_admin)):
             "exception_message": str(e),
         }
     return result
+
+
+# ── Section-parse diagnostic ─────────────────────────────────────────────
+import re as _re  # local alias to avoid touching imports at top of file
+
+
+# Broad candidate scan — catches heading-like lines the current regex might
+# miss. Used ONLY for diagnostics; never for indexing.
+_HEADING_CANDIDATE_RE = _re.compile(
+    r"^\s*(?:#{0,4}\s*)?(?:\*{0,2}\s*)?"  # optional hashes + bold
+    r"(?:Section\s+)?"                    # optional "Section " prefix
+    r"([IVXLCDM]+|\d{1,3})"               # roman OR arabic number
+    r"\s*[\.\)\:]\s+"                     # separator: . ) or :
+    r"(.+?)\s*\*{0,2}\s*$",
+    _re.MULTILINE | _re.IGNORECASE,
+)
+
+
+@router.get("/admin/kb/section-diagnostic/{reference_id}")
+async def admin_section_diagnostic(
+    reference_id: str,
+    admin: dict = Depends(require_admin),
+):
+    """Show what the section chunker caught vs missed on a specific article.
+
+    Returned shape:
+        {
+          "reference_id": "...",
+          "title": "...",
+          "body_length": 42079,
+          "current_regex_pattern": "<pattern>",
+          "current_regex_matches": [{"line_no", "text"}],
+          "candidate_headings":    [{"line_no", "text", "matched_by_current_regex": bool}],
+          "missed_lines":          [{"line_no", "text"}],
+          "section_count_detected": 13,
+          "diagnosis": "..."
+        }
+
+    The `missed_lines` array is the actionable output — if 55 articles all show
+    the same shape of missed line (e.g. `## 5) Foo` with a paren separator),
+    the regex fix is trivial. If missed_lines is empty and detected < 15, the
+    article is genuinely authored short (content backlog).
+    """
+    doc = await db.kb_docs.find_one(
+        {"reference_id": reference_id},
+        {"_id": 0, "reference_id": 1, "title": 1, "body": 1},
+    )
+    if not doc:
+        raise HTTPException(404, f"article not found: reference_id={reference_id}")
+    body = doc.get("body") or ""
+
+    # What the CURRENT chunker regex matches (single source of truth — same
+    # object the real indexer uses).
+    strict_matches = set()
+    strict_details: list[dict] = []
+    for m in _H1_RE.finditer(body):
+        line_no = body.count("\n", 0, m.start())
+        line_text = body[m.start():m.end()].strip()
+        strict_matches.add(line_text)
+        strict_details.append({"line_no": line_no, "text": line_text})
+
+    # Broad candidate scan — everything that could plausibly be a section
+    # heading. Delta = what the strict regex missed.
+    candidates: list[dict] = []
+    missed: list[dict] = []
+    for m in _HEADING_CANDIDATE_RE.finditer(body):
+        line_no = body.count("\n", 0, m.start())
+        line_text = body[m.start():m.end()].strip()
+        matched = line_text in strict_matches
+        entry = {"line_no": line_no, "text": line_text, "matched_by_current_regex": matched}
+        candidates.append(entry)
+        if not matched:
+            missed.append({"line_no": line_no, "text": line_text})
+
+    diagnosis = (
+        f"Regex caught {len(strict_matches)} headings; broad scan found "
+        f"{len(candidates)} candidates. "
+    )
+    if len(strict_matches) == 15:
+        diagnosis += "Article parses cleanly to 15 sections — no fix needed."
+    elif missed:
+        diagnosis += (
+            f"{len(missed)} candidate heading(s) MISSED by current regex — "
+            f"likely a heading-format variant. Share `missed_lines` to fix."
+        )
+    else:
+        diagnosis += (
+            "No additional headings detected by broad scan — article appears "
+            "to be genuinely authored with fewer sections (content backlog)."
+        )
+
+    return {
+        "reference_id": reference_id,
+        "title": doc.get("title", ""),
+        "body_length": len(body),
+        "current_regex_pattern": _H1_RE.pattern,
+        "section_count_detected": len(strict_matches),
+        "current_regex_matches": strict_details,
+        "candidate_headings": candidates,
+        "missed_lines": missed,
+        "diagnosis": diagnosis,
+    }
