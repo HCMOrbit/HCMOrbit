@@ -161,8 +161,8 @@ function Credential({ value, label }) {
         >
           <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "32px 32px" }} />
           <div className="absolute right-0 top-0 w-[600px] h-[600px] rounded-full bg-[#0D9373]/15 blur-[120px] pointer-events-none" />
-          <div className="relative px-8 lg:px-12 py-20 lg:py-24">
-            <div className="max-w-3xl">
+          <div className="relative px-8 lg:px-10 py-12 lg:py-14">
+            <div className="max-w-[900px]">
               <div
                 data-testid="hero-eyebrow"
                 style={{
@@ -171,18 +171,18 @@ function Credential({ value, label }) {
                   fontWeight: 600,
                   letterSpacing: "0.14em",
                   textTransform: "uppercase",
-                  marginBottom: 18,
+                  marginBottom: 14,
                 }}
               >
                 Independent community for the Workday ecosystem
               </div>
-              <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05]">
+              <h1 className="font-heading text-4xl sm:text-5xl lg:text-[52px] font-bold tracking-tight leading-[1.05]">
                 The Community Where Workday Professionals <span className="text-[#0D9373]">Learn, Solve,</span> and Grow
               </h1>
-              <p className="mt-6 text-lg lg:text-xl text-white/70 max-w-2xl leading-relaxed">
+              <p className="mt-4 text-base lg:text-lg text-white/70 max-w-2xl leading-relaxed">
                 Join Workday HCM, Payroll, Integrations, Reporting, and Security professionals solving real-world challenges, sharing best practices, and building their careers together.
               </p>
-              <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
                 <Link to="/register" className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white font-medium transition-colors" data-testid="hero-cta-join">
                   Join the Community <ArrowRight className="w-4 h-4" />
                 </Link>
@@ -190,7 +190,7 @@ function Credential({ value, label }) {
                   Become a Founding Member
                 </Link>
               </div>
-              <p className="mt-6 text-sm text-white/50 max-w-2xl leading-relaxed" data-testid="hero-trust">
+              <p className="mt-4 text-xs text-white/50 max-w-2xl leading-relaxed" data-testid="hero-trust">
                 Built by a Workday practitioner with 17+ years of enterprise HCM experience across implementations, integrations, and support.
               </p>
             </div>
