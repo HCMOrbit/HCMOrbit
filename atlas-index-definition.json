@@ -1,0 +1,53 @@
+{
+  "_comment": "Atlas Vector Search index definition for Ask Orbit RAG. Paste this JSON into the Atlas UI at:  Database → your cluster → Search → Create Search Index → JSON Editor.  Database: <your db> · Collection: kb_chunks · Index Name: kb_chunks_vector_index.  Dimension 1024 matches Voyage voyage-3. If you switch to voyage-3-lite (512-dim), change 'numDimensions' below and re-index everything.",
+
+  "type": "vectorSearch",
+  "definition": {
+    "fields": [
+      {
+        "type": "vector",
+        "path": "embedding",
+        "numDimensions": 1024,
+        "similarity": "cosine"
+      },
+      {
+        "type": "filter",
+        "path": "reference_id"
+      },
+      {
+        "type": "filter",
+        "path": "section_number"
+      },
+      {
+        "type": "filter",
+        "path": "embedding_model"
+      }
+    ]
+  },
+
+  "_usage_notes": {
+    "index_name_used_by_backend": "kb_chunks_vector_index",
+    "similarity": "cosine — Voyage models are L2-normalized so cosine and dot-product are equivalent; cosine is the safer default.",
+    "filters": [
+      "reference_id — cite a specific article, or exclude one from retrieval",
+      "section_number — narrow retrieval to e.g. only 'Failure Patterns' (§8) chunks",
+      "embedding_model — safety net during model migrations so you can filter to the current model only"
+    ],
+    "example_pipeline": [
+      { "$vectorSearch": {
+          "index": "kb_chunks_vector_index",
+          "path": "embedding",
+          "queryVector": "<1024-dim float[] from Voyage /embeddings with input_type=query>",
+          "numCandidates": 100,
+          "limit": 5
+      }},
+      { "$project": {
+          "_id": 0,
+          "chunk_id": 1, "reference_id": 1, "doc_title": 1,
+          "section_number": 1, "section_title": 1, "subsection": 1,
+          "text": 1,
+          "score": { "$meta": "vectorSearchScore" }
+      }}
+    ]
+  }
+}
