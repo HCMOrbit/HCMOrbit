@@ -9,6 +9,7 @@ Both operations return an `IndexReport` for logging and admin UI display.
 from __future__ import annotations
 
 import logging
+import traceback
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
@@ -137,7 +138,13 @@ async def _index_one_article(article: dict, report: IndexReport) -> None:
 
 
 async def reindex_article(reference_id: str) -> IndexReport:
-    """Rebuild chunks + embeddings for one article. Idempotent."""
+    """Rebuild chunks + embeddings for one article. Idempotent.
+
+    Captures ANY exception (Voyage HTTP, Mongo insert, chunker bugs) into
+    `report.errors` with the full type + message + traceback tail. The
+    admin route reflects that into its HTTP 500 body so callers can debug
+    without shell access to the deploy environment.
+    """
     report = IndexReport(started_at=datetime.now(timezone.utc).isoformat())
     article = await _load_article(reference_id)
     if not article:
@@ -145,7 +152,12 @@ async def reindex_article(reference_id: str) -> IndexReport:
         report.finished_at = datetime.now(timezone.utc).isoformat()
         return report
     report.articles_processed = 1
-    await _index_one_article(article, report)
+    try:
+        await _index_one_article(article, report)
+    except Exception as e:  # noqa: BLE001 — surface any bug into the report
+        log.exception("reindex_article failed for %s", reference_id)
+        tb_tail = "\n".join(traceback.format_exception(type(e), e, e.__traceback__))[-1200:]
+        report.errors.append(f"{reference_id}: {type(e).__name__}: {e}\n{tb_tail}")
     report.finished_at = datetime.now(timezone.utc).isoformat()
     log.info(f"Re-indexed article {reference_id}: {report.as_dict()}")
     return report
