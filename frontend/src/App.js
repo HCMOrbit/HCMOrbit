@@ -48,6 +48,8 @@ import CookieBanner from "@/components/CookieBanner";
 import SiteFooter from "@/components/SiteFooter";
 import ScrollToHash from "@/components/ScrollToHash";
 import AuthCallback from "@/components/AuthCallback";
+import AskOrbitWidget from "@/components/AskOrbitWidget";
+import KBRefResolver from "@/pages/kb/KBRefResolver";
 
 function AppRoutes() {
   const location = useLocation();
@@ -94,6 +96,7 @@ function AppRoutes() {
       <Route path="/admin/ecosystem-certifications" element={<RedirectToCertifications />} />
       <Route path="/admin/contact" element={<AdminContact />} />
       <Route path="/knowledge-base" element={<KBHome />} />
+      <Route path="/knowledge-base/by-ref/:referenceId" element={<KBRefResolver />} />
       <Route path="/knowledge-base/search" element={<KBGlobalSearch />} />
       <Route path="/knowledge-base/new" element={<NewKBDoc />} />
       <Route path="/knowledge-base/:slug" element={<KBCategory />} />
@@ -138,6 +141,7 @@ export default function App() {
         <AppRoutes />
         <GlobalFooter />
         <CookieBanner />
+        <AskOrbitWidget />
         <Toaster position="bottom-right" richColors closeButton />
       </BrowserRouter>
     </AuthProvider>
