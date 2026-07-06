@@ -33,17 +33,28 @@ import re
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
-# H1 numbered section boundary. Matches:
-#   "8. Failure Patterns"
-#   "# 8. Failure Patterns"
-#   "  8.  Failure Patterns"
-_H1_RE = re.compile(r"^\s*#{0,2}\s*(\d{1,2})\.\s+(.+?)\s*$", re.MULTILINE)
+# H1 numbered section boundary. Real HCMOrbit KB articles use `## **1. Title**`
+# (H2 with bold-wrapped title), but we also accept `# 8. Foo` and plain
+# `8. Foo` for tolerance. The parser matches by the LEADING NUMBER, not the
+# title text — heading wording varies per article.
+#   `#{1,4}` — 1–4 hashes (H1..H4). "H1" in spec means "top-level heading"
+#             which for HCMOrbit content is `##` in practice.
+#   `\*{0,2}` — tolerate opening `**` bold wrap
+#   `(\d{1,2})\.` — the section number (spec's anchor)
+#   `\s+(.+?)` — the title text
+#   `\*{0,2}\s*$` — tolerate closing `**` bold wrap
+_H1_RE = re.compile(
+    r"^\s*#{1,4}\s*\*{0,2}\s*(\d{1,2})\.\s+(.+?)\s*\*{0,2}\s*$",
+    re.MULTILINE,
+)
 
-# H2 subheading — for splitting long sections. Matches:
-#   "## 8.2 Retro pay miscalculation"
-#   "## Failure 1: Late arrivals"
-#   "### 4.1 Something"
-_H2_RE = re.compile(r"^\s{0,3}#{2,3}\s+(.+?)\s*$", re.MULTILINE)
+# H2 subheading — for splitting long sections. Real docs use `### **3.1 Foo**`
+# (H3 with decimal number and bold wrap). We also accept plain patterns
+# like `## Failure 1: …` for tolerance.
+_H2_RE = re.compile(
+    r"^\s{0,3}#{2,4}\s*\*{0,2}\s*(.+?)\s*\*{0,2}\s*$",
+    re.MULTILINE,
+)
 
 # Section length above which we sub-split on H2s. Chunks aim for 200–800 words.
 _SUBSPLIT_THRESHOLD_WORDS = 800
