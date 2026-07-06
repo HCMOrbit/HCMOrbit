@@ -4,13 +4,21 @@ Behind `require_admin`. Endpoints:
     POST /admin/kb/reindex/{reference_id}   — re-index one article
     POST /admin/kb/reindex-all              — full rebuild (all published articles)
     GET  /admin/kb/index-stats              — chunk collection health check
+    GET  /admin/kb/health                   — live Voyage ping / env sanity check
 """
 from __future__ import annotations
 
+import os
+import time
+
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
+
 from core import db
 from dependencies import log_admin_action, require_admin
-from services.kb_indexing.embedder import EMBEDDING_DIM, EMBEDDING_MODEL
+from services.kb_indexing.embedder import (
+    EMBEDDING_DIM, EMBEDDING_MODEL, VOYAGE_API_URL,
+)
 from services.kb_indexing.indexer import reindex_all, reindex_article
 
 router = APIRouter()
@@ -22,13 +30,19 @@ async def admin_reindex_article(
     admin: dict = Depends(require_admin),
 ):
     """Rebuild chunks + embeddings for a single article. Idempotent —
-    re-running deletes and replaces the article's chunks, never duplicates."""
+    re-running deletes and replaces the article's chunks, never duplicates.
+
+    On failure returns HTTP 500 with the actual exception details in
+    `detail.errors` — callers should not need to consult deploy logs to
+    understand why an indexing call failed.
+    """
     report = await reindex_article(reference_id)
     if report.errors and report.articles_indexed == 0:
-        # Article not found → 404. Any other error → 500.
+        # Article not found → 404. Any other error → 500 WITH the report so
+        # callers can see the exception type + traceback tail.
         if any("not found" in e for e in report.errors):
             raise HTTPException(404, report.errors[0])
-        raise HTTPException(500, "; ".join(report.errors))
+        raise HTTPException(500, {"message": "reindex failed", "report": report.as_dict()})
     await log_admin_action(
         admin, "kb_reindex_article",
         note=f"{reference_id} → {report.chunks_created} chunks",
@@ -115,4 +129,67 @@ async def admin_index_stats(
                 "vector_first_5_dims": vec[:5],
                 "indexed_at": c.get("indexed_at"),
             }
+    return result
+
+
+
+@router.get("/admin/kb/health")
+async def admin_kb_health(admin: dict = Depends(require_admin)):
+    """Live diagnostic for the indexing pipeline.
+
+    Reports:
+      • Whether VOYAGE_API_KEY is readable at runtime (bool + length; no key echoed)
+      • Whether api.voyageai.com is reachable and returns a valid vector for a
+        one-token test input
+      • The exact upstream HTTP status + response body tail on any failure
+        so you don't need deploy logs to diagnose a 500 elsewhere
+
+    Safe to call anytime — spends one Voyage call (a few tokens).
+    """
+    key = os.environ.get("VOYAGE_API_KEY", "")
+    key_present = bool(key)
+    result: dict = {
+        "voyage_key_present": key_present,
+        "voyage_key_length": len(key),
+        "voyage_model_configured": EMBEDDING_MODEL,
+        "voyage_expected_dim": EMBEDDING_DIM,
+        "voyage_api_url": VOYAGE_API_URL,
+        "voyage_test_call": None,
+    }
+    if not key_present:
+        result["voyage_test_call"] = {
+            "ok": False,
+            "reason": "VOYAGE_API_KEY env var is empty or unset in this environment",
+        }
+        return result
+
+    payload = {"input": ["ping"], "model": EMBEDDING_MODEL, "input_type": "query"}
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    started = time.monotonic()
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(VOYAGE_API_URL, json=payload, headers=headers)
+        latency_ms = round((time.monotonic() - started) * 1000, 1)
+        info = {
+            "ok": resp.status_code == 200,
+            "http_status": resp.status_code,
+            "latency_ms": latency_ms,
+        }
+        if resp.status_code == 200:
+            data = resp.json()
+            vec = data.get("data", [{}])[0].get("embedding", [])
+            info["vector_length"] = len(vec)
+            info["vector_first_5_dims"] = vec[:5]
+            info["voyage_model_returned"] = data.get("model")
+        else:
+            # Include short body so caller sees whether it's 401 (bad key),
+            # 429 (rate-limited), 400 (payload issue), etc.
+            info["response_body_tail"] = resp.text[:400]
+        result["voyage_test_call"] = info
+    except httpx.HTTPError as e:
+        result["voyage_test_call"] = {
+            "ok": False,
+            "exception_type": type(e).__name__,
+            "exception_message": str(e),
+        }
     return result
