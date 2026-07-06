@@ -8,7 +8,6 @@ Behind `require_admin`. Endpoints:
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-
 from core import db
 from dependencies import log_admin_action, require_admin
 from services.kb_indexing.embedder import EMBEDDING_DIM, EMBEDDING_MODEL
@@ -55,9 +54,21 @@ async def admin_reindex_all(
 
 
 @router.get("/admin/kb/index-stats")
-async def admin_index_stats(admin: dict = Depends(require_admin)):
+async def admin_index_stats(
+    verify_vectors: bool = Query(
+        False,
+        description="If true, also samples one random chunk and returns its "
+                    "embedding dim + first 5 dims — cheap live sanity check "
+                    "that Voyage-issued vectors landed in kb_chunks correctly.",
+    ),
+    admin: dict = Depends(require_admin),
+):
     """Sanity check for the vector store — how many chunks, how many unique
-    articles indexed, average chunks/article, embedding model in use."""
+    articles indexed, average chunks/article, embedding model in use.
+
+    Set `?verify_vectors=true` to also pull one sample chunk's embedding
+    metadata into the response so you can validate the pipeline end-to-end
+    with a single curl (no shell/DB access needed)."""
     total_chunks = await db.kb_chunks.count_documents({})
     # Distinct reference_ids indexed
     distinct = await db.kb_chunks.distinct("reference_id")
@@ -67,7 +78,7 @@ async def admin_index_stats(admin: dict = Depends(require_admin)):
     # Confirm all chunks agree on model + dim (drift check)
     models = await db.kb_chunks.distinct("embedding_model")
     dims = await db.kb_chunks.distinct("embedding_dim")
-    return {
+    result = {
         "total_chunks": total_chunks,
         "articles_indexed": articles_indexed,
         "avg_chunks_per_article": avg,
@@ -76,3 +87,32 @@ async def admin_index_stats(admin: dict = Depends(require_admin)):
         "embedding_models_in_collection": models,
         "embedding_dims_in_collection": dims,
     }
+    if verify_vectors and total_chunks > 0:
+        # Pick a small deterministic sample so repeat calls return the same doc
+        # (avoids the "was that a fresh embed?" confusion when re-checking).
+        # We use $sample for random pick — one chunk is enough for shape check.
+        pipeline = [
+            {"$sample": {"size": 1}},
+            {"$project": {
+                "_id": 0, "chunk_id": 1, "reference_id": 1,
+                "section_number": 1, "section_title": 1,
+                "embedding_model": 1, "embedding_dim": 1,
+                "embedding": 1, "indexed_at": 1,
+            }},
+        ]
+        docs = await db.kb_chunks.aggregate(pipeline).to_list(1)
+        if docs:
+            c = docs[0]
+            vec = c.get("embedding") or []
+            result["sample_chunk"] = {
+                "chunk_id": c.get("chunk_id"),
+                "reference_id": c.get("reference_id"),
+                "section_number": c.get("section_number"),
+                "section_title": c.get("section_title"),
+                "embedding_model": c.get("embedding_model"),
+                "embedding_dim_recorded": c.get("embedding_dim"),
+                "vector_length_actual": len(vec),
+                "vector_first_5_dims": vec[:5],
+                "indexed_at": c.get("indexed_at"),
+            }
+    return result
