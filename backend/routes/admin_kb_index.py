@@ -199,6 +199,16 @@ async def admin_kb_health(admin: dict = Depends(require_admin)):
 # ── Section-parse diagnostic ─────────────────────────────────────────────
 import re as _re  # local alias to avoid touching imports at top of file
 
+# Ask Orbit retrieval diagnostic imports
+import traceback as _traceback
+from services.ask_orbit.retriever import (
+    ATLAS_INDEX_NAME as _ATLAS_INDEX_NAME,
+    NUM_CANDIDATES as _NUM_CANDIDATES,
+    RELEVANCE_THRESHOLD as _RELEVANCE_THRESHOLD,
+    TOP_K as _TOP_K,
+)
+from services.kb_indexing.embedder import embed_texts as _embed_texts
+
 
 # Broad candidate scan — catches heading-like lines the current regex might
 # miss. Used ONLY for diagnostics; never for indexing.
@@ -296,3 +306,113 @@ async def admin_section_diagnostic(
         "missed_lines": missed,
         "diagnosis": diagnosis,
     }
+
+
+# ── Ask Orbit retrieval diagnostic ────────────────────────────────────────
+@router.get("/admin/kb/ask-diagnostic")
+async def admin_ask_diagnostic(
+    q: str = Query("How do I check security groups assigned to a user?",
+                   description="Test question — anything with real KB coverage."),
+    with_filter: bool = Query(True,
+        description="If false, drop the `embedding_model` filter clause "
+                    "to isolate whether the filter path is the culprit."),
+    admin: dict = Depends(require_admin),
+):
+    """Live retrieval-pipeline diagnostic — surfaces the exact exception from
+    `$vectorSearch` (or the query-time Voyage embed) in the HTTP response so
+    you don't need deploy-log access to diagnose Ask Orbit failures.
+
+    Returns a stepwise breakdown:
+      1. voyage_query_embed → ok/err + vector length
+      2. vector_search       → ok/err + n results + top score, OR full
+                               exception type / message / traceback tail
+      3. pipeline_used       → the exact aggregation pipeline (queryVector
+                               truncated to first 5 dims for brevity)
+
+    Set `?with_filter=false` to run the SAME query without the
+    `embedding_model` filter clause — if the un-filtered call succeeds but
+    the filtered one fails, the Atlas index is missing the
+    `embedding_model` filter path.
+    """
+    out: dict = {
+        "question": q,
+        "index_name": _ATLAS_INDEX_NAME,
+        "top_k": _TOP_K,
+        "num_candidates": _NUM_CANDIDATES,
+        "relevance_threshold": _RELEVANCE_THRESHOLD,
+        "embedding_model_expected": EMBEDDING_MODEL,
+        "with_filter": with_filter,
+    }
+
+    # Step 1: query-time embed via Voyage
+    embed_step: dict = {"ok": False}
+    try:
+        vectors = await _embed_texts([q], input_type="query")
+        vec = vectors[0]
+        embed_step["ok"] = True
+        embed_step["vector_length"] = len(vec)
+        embed_step["vector_first_5_dims"] = vec[:5]
+    except Exception as e:  # noqa: BLE001
+        embed_step["exception_type"] = type(e).__name__
+        embed_step["exception_message"] = str(e)
+        embed_step["traceback_tail"] = _traceback.format_exc()[-1200:]
+        out["voyage_query_embed"] = embed_step
+        out["vector_search"] = {"skipped": "query embed failed"}
+        return out
+    out["voyage_query_embed"] = embed_step
+
+    # Step 2: run the ACTUAL retriever pipeline against Atlas
+    vs_stage: dict = {
+        "index": _ATLAS_INDEX_NAME,
+        "path": "embedding",
+        "queryVector": "<omitted — see vector_first_5_dims>",
+        "numCandidates": _NUM_CANDIDATES,
+        "limit": _TOP_K,
+    }
+    if with_filter:
+        vs_stage["filter"] = {"embedding_model": {"$eq": EMBEDDING_MODEL}}
+    real_vs_stage = dict(vs_stage)
+    real_vs_stage["queryVector"] = vec
+    pipeline = [
+        {"$vectorSearch": real_vs_stage},
+        {"$project": {
+            "_id": 0,
+            "chunk_id": 1, "reference_id": 1, "doc_title": 1,
+            "section_number": 1, "section_title": 1,
+            "text_preview": {"$substrCP": [{"$ifNull": ["$text", ""]}, 0, 120]},
+            "score": {"$meta": "vectorSearchScore"},
+        }},
+    ]
+    out["pipeline_used"] = [
+        {"$vectorSearch": vs_stage},
+        pipeline[1],
+    ]
+
+    vs_step: dict = {"ok": False}
+    try:
+        docs = await db.kb_chunks.aggregate(pipeline).to_list(_TOP_K)
+        vs_step["ok"] = True
+        vs_step["result_count"] = len(docs)
+        vs_step["top_score"] = docs[0]["score"] if docs else None
+        vs_step["hits"] = [
+            {
+                "reference_id": d.get("reference_id"),
+                "section_number": d.get("section_number"),
+                "section_title": d.get("section_title"),
+                "score": d.get("score"),
+                "text_preview": d.get("text_preview"),
+            } for d in docs
+        ]
+    except Exception as e:  # noqa: BLE001
+        vs_step["exception_type"] = type(e).__name__
+        vs_step["exception_message"] = str(e)
+        vs_step["traceback_tail"] = _traceback.format_exc()[-2000:]
+        # If pymongo attaches server error code / codeName, surface them
+        for attr in ("code", "codeName", "details"):
+            val = getattr(e, attr, None)
+            if val is not None:
+                vs_step[f"pymongo_{attr}"] = val if not isinstance(val, dict) else {
+                    k: v for k, v in val.items() if k in ("code", "codeName", "errmsg", "operationTime")
+                }
+    out["vector_search"] = vs_step
+    return out
