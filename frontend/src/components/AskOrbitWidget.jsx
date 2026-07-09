@@ -1,17 +1,29 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { X, Send, MessageCircle, ExternalLink, ArrowRight, Loader2 } from "lucide-react";
 import { api, formatApiError } from "../lib/api";
+
+// Proactive cue timings.
+const WELCOME_DELAY_MS = 10000; // 10s after mount
+const IDLE_DELAY_MS = 50000;    // 45–60s window; use 50s
 
 /**
  * Ask Orbit — floating global assistant widget.
  *
- * Mount once at the app root (outside the Router), so it renders on every
+ * Mount once at the app root, inside BrowserRouter, so it renders on every
  * route and survives navigation. Collapsed → circular FAB bottom-right.
  * Expanded → 400px panel on desktop, full-screen sheet on mobile.
  *
  * State is React-only (no localStorage) — thread resets on reload, per spec.
+ *
+ * Proactive surfacing:
+ *  - Welcome cue: 10s after first mount, small tooltip near FAB (once per session).
+ *  - Idle cue: 50s of no click/scroll/keydown on the same route, dismissible per route.
+ *  - Both suppressed once the user opens the panel at least once.
+ *  - At most ONE cue per page view.
  */
 export default function AskOrbitWidget() {
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [turns, setTurns] = useState([]); // [{ role, content } | { role: "answer", payload }]
   const [input, setInput] = useState("");
@@ -19,10 +31,107 @@ export default function AskOrbitWidget() {
   const [errorMsg, setErrorMsg] = useState(null);
   const scrollRef = useRef(null);
 
+  // Proactive-cue state.
+  const [cueType, setCueType] = useState(null); // null | "welcome" | "idle"
+  const [pulse, setPulse] = useState(false);
+  const openedOnceRef = useRef(false);
+  const welcomeShownRef = useRef(false);
+  const idleDismissedRoutesRef = useRef(new Set());
+  const cuedThisRouteRef = useRef(false);
+  const cueTypeRef = useRef(null); // mirrors cueType for use inside timer callbacks
+  const tooltipRef = useRef(null);
+  const fabRef = useRef(null);
+
+  useEffect(() => { cueTypeRef.current = cueType; }, [cueType]);
+
   useEffect(() => {
     // Autoscroll on new turn.
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [turns, sending]);
+
+  const openWidget = useCallback(() => {
+    openedOnceRef.current = true;
+    setCueType(null);
+    setPulse(false);
+    setOpen(true);
+  }, []);
+
+  const dismissCue = useCallback(() => {
+    setCueType((cur) => {
+      if (cur === "idle") idleDismissedRoutesRef.current.add(location.pathname);
+      return null;
+    });
+    setPulse(false);
+  }, [location.pathname]);
+
+  const openFromCue = useCallback(() => {
+    idleDismissedRoutesRef.current.add(location.pathname);
+    openWidget();
+  }, [location.pathname, openWidget]);
+
+  // Welcome cue — 10s after first mount, once per session, only if user hasn't opened widget.
+  useEffect(() => {
+    if (welcomeShownRef.current || openedOnceRef.current) return;
+    const t = setTimeout(() => {
+      if (openedOnceRef.current || welcomeShownRef.current) return;
+      if (cueTypeRef.current) return; // another cue already showing
+      welcomeShownRef.current = true;
+      cuedThisRouteRef.current = true;
+      setCueType("welcome");
+      setPulse(true);
+    }, WELCOME_DELAY_MS);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Idle cue — re-arms on every route entry, resets on click/scroll/keydown.
+  useEffect(() => {
+    // Reset per-route cap on route change. Preserve it if welcome is still on screen
+    // (welcome counts as this route's one allowed cue).
+    cuedThisRouteRef.current = cueTypeRef.current === "welcome";
+    // Dismiss any lingering idle tooltip on nav.
+    setCueType((cur) => (cur === "idle" ? null : cur));
+
+    if (openedOnceRef.current) return undefined;
+
+    let idleTimer;
+    const armTimer = () => {
+      clearTimeout(idleTimer);
+      if (openedOnceRef.current) return;
+      if (idleDismissedRoutesRef.current.has(location.pathname)) return;
+      idleTimer = setTimeout(() => {
+        if (openedOnceRef.current) return;
+        if (cueTypeRef.current) return; // welcome (or anything else) is on screen — suppress idle
+        if (cuedThisRouteRef.current) return; // already used this route's cue slot
+        if (idleDismissedRoutesRef.current.has(location.pathname)) return;
+        cuedThisRouteRef.current = true;
+        setCueType("idle");
+      }, IDLE_DELAY_MS);
+    };
+
+    const onInteract = () => armTimer();
+    armTimer();
+    window.addEventListener("click", onInteract, { passive: true });
+    window.addEventListener("scroll", onInteract, { passive: true });
+    window.addEventListener("keydown", onInteract, { passive: true });
+    return () => {
+      clearTimeout(idleTimer);
+      window.removeEventListener("click", onInteract);
+      window.removeEventListener("scroll", onInteract);
+      window.removeEventListener("keydown", onInteract);
+    };
+  }, [location.pathname]);
+
+  // Click-outside → dismiss tooltip. Do not dismiss when clicking FAB or tooltip itself.
+  useEffect(() => {
+    if (!cueType) return undefined;
+    const onDocClick = (e) => {
+      if (tooltipRef.current?.contains(e.target)) return;
+      if (fabRef.current?.contains(e.target)) return;
+      dismissCue();
+    };
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, [cueType, dismissCue]);
 
   const submit = async (e) => {
     e?.preventDefault?.();
@@ -53,34 +162,65 @@ export default function AskOrbitWidget() {
     <>
       {/* Collapsed floating button */}
       {!open && (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Ask Orbit"
-          data-testid="ask-orbit-fab"
-          style={{
-            position: "fixed",
-            bottom: 24,
-            right: 24,
-            zIndex: 9999,
-            width: 56,
-            height: 56,
-            borderRadius: "50%",
-            background: "#1B3A6B",
-            color: "#fff",
-            border: "none",
-            boxShadow: "0 8px 24px rgba(15, 23, 42, 0.24)",
-            cursor: "pointer",
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "transform 120ms ease, background 120ms ease",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.04)")}
-          onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-        >
-          <MessageCircle className="w-6 h-6" />
-        </button>
+        <>
+          <button
+            ref={fabRef}
+            type="button"
+            onClick={openWidget}
+            aria-label="Ask Orbit"
+            data-testid="ask-orbit-fab"
+            style={{
+              position: "fixed",
+              bottom: 24,
+              right: 24,
+              zIndex: 9999,
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              background: "#1B3A6B",
+              color: "#fff",
+              border: "none",
+              boxShadow: "0 8px 24px rgba(15, 23, 42, 0.24)",
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "transform 120ms ease, background 120ms ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.04)")}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          >
+            {pulse && (
+              <span
+                aria-hidden="true"
+                data-testid="ask-orbit-fab-pulse"
+                style={{
+                  position: "absolute",
+                  inset: -4,
+                  borderRadius: "50%",
+                  border: "2px solid rgba(245, 183, 49, 0.7)",
+                  animation: "askorbit-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite",
+                  pointerEvents: "none",
+                }}
+              />
+            )}
+            <MessageCircle className="w-6 h-6" />
+          </button>
+          {cueType && (
+            <ProactiveCue
+              ref={tooltipRef}
+              type={cueType}
+              onOpen={openFromCue}
+              onDismiss={dismissCue}
+            />
+          )}
+          <style>{`
+            @keyframes askorbit-ping {
+              0%   { transform: scale(1);    opacity: 0.85; }
+              80%, 100% { transform: scale(1.35); opacity: 0; }
+            }
+          `}</style>
+        </>
       )}
 
       {/* Expanded panel — desktop 400px, mobile full-screen sheet */}
@@ -210,6 +350,79 @@ function EmptyState() {
     </div>
   );
 }
+
+const ProactiveCue = React.forwardRef(function ProactiveCue({ type, onOpen, onDismiss }, ref) {
+  const isWelcome = type === "welcome";
+  const label = isWelcome
+    ? "New here? Ask me anything about Workday."
+    : "Stuck? Ask Orbit anything about this page.";
+  return (
+    <div
+      ref={ref}
+      role="status"
+      aria-live="polite"
+      data-testid={isWelcome ? "ask-orbit-cue-welcome" : "ask-orbit-cue-idle"}
+      style={{
+        position: "fixed",
+        bottom: 90, // 24 (FAB bottom) + 56 (FAB) + 10 gap
+        right: 24,
+        zIndex: 9998,
+        maxWidth: 260,
+        background: "#0A1628",
+        color: "#fff",
+        borderRadius: 12,
+        boxShadow: "0 12px 32px rgba(15, 23, 42, 0.28)",
+        border: "1px solid rgba(245, 183, 49, 0.35)",
+        padding: "10px 12px",
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 8,
+        animation: "askorbit-cue-in 220ms ease-out",
+      }}
+    >
+      <style>{`
+        @keyframes askorbit-cue-in {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+      <button
+        type="button"
+        onClick={onOpen}
+        data-testid="ask-orbit-cue-open"
+        className="text-left flex-1 text-[13px] leading-snug font-medium hover:underline"
+        style={{ background: "transparent", border: "none", color: "#fff", cursor: "pointer", padding: 0 }}
+      >
+        {label}
+      </button>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        data-testid="ask-orbit-cue-dismiss"
+        className="flex-shrink-0 rounded p-0.5 hover:bg-white/10 transition-colors"
+        style={{ background: "transparent", border: "none", color: "#94A3B8", cursor: "pointer" }}
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+      {/* Down-pointing arrow toward FAB */}
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          bottom: -6,
+          right: 22,
+          width: 12,
+          height: 12,
+          background: "#0A1628",
+          borderRight: "1px solid rgba(245, 183, 49, 0.35)",
+          borderBottom: "1px solid rgba(245, 183, 49, 0.35)",
+          transform: "rotate(45deg)",
+        }}
+      />
+    </div>
+  );
+});
 
 function UserBubble({ text }) {
   return (
