@@ -4,7 +4,6 @@ import {
   Brain, Workflow, RefreshCcw, ArrowRight, Sparkles,
 } from "lucide-react";
 import { TRACKS, INTERVIEW_SETS } from "../data";
-import StatRow from "../components/StatRow";
 import getStudyPlan, { ROLES } from "../../services/studyPlan";
 import {
   T as SP_T,
@@ -304,14 +303,8 @@ function InterviewTab() {
         )}
       </div>
 
-      <StatRow
-        items={[
-          { label: "Best core",      value: "—" },
-          { label: "Best scenario",  value: "—" },
-          { label: "Last attempt",   value: "—" },
-          { label: "Bookmarked",     value: "0" },
-        ]}
-      />
+      {/* Progress stats row (Best core / Best scenario / Last attempt /
+          Bookmarked) hidden until per-user progress tracking is wired. */}
 
       <MissLoopStrip missedCount={0} />
     </div>
