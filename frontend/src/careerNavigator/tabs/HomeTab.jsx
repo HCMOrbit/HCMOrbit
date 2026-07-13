@@ -4,7 +4,6 @@ import {
   ArrowRight, Map, MessageSquare,
 } from "lucide-react";
 import { TRACKS } from "../data";
-import StatRow from "../components/StatRow";
 
 // Map our data-icon tokens to lucide-react icon components.
 const ICONS = {
@@ -153,14 +152,8 @@ function HomeTabBody({ onSetTab }) {
         </div>
       </div>
 
-      <StatRow
-        items={[
-          { label: "Tracks started", value: "—" },
-          { label: "Articles read",  value: "—" },
-          { label: "Checkpoints",    value: "—" },
-          { label: "Milestones",     value: "0" },
-        ]}
-      />
+      {/* Progress stats row hidden until tracks-started / articles-read /
+          checkpoints / milestones progress tracking is wired end-to-end. */}
     </div>
   );
 }

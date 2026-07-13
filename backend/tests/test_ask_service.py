@@ -69,7 +69,7 @@ class TestHappyPath:
         async def fake_retrieve(q):
             return RetrievalResult(chunks=chunks, top_score=0.82, in_scope=True)
 
-        async def fake_generate(*, question, chunks, history):
+        async def fake_generate(*, question, chunks, history=None):
             return AskOrbitAnswer(
                 answer="Direct answer here.",
                 tenant_check=None,

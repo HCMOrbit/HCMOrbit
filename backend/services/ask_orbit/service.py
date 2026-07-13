@@ -79,7 +79,11 @@ async def ask(*, question: str, history: list[dict] | None = None) -> dict:
         gen = await generate_answer(
             question=question,
             chunks=retrieval.chunks,
-            history=history or [],
+            # Multi-turn intentionally OFF — history is not passed to the model.
+            # The prior implementation surfaced a "answer both questions at once"
+            # bug where retrieval was scoped to the current question but the
+            # model still tried to address earlier turns. Reintroduce this
+            # deliberately (behind an explicit flag / new prompt clause) later.
         )
     except GenerationError as e:
         log.exception("Anthropic generation failed")
