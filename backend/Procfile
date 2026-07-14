@@ -1,0 +1,1 @@
+web: pip install certifi && python -c "import certifi; import os; os.environ['SSL_CERT_FILE'] = certifi.where()" && uvicorn server:app --host 0.0.0.0 --port $PORT
