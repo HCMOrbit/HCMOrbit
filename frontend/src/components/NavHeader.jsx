@@ -589,11 +589,11 @@ export default function NavHeader() {
   return (
     <>
       <header className="sticky top-0 z-40 bg-white border-b border-[#E2E8F0]" data-testid="nav-header">
-        <div className="max-w-[1440px] mx-auto px-4 lg:px-8 h-20 flex items-center justify-between gap-6">
+        <div className="max-w-[1440px] mx-auto px-4 xl:px-8 h-20 flex items-center justify-between gap-4 xl:gap-6">
           <BrandMark />
 
           {/* Center navigation */}
-          <nav className="hidden lg:flex items-center gap-5 xl:gap-7" data-testid={user ? "nav-main" : "nav-main-guest"}>
+          <nav className="hidden lg:flex items-center gap-4 xl:gap-7" data-testid={user ? "nav-main" : "nav-main-guest"}>
             <NavItem to="/career-hub" label="Career Hub" testid="nav-career" />
             <NavItem to="/knowledge-base" label="Knowledge Base" hasCaret testid="nav-kb" />
             <NavItem to="/docwright" label="Docwright" testid="nav-docwright" />
