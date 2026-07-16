@@ -291,6 +291,7 @@ export default function NavHeader() {
           <nav className="hidden lg:flex items-center gap-5 xl:gap-7" data-testid={user ? "nav-main" : "nav-main-guest"}>
             <NavItem to="/career-hub" label="Career Hub" testid="nav-career" />
             <NavItem to="/knowledge-base" label="Knowledge Base" hasCaret testid="nav-kb" />
+            <NavItem to="/docwright" label="Docwright" testid="nav-docwright" />
             <EcosystemMenu />
             <NavItem to="/community" label="Community" testid="nav-home" />
             <AboutMenu />
