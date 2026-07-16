@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
-import { Bell, PlusCircle, LogOut, User, ChevronDown, Search, ShieldCheck, Sparkles, UserRound, X, MessageSquare, TrendingUp, Newspaper, Calendar } from "lucide-react";
+import { Bell, PlusCircle, LogOut, User, ChevronDown, Search, ShieldCheck, Sparkles, UserRound, X, MessageSquare, TrendingUp, Calendar } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import GroupBadge from "./GroupBadge";
@@ -54,7 +54,12 @@ function EcosystemMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const location = useLocation();
-  const isActive = location.pathname.startsWith("/ecosystem");
+  // Community lives under Ecosystem now — highlight this nav item on any
+  // /community* route as well as the ecosystem routes.
+  const isActive =
+    location.pathname.startsWith("/ecosystem") ||
+    location.pathname === "/community" ||
+    location.pathname.startsWith("/community/");
 
   useEffect(() => {
     if (!open) return;
@@ -92,17 +97,17 @@ function EcosystemMenu() {
             </div>
           </Link>
           <Link
-            to="/ecosystem/community-news"
+            to="/community"
             onClick={() => setOpen(false)}
             className="flex items-start gap-3 px-4 py-3 hover:bg-[#F8FAFC] border-t border-[#F1F5F9]"
-            data-testid="nav-ecosystem-news"
+            data-testid="nav-ecosystem-community"
           >
             <div className="w-8 h-8 rounded-md bg-[#0D9373]/10 text-[#0D9373] flex items-center justify-center shrink-0">
-              <Newspaper className="w-4 h-4" />
+              <MessageSquare className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-sm font-semibold text-[#0A1628]">Community News</div>
-              <div className="text-xs text-[#64748B] mt-0.5 leading-snug">Product updates, releases, and community stories.</div>
+              <div className="text-sm font-semibold text-[#0A1628]">Community</div>
+              <div className="text-xs text-[#64748B] mt-0.5 leading-snug">Threaded Q&amp;A across every Workday module.</div>
             </div>
           </Link>
           <Link
@@ -293,7 +298,6 @@ export default function NavHeader() {
             <NavItem to="/knowledge-base" label="Knowledge Base" hasCaret testid="nav-kb" />
             <NavItem to="/docwright" label="Docwright" testid="nav-docwright" />
             <EcosystemMenu />
-            <NavItem to="/community" label="Community" testid="nav-home" />
             <AboutMenu />
           </nav>
 
