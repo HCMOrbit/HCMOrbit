@@ -31,13 +31,22 @@ async def admin_pulse_runs(
 
 @router.get("/admin/pulse/stats")
 async def admin_pulse_stats(admin: dict = Depends(require_admin)):
-    """Totals + breakdowns by employer_type and by module."""
+    """Totals + breakdowns by employer_type and by module.
+
+    Metrics EXCLUDE `employer_type: "vendor"` (i.e. Workday Inc. itself
+    hiring its own staff) — those postings inflate the "Workday hiring
+    signal" without being customer-side demand. Postings remain in the
+    collection; they're just filtered from every aggregation here.
+    """
     total = await db.pulse_postings.count_documents({})
     active = await db.pulse_postings.count_documents({"is_active": True})
+    active_ex_vendor = await db.pulse_postings.count_documents(
+        {"is_active": True, "employer_type": {"$ne": "vendor"}}
+    )
 
     async def _group(field: str) -> list[dict]:
         pipeline = [
-            {"$match": {"is_active": True}},
+            {"$match": {"is_active": True, "employer_type": {"$ne": "vendor"}}},
             {"$group": {"_id": f"${field}", "count": {"$sum": 1}}},
             {"$sort": {"count": -1}},
         ]
@@ -52,7 +61,7 @@ async def admin_pulse_stats(admin: dict = Depends(require_admin)):
 
     # Module breakdown — modules is an array, need $unwind
     modules_pipeline = [
-        {"$match": {"is_active": True}},
+        {"$match": {"is_active": True, "employer_type": {"$ne": "vendor"}}},
         {"$unwind": "$modules"},
         {"$group": {"_id": "$modules", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
@@ -64,6 +73,7 @@ async def admin_pulse_stats(admin: dict = Depends(require_admin)):
     return {
         "total_postings": total,
         "active_postings": active,
+        "active_postings_ex_vendor": active_ex_vendor,
         "by_employer_type": by_employer_type,
         "by_source": by_source,
         "by_employer": by_employer[:50],

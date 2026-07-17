@@ -19,38 +19,63 @@ MODULE_KEYWORDS: dict[str, list[str]] = {
     "Payroll":       ["workday payroll", "gross-to-net", "gross to net",
                       "payroll processing", "us payroll", "uk payroll",
                       "canada payroll", "workday pay"],
-    "Absence":       ["absence management", "workday absence", "time off plan"],
+    "Absence":       ["absence management", "workday absence", "time off plan",
+                      "absence"],
     "Time Tracking": ["time tracking", "workday time", "time entry"],
     "Benefits":      ["workday benefits", "benefits administration",
-                      "open enrollment", "benefit plan"],
+                      "open enrollment", "benefit plan", "benefits"],
     "Recruiting":    ["workday recruiting", "recruiting", "job requisition",
                       "candidate pool"],
     "Talent":        ["workday talent", "performance review", "goal management",
-                      "talent review", "succession planning"],
+                      "talent review", "succession planning", "talent"],
     "Security":      ["workday security", "security groups", "domain security",
-                      "business process security", "role-based security"],
+                      "business process security", "role-based security",
+                      "security"],
     "Integrations":  ["workday integration", "workday studio", "studio integration",
                       "eib ", "core connector", "peci", "picof", "ccw",
                       "cloud connect", "workday web services", "wwsapi"],
     "Reporting":     ["workday report", "advanced report", "calculated field",
                       "matrix report", "composite report", "birt",
-                      "workday reporting", "prism report"],
+                      "workday reporting", "prism report", "reporting"],
     "Financials":    ["workday financials", "workday finance", "ledger account",
-                      "workday accounting"],
+                      "workday accounting", "financials"],
     "Prism":         ["workday prism", "prism analytics"],
     "Extend":        ["workday extend", "workday app builder"],
     "Adaptive":      ["adaptive planning", "workday adaptive", "adaptive insights"],
 }
 
+# Keywords that are ordinary English words. For these, a bare title match is
+# NOT enough — the keyword must be adjacent to a capitalized "Workday" in the
+# title (e.g. "Workday Security Lead"), or appear in the same sentence as
+# a capitalized "Workday" in the description. This blocks postings like
+# "Sr Security Engineer" from tagging Security via description boilerplate.
+_GENERIC_ENGLISH_KEYWORDS: set[str] = {
+    "recruiting", "benefits", "security", "talent",
+    "reporting", "financials", "absence", "time tracking",
+}
+
+# Chars of context on either side of a generic-keyword title hit to look
+# for a capitalized "Workday". ~30 chars ≈ 4-5 words, which covers phrases
+# like "Sr Workday Security Lead" or "Payroll Analyst - Workday Cloud" but
+# rejects "Head of Global HR, Workday Systems, and Security Compliance".
+_GENERIC_TITLE_ADJACENCY_CHARS = 30
+
 # Compile once. Word-boundary aware but lenient on spaces/hyphens.
-_MODULE_PATTERNS: list[tuple[str, re.Pattern]] = [
-    (module, re.compile(r"(?<![a-z0-9])" + re.escape(kw) + r"(?![a-z0-9])", re.IGNORECASE))
+# `_MODULE_PATTERNS[i] = (module, keyword_source_string, compiled_regex)`.
+_MODULE_PATTERNS: list[tuple[str, str, re.Pattern]] = [
+    (module, kw, re.compile(r"(?<![a-z0-9])" + re.escape(kw) + r"(?![a-z0-9])", re.IGNORECASE))
     for module, kws in MODULE_KEYWORDS.items()
     for kw in kws
 ]
 
-# Match the bare word "workday" too, for the mention filter.
-_WORKDAY_RE = re.compile(r"(?<![a-z0-9])workday(?![a-z0-9])", re.IGNORECASE)
+# Capitalized "Workday" only — bare-word "workday" in "during the workday"
+# is common English and must not trigger the relevance filter.
+_WORKDAY_RE = re.compile(r"(?<![A-Za-z0-9])Workday(?![A-Za-z0-9])")
+
+# Sentence splitter — cheap heuristic: split on `.`, `!`, `?` followed by
+# whitespace, on line breaks, or on `;`. Job-ad descriptions have terrible
+# punctuation, so this is intentionally lenient.
+_SENTENCE_SPLIT_RE = re.compile(r"(?:[.!?]+\s+|\n+|;\s+)")
 
 # ── Fingerprint ─────────────────────────────────────────────────────────────
 _REQ_NUM_RE = re.compile(r"\b(?:req|jr|r|job|jobid|id)[-_ ]?[a-z]?[-_ ]?\d{4,}\b", re.IGNORECASE)
@@ -89,36 +114,72 @@ def strip_html(text: Optional[str]) -> str:
 
 # ── Workday-mention filter ──────────────────────────────────────────────────
 def is_workday_relevant(*, title: str, description: str) -> bool:
-    """Per spec: keep if any of —
-       (a) 'workday' appears in the title, OR
-       (b) appears 2+ times in the description, OR
-       (c) co-occurs with a module keyword (any module).
+    """Keep a posting iff:
+       (a) capitalized 'Workday' appears in the title, OR
+       (b) capitalized 'Workday' appears 2+ times in the description AND
+           `tag_modules()` returns at least one module.
+    Case-insensitive 'workday' (as in "during the workday") is deliberately
+    ignored — job-ad boilerplate uses the lowercase form.
     """
-    title_hits = len(_WORKDAY_RE.findall(title or ""))
-    desc_hits = len(_WORKDAY_RE.findall(description or ""))
-    if title_hits >= 1:
+    if _WORKDAY_RE.search(title or ""):
         return True
-    if desc_hits >= 2:
+    desc = description or ""
+    if len(_WORKDAY_RE.findall(desc)) >= 2 and tag_modules(title=title, description=desc):
         return True
-    if desc_hits >= 1 and _has_any_module(description):
-        return True
-    return False
-
-
-def _has_any_module(text: str) -> bool:
-    for _, pat in _MODULE_PATTERNS:
-        if pat.search(text or ""):
-            return True
     return False
 
 
 # ── Module tagging ──────────────────────────────────────────────────────────
+def _workday_adjacent_in_title(title: str, kw_start: int, kw_end: int) -> bool:
+    """Is a capitalized 'Workday' within ±N chars of the keyword's title span?"""
+    a = max(0, kw_start - _GENERIC_TITLE_ADJACENCY_CHARS)
+    b = min(len(title), kw_end + _GENERIC_TITLE_ADJACENCY_CHARS)
+    return bool(_WORKDAY_RE.search(title[a:b]))
+
+
 def tag_modules(*, title: str, description: str) -> list[str]:
-    haystack = f"{title or ''}\n{description or ''}"
+    """Tag modules under two rules that both require Workday context:
+
+      1. Title-match: any module keyword found in the title tags that
+         module — EXCEPT for keywords in `_GENERIC_ENGLISH_KEYWORDS`,
+         which additionally require a capitalized "Workday" within
+         `_GENERIC_TITLE_ADJACENCY_CHARS` chars of the match. This blocks
+         "Sr Security Engineer" from tagging Security while still catching
+         "Workday Security Lead".
+
+      2. Description-match: any NON-generic keyword matched inside a
+         sentence that ALSO contains a capitalized "Workday". Generic
+         English keywords never match from the description — job-ad
+         boilerplate routinely puts "Workday" (the ATS reference) in the
+         same sentence as benefits / security / talent / etc.
+
+    Sentences are split on `.`/`!`/`?`/`;`/newline.
+    """
     hits: set[str] = set()
-    for module, pat in _MODULE_PATTERNS:
-        if pat.search(haystack):
-            hits.add(module)
+    t = title or ""
+    d = description or ""
+
+    # (1) title
+    for module, kw, pat in _MODULE_PATTERNS:
+        m = pat.search(t)
+        if not m:
+            continue
+        if kw in _GENERIC_ENGLISH_KEYWORDS:
+            if not _workday_adjacent_in_title(t, m.start(), m.end()):
+                continue
+        hits.add(module)
+
+    # (2) description — same-sentence rule, non-generic keywords only
+    if d:
+        for sentence in _SENTENCE_SPLIT_RE.split(d):
+            if not _WORKDAY_RE.search(sentence):
+                continue
+            for module, kw, pat in _MODULE_PATTERNS:
+                if kw in _GENERIC_ENGLISH_KEYWORDS:
+                    continue
+                if pat.search(sentence):
+                    hits.add(module)
+
     # Deterministic order matching MODULE_KEYWORDS insertion order
     return [m for m in MODULE_KEYWORDS if m in hits]
 
