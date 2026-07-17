@@ -163,20 +163,26 @@ async def kb_list_docs(
     author_id: Optional[str] = None,
     limit: int = 50,
     include_drafts: bool = False,
+    lite: bool = False,
 ):
     # Default (public browse/search): only published docs, full row shape.
     # `include_drafts=true` is used by the Study Plan registry aggregator so
     # it can grey unpublished ("Planned") entries. In that mode we deliberately
     # project OUT `body` and other author-facing fields so drafts don't leak
     # copy to the public — only lightweight registry metadata is returned.
+    # `lite=true` is used by Career Hub track pages that need ~130 docs at
+    # once — projects the same safe metadata as the include_drafts path but
+    # only over published docs, keeping the payload small (no `body`).
     query = {} if include_drafts else {"is_published": True}
     if author_id:
         query["author_id"] = author_id
     if category:
-        c = await db.kb_categories.find_one({"slug": category}, {"_id": 0})
-        if not c:
-            return {"docs": [], "total": 0}
-        query["category_id"] = c["id"]
+        # Filter on `category_slug` directly (not category_id) so the
+        # {is_published:1, category_slug:1} compound index covers the query
+        # and we avoid the extra kb_categories lookup roundtrip. An unknown
+        # slug simply yields zero docs — same practical result as the
+        # earlier existence-check path.
+        query["category_slug"] = category
     if sub:
         # Whitespace-tolerant exact match — sidebar links and stored values
         # must agree regardless of trailing spaces in either side.
@@ -211,6 +217,16 @@ async def kb_list_docs(
         docs = await db.kb_docs.find(query, projection).sort("updated_at", -1).limit(limit).to_list(limit)
         # Skip enrich_docs — the registry projection intentionally excludes
         # `author_id`, and downstream consumers don't need author metadata.
+        return {"docs": docs, "total": total}
+    if lite:
+        # Career-Hub-track projection — only the fields the track UI needs.
+        # NEVER include `body` here: a track fetch can pull 100+ docs.
+        projection = {
+            "_id": 0, "id": 1, "reference_id": 1, "title": 1,
+            "category_slug": 1, "sub_module": 1,
+            "difficulty": 1, "read_time": 1, "doc_type": 1,
+        }
+        docs = await db.kb_docs.find(query, projection).limit(limit).to_list(limit)
         return {"docs": docs, "total": total}
     docs = await db.kb_docs.find(query, {"_id": 0}).sort("view_count", -1).limit(limit).to_list(limit)
     return {"docs": await enrich_docs(docs), "total": total}

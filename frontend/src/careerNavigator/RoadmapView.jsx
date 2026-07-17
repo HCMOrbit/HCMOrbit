@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import HeroMast from "./components/HeroMast";
 import StageSegmented from "./components/StageSegmented";
 import PhaseSpine from "./components/PhaseSpine";
+import useDynamicPhases from "./useDynamicPhases";
 import { TRACKS } from "./data";
 
 // Resting-style helpers (setProperty + important beats the global button theme)
@@ -134,8 +135,18 @@ export default function RoadmapView({ roadmap, onBack, onStage }) {
   const track = TRACKS.find((t) => t.id === roadmap?.trackId);
   const stage = roadmap?.stage || "leveling-up";
   const stageBlock = track?.stages?.[stage];
-  const phases = Array.isArray(stageBlock?.phases) ? stageBlock.phases : [];
+  const literalPhases = Array.isArray(stageBlock?.phases) ? stageBlock.phases : [];
   const leadsTo = Array.isArray(stageBlock?.leadsTo) ? stageBlock.leadsTo : [];
+
+  // Dynamic tracks (core-hcm/integrations/security etc.) declare a
+  // `categorySlug` and pull docs from /api/kb/docs?lite=true instead of
+  // shipping literal `guides` in data.js. Dynamic phases only populate the
+  // `leveling-up` stage — matches the Payroll pattern where only that
+  // stage has content today. Literal phases from data.js still win if
+  // present (Payroll case).
+  const isDynamicStage = !!track?.categorySlug && stage === "leveling-up" && literalPhases.length === 0;
+  const dyn = useDynamicPhases(isDynamicStage ? track.categorySlug : null);
+  const phases = literalPhases.length > 0 ? literalPhases : dyn.phases;
 
   // Safety: track gone missing.
   if (!track) {
@@ -199,7 +210,23 @@ export default function RoadmapView({ roadmap, onBack, onStage }) {
       </HeroMast>
 
       <div className="mt-6">
-        {phaseCount === 0 ? (
+        {isDynamicStage && dyn.loading ? (
+          <div
+            className="rounded-xl bg-white p-6 text-center text-[13px]"
+            style={{ border: "1px solid #eaeaea", color: "#666" }}
+            data-testid="career-roadmap-loading"
+          >
+            Loading {track.name} guides…
+          </div>
+        ) : isDynamicStage && dyn.error ? (
+          <div
+            className="rounded-xl bg-white p-6 text-center text-[13px]"
+            style={{ border: "1px solid #f3d0d0", color: "#a34848", background: "#fff8f8" }}
+            data-testid="career-roadmap-error"
+          >
+            Couldn&apos;t load {track.name} guides — {dyn.error}
+          </div>
+        ) : phaseCount === 0 ? (
           <EmptyState
             stageLabel={stage.replace(/-/g, " ")}
             trackName={track.name}
