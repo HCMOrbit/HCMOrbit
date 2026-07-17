@@ -28,6 +28,7 @@ from routes.admin_intel_ingest import router as admin_intel_ingest_router
 from routes.admin_kb_index import router as admin_kb_index_router
 from routes.ask import router as ask_router
 from routes.docwright import router as docwright_router
+from routes.admin_pulse import router as admin_pulse_router
 from welcome_emails import process_welcome_queue
 from jobs.rss_fetch import fetch_workday_news
 from jobs.event_archive import archive_stale_events
@@ -55,6 +56,7 @@ api.include_router(admin_intel_ingest_router)
 api.include_router(admin_kb_index_router)
 api.include_router(ask_router)
 api.include_router(docwright_router)
+api.include_router(admin_pulse_router)
 
 
 @api.get("/")
@@ -220,11 +222,18 @@ async def on_startup():
     scheduler.add_job(scrape_eventbrite_rugs, "interval", hours=24, id="rug_scraper_eventbrite",
                       next_run_time=datetime.now(timezone.utc) + timedelta(seconds=25),
                       max_instances=1, coalesce=True)
+    # Industry Pulse crawler (nightly). First run NOT scheduled on cold start —
+    # a 30-employer HTTP walk is heavyweight; wait for the first natural
+    # nightly tick (or use POST /api/admin/pulse/run to trigger manually).
+    from services.pulse import run_crawl as pulse_run_crawl  # local import — service module is optional
+    scheduler.add_job(pulse_run_crawl, "cron", hour=2, minute=30, id="pulse_crawler",
+                      max_instances=1, coalesce=True, misfire_grace_time=3600)
     scheduler.start()
     app.state.scheduler = scheduler
     log.info("Schedulers started — welcome_emails (1h), rss_fetch_workday (24h, first run +5s), "
              "ecosystem_event_auto_archive (24h, first run +10s), rug_scraper_wdbeacon (24h, first run +15s), "
-             "rug_scraper_meetup (24h, first run +20s), rug_scraper_eventbrite (24h, first run +25s)")
+             "rug_scraper_meetup (24h, first run +20s), rug_scraper_eventbrite (24h, first run +25s), "
+             "pulse_crawler (nightly 02:30 UTC)")
 
 
 @app.on_event("shutdown")
