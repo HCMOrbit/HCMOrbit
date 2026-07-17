@@ -25,6 +25,23 @@ from services.pulse.parser import strip_html
 
 log = logging.getLogger(__name__)
 
+
+class SourceListError(Exception):
+    """Raised when a source's LIST endpoint returns non-200 or fails transport.
+
+    Detail-endpoint failures (e.g. per-posting fetches on Workday) don't raise
+    — they skip the individual posting. Only the initial list call being
+    unhealthy signals that the employer/site slug itself is wrong or blocked,
+    which the crawler counts as a failed employer.
+    """
+    def __init__(self, source: str, url: str, http_status: int | None, message: str):
+        self.source = source
+        self.url = url
+        self.http_status = http_status
+        self.message = message
+        super().__init__(f"{source} list endpoint {url} — HTTP {http_status}: {message}")
+
+
 USER_AGENT = "HCMOrbit-PulseBot/0.1 (+https://hcmorbit.com/pulse)"
 HTTP_TIMEOUT = httpx.Timeout(20.0, connect=10.0)
 PER_DOMAIN_DELAY_S = 1.0                  # ≥1 req/sec/domain
@@ -91,9 +108,12 @@ def _parse_workday_identifier(identifier: str) -> Optional[tuple[str, str, str]]
 async def fetch_workday(client: httpx.AsyncClient, employer: dict) -> AsyncIterator[dict]:
     parsed = _parse_workday_identifier(employer["identifier"])
     if not parsed:
-        log.warning("workday: malformed identifier %r for %s",
-                    employer["identifier"], employer["name"])
-        return
+        raise SourceListError(
+            "workday",
+            f"workday://{employer['identifier']}",
+            None,
+            f"malformed identifier {employer['identifier']!r}",
+        )
     host, tenant, site = parsed
     list_url = f"https://{host}/wday/cxs/{tenant}/{site}/jobs"
     detail_base = f"https://{host}/wday/cxs/{tenant}/{site}/"  # trailing slash critical for urljoin
@@ -108,19 +128,16 @@ async def fetch_workday(client: httpx.AsyncClient, employer: dict) -> AsyncItera
         try:
             resp = await _polite_post(client, list_url, json=payload)
         except httpx.HTTPError as e:
-            log.warning("workday list fetch failed %s: %s", tenant, e)
-            return
-        if resp.status_code == 404:
-            log.info("workday tenant 404 (skipping): %s", employer["identifier"])
-            return
+            raise SourceListError("workday", list_url, None, f"transport error: {e}") from e
         if resp.status_code != 200:
-            log.warning("workday list %s HTTP %s", tenant, resp.status_code)
-            return
+            raise SourceListError(
+                "workday", list_url, resp.status_code,
+                (resp.text or "")[:200].strip() or resp.reason_phrase or "non-200",
+            )
         try:
             data = resp.json()
-        except ValueError:
-            log.warning("workday list %s non-JSON", tenant)
-            return
+        except ValueError as e:
+            raise SourceListError("workday", list_url, resp.status_code, "non-JSON response") from e
         postings = data.get("jobPostings") or []
         if not postings:
             return
@@ -170,18 +187,16 @@ async def fetch_greenhouse(client: httpx.AsyncClient, employer: dict) -> AsyncIt
     try:
         resp = await _polite_get(client, url)
     except httpx.HTTPError as e:
-        log.warning("greenhouse fetch failed %s: %s", slug, e)
-        return
-    if resp.status_code == 404:
-        log.info("greenhouse board 404 (skipping): %s", slug)
-        return
+        raise SourceListError("greenhouse", url, None, f"transport error: {e}") from e
     if resp.status_code != 200:
-        log.warning("greenhouse %s HTTP %s", slug, resp.status_code)
-        return
+        raise SourceListError(
+            "greenhouse", url, resp.status_code,
+            (resp.text or "")[:200].strip() or resp.reason_phrase or "non-200",
+        )
     try:
         data = resp.json()
-    except ValueError:
-        return
+    except ValueError as e:
+        raise SourceListError("greenhouse", url, resp.status_code, "non-JSON response") from e
     for j in data.get("jobs") or []:
         yield {
             "source": "greenhouse",
@@ -202,20 +217,18 @@ async def fetch_lever(client: httpx.AsyncClient, employer: dict) -> AsyncIterato
     try:
         resp = await _polite_get(client, url)
     except httpx.HTTPError as e:
-        log.warning("lever fetch failed %s: %s", slug, e)
-        return
-    if resp.status_code == 404:
-        log.info("lever company 404 (skipping): %s", slug)
-        return
+        raise SourceListError("lever", url, None, f"transport error: {e}") from e
     if resp.status_code != 200:
-        log.warning("lever %s HTTP %s", slug, resp.status_code)
-        return
+        raise SourceListError(
+            "lever", url, resp.status_code,
+            (resp.text or "")[:200].strip() or resp.reason_phrase or "non-200",
+        )
     try:
         data = resp.json()
-    except ValueError:
-        return
+    except ValueError as e:
+        raise SourceListError("lever", url, resp.status_code, "non-JSON response") from e
     if not isinstance(data, list):
-        return
+        raise SourceListError("lever", url, resp.status_code, f"expected JSON list, got {type(data).__name__}")
     for j in data:
         cats = j.get("categories") or {}
         yield {

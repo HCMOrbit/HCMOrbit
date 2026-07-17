@@ -24,15 +24,17 @@ from typing import Any
 
 import httpx
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo import ReturnDocument
 
 from core import db
 from services.pulse import parser as p
-from services.pulse.sources import SOURCE_ADAPTERS, build_client
+from services.pulse.sources import SOURCE_ADAPTERS, SourceListError, build_client
 
 log = logging.getLogger(__name__)
 
 SEED_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "pulse_employers.json"
 INACTIVE_MISS_WINDOW = 3  # postings unseen for N successful employer-runs → inactive
+ZERO_YIELD_STREAK_THRESHOLD = 3  # HTTP 200 + 0 raw postings for N runs → suspicious
 
 
 def _now() -> datetime:
@@ -90,10 +92,15 @@ async def _upsert_posting(db_: AsyncIOMotorDatabase, posting: dict) -> str:
 
 
 async def _crawl_employer(client: httpx.AsyncClient, employer: dict) -> dict:
-    """Return {'new': N, 'resighted': N, 'seen_fps': [...]}."""
+    """Return {'new': N, 'resighted': N, 'raw_yield': N, 'seen_fps': [...]}.
+
+    `raw_yield` counts every posting the adapter yielded before the
+    Workday-relevance filter — used by the zero-yield streak detector.
+    """
     adapter = SOURCE_ADAPTERS[employer["source"]]
-    stats = {"new": 0, "resighted": 0, "seen_fps": []}
+    stats = {"new": 0, "resighted": 0, "raw_yield": 0, "seen_fps": []}
     async for raw in adapter(client, employer):
+        stats["raw_yield"] += 1
         title = raw["title_raw"]
         desc = raw["description_raw"]
         if not p.is_workday_relevant(title=title, description=desc):
@@ -164,6 +171,41 @@ async def _mark_inactive_misses(db_: AsyncIOMotorDatabase, employer_name: str, s
     return flipped
 
 
+def _employer_state_key(employer: dict) -> dict:
+    return {
+        "employer_name": employer["name"],
+        "source": employer["source"],
+        "identifier": employer["identifier"],
+    }
+
+
+async def _record_zero_yield(db_: AsyncIOMotorDatabase, employer: dict, raw_yield: int) -> int:
+    """Track consecutive HTTP-200-but-empty runs per employer.
+
+    Returns the current streak AFTER this run's update. Called only for
+    employers that did NOT raise SourceListError.
+    """
+    key = _employer_state_key(employer)
+    if raw_yield > 0:
+        await db_.pulse_employer_state.update_one(
+            key,
+            {"$set": {**key, "zero_yield_streak": 0, "last_updated": _now_iso()}},
+            upsert=True,
+        )
+        return 0
+    result = await db_.pulse_employer_state.find_one_and_update(
+        key,
+        {
+            "$setOnInsert": {**key},
+            "$inc": {"zero_yield_streak": 1},
+            "$set": {"last_updated": _now_iso()},
+        },
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    ) or {}
+    return int(result.get("zero_yield_streak") or 0)
+
+
 async def run_crawl() -> dict:
     """Full nightly run. Returns the summary dict (also persisted to `pulse_runs`)."""
     started = _now_iso()
@@ -185,6 +227,9 @@ async def run_crawl() -> dict:
         "alert_reasons": [],
         "weekly_sent": False,
         "errors": [],
+        # Employers that returned HTTP 200 but yielded 0 raw postings for
+        # ZERO_YIELD_STREAK_THRESHOLD consecutive runs — usually wrong slug.
+        "suspicious_employers": [],
     }
     log.info("pulse: run starting — %d employers seeded", len(seed))
     try:
@@ -195,21 +240,50 @@ async def run_crawl() -> dict:
                 try:
                     stats = await _crawl_employer(client, employer)
                     inactive_flipped = await _mark_inactive_misses(db, employer["name"], stats["seen_fps"])
+                    streak = await _record_zero_yield(db, employer, stats["raw_yield"])
                     summary["employers_ok"] += 1
                     summary["postings_new"] += stats["new"]
                     summary["postings_resighted"] += stats["resighted"]
                     summary["by_source_new"][src] = summary["by_source_new"].get(src, 0) + stats["new"]
                     summary["by_source_resighted"][src] = summary["by_source_resighted"].get(src, 0) + stats["resighted"]
                     summary["postings_marked_inactive"] += inactive_flipped
-                    log.info("pulse: %s — new=%d resighted=%d inactive+=%d",
-                             employer["name"], stats["new"], stats["resighted"], inactive_flipped)
+                    if streak >= ZERO_YIELD_STREAK_THRESHOLD:
+                        summary["suspicious_employers"].append({
+                            "employer": employer["name"],
+                            "source": src,
+                            "identifier": employer["identifier"],
+                            "zero_yield_streak": streak,
+                            "message": (
+                                f"HTTP 200 but 0 postings yielded for {streak} consecutive runs "
+                                f"— likely wrong site slug."
+                            ),
+                        })
+                    log.info("pulse: %s — new=%d resighted=%d raw=%d inactive+=%d streak=%d",
+                             employer["name"], stats["new"], stats["resighted"],
+                             stats["raw_yield"], inactive_flipped, streak)
+                except SourceListError as sle:
+                    summary["employers_failed"] += 1
+                    summary["errors"].append({
+                        "employer": employer["name"],
+                        "source": sle.source,
+                        "identifier": employer["identifier"],
+                        "http_status": sle.http_status,
+                        "url": sle.url,
+                        "message": sle.message[:400],
+                    })
+                    log.warning(
+                        "pulse: employer failed (list endpoint) %s src=%s http=%s: %s",
+                        employer["name"], sle.source, sle.http_status, sle.message,
+                    )
                 except Exception as e:  # noqa: BLE001 — one bad employer must not kill the run
                     summary["employers_failed"] += 1
                     summary["errors"].append({
                         "employer": employer["name"],
                         "source": employer["source"],
                         "identifier": employer["identifier"],
-                        "error": f"{type(e).__name__}: {e}"[:400],
+                        "http_status": None,
+                        "url": None,
+                        "message": f"{type(e).__name__}: {e}"[:400],
                     })
                     log.exception("pulse: employer failed %s", employer["name"])
     except Exception as fatal:  # noqa: BLE001 — anomaly trigger (4): unhandled exception
@@ -218,7 +292,9 @@ async def run_crawl() -> dict:
             "employer": "__run__",
             "source": "__run__",
             "identifier": "__run__",
-            "error": f"UNHANDLED {type(fatal).__name__}: {fatal}"[:600],
+            "http_status": None,
+            "url": None,
+            "message": f"UNHANDLED {type(fatal).__name__}: {fatal}"[:600],
         })
         summary["alert_sent"] = True
         summary["alert_reasons"] = [f"Unhandled exception in run_crawl: {type(fatal).__name__}: {fatal}"[:400]]

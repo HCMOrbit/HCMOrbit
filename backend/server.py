@@ -29,6 +29,7 @@ from routes.admin_kb_index import router as admin_kb_index_router
 from routes.ask import router as ask_router
 from routes.docwright import router as docwright_router
 from routes.admin_pulse import router as admin_pulse_router
+from routes.admin_docwright import router as admin_docwright_router
 from welcome_emails import process_welcome_queue
 from jobs.rss_fetch import fetch_workday_news
 from jobs.event_archive import archive_stale_events
@@ -57,6 +58,7 @@ api.include_router(admin_kb_index_router)
 api.include_router(ask_router)
 api.include_router(docwright_router)
 api.include_router(admin_pulse_router)
+api.include_router(admin_docwright_router)
 
 
 @api.get("/")

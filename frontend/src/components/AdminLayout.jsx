@@ -30,6 +30,7 @@ export default function AdminLayout({ children, pendingReports = 0 }) {
     { to: "/admin/email-previews", label: "Email Previews", icon: Mail },
     { to: "/admin/ecosystem", label: "Ecosystem", icon: CalendarIcon },
     { to: "/admin/ecosystem-intelligence", label: "Industry Pulse", icon: TrendingUp },
+    { to: "/admin/docwright", label: "Docwright", icon: FileText },
     { to: "/admin/contact", label: "Contact", icon: Inbox },
     { to: "/admin/settings", label: "Settings", icon: SettingsIcon },
   ];
