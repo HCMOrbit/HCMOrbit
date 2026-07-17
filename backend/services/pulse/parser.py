@@ -42,15 +42,28 @@ MODULE_KEYWORDS: dict[str, list[str]] = {
     "Adaptive":      ["adaptive planning", "workday adaptive", "adaptive insights"],
 }
 
+# Keywords that are ordinary English words — these count ONLY when they
+# appear in the title. In a job-ad description "recruiting" nearly always
+# refers to the hiring process, not the Workday Recruiting module, so
+# bare-word matches in the description are always false positives.
+_GENERIC_ENGLISH_KEYWORDS: set[str] = {"recruiting"}
+
 # Compile once. Word-boundary aware but lenient on spaces/hyphens.
-_MODULE_PATTERNS: list[tuple[str, re.Pattern]] = [
-    (module, re.compile(r"(?<![a-z0-9])" + re.escape(kw) + r"(?![a-z0-9])", re.IGNORECASE))
+# `_MODULE_PATTERNS[i] = (module, keyword_source_string, compiled_regex)`.
+_MODULE_PATTERNS: list[tuple[str, str, re.Pattern]] = [
+    (module, kw, re.compile(r"(?<![a-z0-9])" + re.escape(kw) + r"(?![a-z0-9])", re.IGNORECASE))
     for module, kws in MODULE_KEYWORDS.items()
     for kw in kws
 ]
 
-# Match the bare word "workday" too, for the mention filter.
-_WORKDAY_RE = re.compile(r"(?<![a-z0-9])workday(?![a-z0-9])", re.IGNORECASE)
+# Capitalized "Workday" only — bare-word "workday" in "during the workday"
+# is common English and must not trigger the relevance filter.
+_WORKDAY_RE = re.compile(r"(?<![A-Za-z0-9])Workday(?![A-Za-z0-9])")
+
+# Sentence splitter — cheap heuristic: split on `.`, `!`, `?` followed by
+# whitespace, on line breaks, or on `;`. Job-ad descriptions have terrible
+# punctuation, so this is intentionally lenient.
+_SENTENCE_SPLIT_RE = re.compile(r"(?:[.!?]+\s+|\n+|;\s+)")
 
 # ── Fingerprint ─────────────────────────────────────────────────────────────
 _REQ_NUM_RE = re.compile(r"\b(?:req|jr|r|job|jobid|id)[-_ ]?[a-z]?[-_ ]?\d{4,}\b", re.IGNORECASE)
@@ -89,36 +102,60 @@ def strip_html(text: Optional[str]) -> str:
 
 # ── Workday-mention filter ──────────────────────────────────────────────────
 def is_workday_relevant(*, title: str, description: str) -> bool:
-    """Per spec: keep if any of —
-       (a) 'workday' appears in the title, OR
-       (b) appears 2+ times in the description, OR
-       (c) co-occurs with a module keyword (any module).
+    """Keep a posting iff:
+       (a) capitalized 'Workday' appears in the title, OR
+       (b) capitalized 'Workday' appears 2+ times in the description AND
+           `tag_modules()` returns at least one module.
+    Case-insensitive 'workday' (as in "during the workday") is deliberately
+    ignored — job-ad boilerplate uses the lowercase form.
     """
-    title_hits = len(_WORKDAY_RE.findall(title or ""))
-    desc_hits = len(_WORKDAY_RE.findall(description or ""))
-    if title_hits >= 1:
+    if _WORKDAY_RE.search(title or ""):
         return True
-    if desc_hits >= 2:
+    desc = description or ""
+    if len(_WORKDAY_RE.findall(desc)) >= 2 and tag_modules(title=title, description=desc):
         return True
-    if desc_hits >= 1 and _has_any_module(description):
-        return True
-    return False
-
-
-def _has_any_module(text: str) -> bool:
-    for _, pat in _MODULE_PATTERNS:
-        if pat.search(text or ""):
-            return True
     return False
 
 
 # ── Module tagging ──────────────────────────────────────────────────────────
 def tag_modules(*, title: str, description: str) -> list[str]:
-    haystack = f"{title or ''}\n{description or ''}"
+    """Tag modules per two rules:
+
+      1. Title-match: any module keyword (case-insensitive) found in the
+         title tags that module. This includes ordinary English words like
+         "recruiting" — a title of "Recruiting Coordinator" is real signal.
+
+      2. Description-match: a module keyword tags the module ONLY when it
+         appears in the same sentence as a capitalized "Workday". Bare
+         occurrences anywhere else in the description are ignored (they're
+         almost always boilerplate).
+
+    Additionally, keywords in `_GENERIC_ENGLISH_KEYWORDS` are TITLE-ONLY —
+    they never count from the description, not even under the same-sentence
+    rule, because they're common English words that co-occur with any
+    Workday-mentioning ad.
+    """
     hits: set[str] = set()
-    for module, pat in _MODULE_PATTERNS:
-        if pat.search(haystack):
+    t = title or ""
+    d = description or ""
+
+    # (1) title matches — all keywords eligible
+    for module, _kw, pat in _MODULE_PATTERNS:
+        if pat.search(t):
             hits.add(module)
+
+    # (2) description matches — sentence-scoped, only when a capitalized
+    # "Workday" sits in the same sentence. Generic English words excluded.
+    if d:
+        for sentence in _SENTENCE_SPLIT_RE.split(d):
+            if not _WORKDAY_RE.search(sentence):
+                continue
+            for module, kw, pat in _MODULE_PATTERNS:
+                if kw in _GENERIC_ENGLISH_KEYWORDS:
+                    continue
+                if pat.search(sentence):
+                    hits.add(module)
+
     # Deterministic order matching MODULE_KEYWORDS insertion order
     return [m for m in MODULE_KEYWORDS if m in hits]
 

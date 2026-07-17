@@ -1,5 +1,5 @@
 [
-  { "name": "Workday",                 "source": "workday",   "identifier": "workday.wd5/Workday",                       "industry": "Enterprise Software",       "employer_type": "end_client"   },
+  { "name": "Workday",                 "source": "workday",   "identifier": "workday.wd5/Workday",                       "industry": "Enterprise Software",       "employer_type": "vendor"       },
   { "name": "NVIDIA",                  "source": "workday",   "identifier": "nvidia.wd5/NVIDIAExternalCareerSite",       "industry": "Semiconductors",            "employer_type": "end_client"   },
   { "name": "Adobe",                   "source": "workday",   "identifier": "adobe.wd5/external_experienced",            "industry": "Software",                  "employer_type": "end_client"   },
   { "name": "Salesforce",              "source": "workday",   "identifier": "salesforce.wd12/External_Career_Site",      "industry": "Enterprise Software",       "employer_type": "end_client"   },

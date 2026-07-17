@@ -120,8 +120,12 @@ async def send_weekly_email(db_: AsyncIOMotorDatabase, summary: dict) -> bool:
     now = datetime.now(timezone.utc)
     week_ago_iso = (now - timedelta(days=7)).isoformat()
 
-    total_active = await db_.pulse_postings.count_documents({"is_active": True})
-    added_7d = await db_.pulse_postings.count_documents({"first_seen_at": {"$gte": week_ago_iso}})
+    total_active = await db_.pulse_postings.count_documents(
+        {"is_active": True, "employer_type": {"$ne": "vendor"}}
+    )
+    added_7d = await db_.pulse_postings.count_documents(
+        {"first_seen_at": {"$gte": week_ago_iso}, "employer_type": {"$ne": "vendor"}}
+    )
 
     by_type = await _agg_group(db_, "employer_type")
     by_module = await _agg_group_unwind(db_, "modules")
@@ -185,7 +189,7 @@ def _date_str(iso_or_none: Optional[str]) -> str:
 async def _agg_group(db_: AsyncIOMotorDatabase, field: str) -> list[dict]:
     rows = []
     pipeline = [
-        {"$match": {"is_active": True}},
+        {"$match": {"is_active": True, "employer_type": {"$ne": "vendor"}}},
         {"$group": {"_id": f"${field}", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
     ]
@@ -197,7 +201,7 @@ async def _agg_group(db_: AsyncIOMotorDatabase, field: str) -> list[dict]:
 async def _agg_group_unwind(db_: AsyncIOMotorDatabase, field: str) -> list[dict]:
     rows = []
     pipeline = [
-        {"$match": {"is_active": True}},
+        {"$match": {"is_active": True, "employer_type": {"$ne": "vendor"}}},
         {"$unwind": f"${field}"},
         {"$group": {"_id": f"${field}", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
