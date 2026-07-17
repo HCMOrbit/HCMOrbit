@@ -50,6 +50,9 @@ import ScrollToHash from "@/components/ScrollToHash";
 import AuthCallback from "@/components/AuthCallback";
 import AskOrbitWidget from "@/components/AskOrbitWidget";
 import KBRefResolver from "@/pages/kb/KBRefResolver";
+import DocwrightLanding from "@/pages/docwright/DocwrightLanding";
+import DocwrightResult from "@/pages/docwright/DocwrightResult";
+import DocwrightHistory from "@/pages/docwright/DocwrightHistory";
 
 function AppRoutes() {
   const location = useLocation();
@@ -102,6 +105,9 @@ function AppRoutes() {
       <Route path="/knowledge-base/:slug" element={<KBCategory />} />
       <Route path="/knowledge-base/:slug/search" element={<KBSearch />} />
       <Route path="/knowledge-base/:slug/:docId" element={<KBDoc />} />
+      <Route path="/docwright" element={<DocwrightLanding />} />
+      <Route path="/docwright/history" element={<DocwrightHistory />} />
+      <Route path="/docwright/result/:docId" element={<DocwrightResult />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/cookies" element={<Cookies />} />
