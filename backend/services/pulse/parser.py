@@ -147,10 +147,11 @@ def tag_modules(*, title: str, description: str) -> list[str]:
          "Sr Security Engineer" from tagging Security while still catching
          "Workday Security Lead".
 
-      2. Description-match: any keyword matched inside a sentence that
-         ALSO contains a capitalized "Workday". Bare occurrences of a
-         keyword anywhere else in the description do not count. This rule
-         applies uniformly to generic and non-generic keywords.
+      2. Description-match: any NON-generic keyword matched inside a
+         sentence that ALSO contains a capitalized "Workday". Generic
+         English keywords never match from the description — job-ad
+         boilerplate routinely puts "Workday" (the ATS reference) in the
+         same sentence as benefits / security / talent / etc.
 
     Sentences are split on `.`/`!`/`?`/`;`/newline.
     """
@@ -168,12 +169,14 @@ def tag_modules(*, title: str, description: str) -> list[str]:
                 continue
         hits.add(module)
 
-    # (2) description — same-sentence-as-Workday rule for ALL keywords
+    # (2) description — same-sentence rule, non-generic keywords only
     if d:
         for sentence in _SENTENCE_SPLIT_RE.split(d):
             if not _WORKDAY_RE.search(sentence):
                 continue
-            for module, _kw, pat in _MODULE_PATTERNS:
+            for module, kw, pat in _MODULE_PATTERNS:
+                if kw in _GENERIC_ENGLISH_KEYWORDS:
+                    continue
                 if pat.search(sentence):
                     hits.add(module)
 
