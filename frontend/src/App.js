@@ -22,6 +22,7 @@ import AdminPosts from "@/pages/admin/AdminPosts";
 import AdminReported from "@/pages/admin/AdminReported";
 import AdminSpaces from "@/pages/admin/AdminSpaces";
 import AdminSettings from "@/pages/admin/AdminSettings";
+import AdminDocwright from "@/pages/admin/AdminDocwright";
 import AdminKnowledgeBase from "@/pages/admin/AdminKnowledgeBase";
 import AdminEmailPreviews from "@/pages/admin/AdminEmailPreviews";
 import AdminEcosystem, { RedirectToEvents, RedirectToCertifications } from "@/pages/admin/AdminEcosystem";
@@ -91,6 +92,7 @@ function AppRoutes() {
       <Route path="/admin/reported" element={<AdminReported />} />
       <Route path="/admin/spaces" element={<AdminSpaces />} />
       <Route path="/admin/settings" element={<AdminSettings />} />
+      <Route path="/admin/docwright" element={<AdminDocwright />} />
       <Route path="/admin/knowledge-base" element={<AdminKnowledgeBase />} />
       <Route path="/admin/email-previews" element={<AdminEmailPreviews />} />
       <Route path="/admin/ecosystem" element={<AdminEcosystem />} />

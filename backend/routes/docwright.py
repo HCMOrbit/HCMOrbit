@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 import uuid
 from datetime import datetime, timezone
 from typing import Literal, Optional
@@ -93,6 +94,37 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# ── docwright_events instrumentation ──────────────────────────────────────
+# Fire-and-forget event log: one row per admin-observable action. Feeds the
+# /admin/docwright metrics without touching the docs collection on every read.
+_OPEN_ITEM_RE = re.compile(r"\*\*OPEN ITEM:\*\*|(?<![a-z])OPEN ITEM:", re.IGNORECASE)
+
+
+def _count_open_items(sections: dict) -> int:
+    total = 0
+    for v in (sections or {}).values():
+        if isinstance(v, str):
+            total += len(_OPEN_ITEM_RE.findall(v))
+    return total
+
+
+async def _log_event(event_type: str, *, doc_id: str, user: dict, meta: Optional[dict] = None) -> None:
+    """Insert a docwright_events row. Never raises — event logging must
+    never break the calling user request."""
+    try:
+        await db.docwright_events.insert_one({
+            "id": str(uuid.uuid4()),
+            "type": event_type,        # generate | download | edit_section | regenerate_section
+            "doc_id": doc_id,
+            "user_id": user.get("user_id"),
+            "user_email": user.get("email"),
+            "at": _now_iso(),
+            "meta": meta or {},
+        })
+    except Exception:
+        log.exception("docwright: failed to log event %s (non-fatal)", event_type)
+
+
 def _doc_out(doc: dict) -> dict:
     """Map a Mongo doc → the flat DocumentOut shape (no `_id`)."""
     return {
@@ -140,6 +172,7 @@ async def docwright_parse_file(
 async def docwright_generate(body: GenerateIn, user: dict = Depends(get_current_user)):
     """Call Anthropic to produce the sectioned doc, persist, return."""
     author_name = user.get("full_name") or user.get("username") or "HCMOrbit Consultant"
+    t0 = time.monotonic()
     try:
         sections = await generate_document(
             client_name=body.client_name.strip(),
@@ -152,21 +185,35 @@ async def docwright_generate(body: GenerateIn, user: dict = Depends(get_current_
     except GenerationError as e:
         log.exception("docwright generation failed")
         raise HTTPException(502, f"Generation failed: {e}")
+    generation_ms = int((time.monotonic() - t0) * 1000)
 
     now = _now_iso()
     doc = {
         "id": str(uuid.uuid4()),
         "user_id": user["user_id"],
+        "user_email": user.get("email"),
         "client_name": body.client_name.strip(),
         "module": body.module,
         "doc_type": body.doc_type,
         "phase": body.phase,
         "raw_notes": body.raw_notes.strip(),
         "generated_sections": sections,
+        # Analytics fields for /admin/docwright — cheaper to precompute once
+        # here than to re-derive on every list-page read.
+        "generation_duration_ms": generation_ms,
+        "open_items_count": _count_open_items(sections),
+        "sections_edited_count": 0,
+        "regenerate_count": 0,
+        "downloaded_at": None,
+        "downloaded_formats": [],
         "created_at": now,
         "updated_at": now,
     }
     await db.docwright_documents.insert_one(doc)
+    await _log_event("generate", doc_id=doc["id"], user=user,
+                     meta={"module": body.module, "doc_type": body.doc_type,
+                           "duration_ms": generation_ms,
+                           "open_items_count": doc["open_items_count"]})
     return _doc_out(doc)
 
 
@@ -205,11 +252,17 @@ async def docwright_update_document(
     if not cleaned:
         raise HTTPException(400, "no valid sections in payload")
     now = _now_iso()
+    merged = {**doc.get("generated_sections", {}), **cleaned}
     await db.docwright_documents.update_one(
         {"id": doc_id, "user_id": user["user_id"]},
-        {"$set": {"generated_sections": {**doc.get("generated_sections", {}), **cleaned},
-                  "updated_at": now}},
+        {"$set": {"generated_sections": merged,
+                  "open_items_count": _count_open_items(merged),
+                  "updated_at": now},
+         "$inc": {"sections_edited_count": len(cleaned)}},
     )
+    for section_key in cleaned:
+        await _log_event("edit_section", doc_id=doc_id, user=user,
+                         meta={"section_key": section_key})
     doc = await _load_owned(doc_id, user["user_id"])
     return _doc_out(doc)
 
@@ -242,8 +295,17 @@ async def docwright_regenerate_section(
     now = _now_iso()
     await db.docwright_documents.update_one(
         {"id": doc_id, "user_id": user["user_id"]},
-        {"$set": {f"generated_sections.{section_key}": new_md, "updated_at": now}},
+        {"$set": {f"generated_sections.{section_key}": new_md, "updated_at": now},
+         "$inc": {"regenerate_count": 1}},
     )
+    doc = await _load_owned(doc_id, user["user_id"])
+    # Recompute open-items count now that a section changed.
+    await db.docwright_documents.update_one(
+        {"id": doc_id},
+        {"$set": {"open_items_count": _count_open_items(doc.get("generated_sections", {}))}},
+    )
+    await _log_event("regenerate_section", doc_id=doc_id, user=user,
+                     meta={"section_key": section_key})
     doc = await _load_owned(doc_id, user["user_id"])
     return _doc_out(doc)
 
@@ -270,6 +332,12 @@ async def docwright_download_docx(doc_id: str, user: dict = Depends(get_current_
     doc = await _load_owned(doc_id, user["user_id"])
     blob = render_docx(meta=_meta_of(doc), sections=doc.get("generated_sections", {}))
     filename = _safe_filename(client=doc["client_name"], doc_type=doc["doc_type"], ext="docx")
+    await db.docwright_documents.update_one(
+        {"id": doc_id},
+        {"$set": {"downloaded_at": _now_iso()},
+         "$addToSet": {"downloaded_formats": "docx"}},
+    )
+    await _log_event("download", doc_id=doc_id, user=user, meta={"format": "docx"})
     return Response(
         content=blob,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -282,6 +350,12 @@ async def docwright_download_pdf(doc_id: str, user: dict = Depends(get_current_u
     doc = await _load_owned(doc_id, user["user_id"])
     blob = render_pdf(meta=_meta_of(doc), sections=doc.get("generated_sections", {}))
     filename = _safe_filename(client=doc["client_name"], doc_type=doc["doc_type"], ext="pdf")
+    await db.docwright_documents.update_one(
+        {"id": doc_id},
+        {"$set": {"downloaded_at": _now_iso()},
+         "$addToSet": {"downloaded_formats": "pdf"}},
+    )
+    await _log_event("download", doc_id=doc_id, user=user, meta={"format": "pdf"})
     return Response(
         content=blob,
         media_type="application/pdf",
