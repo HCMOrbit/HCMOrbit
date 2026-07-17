@@ -177,36 +177,92 @@ async def run_crawl() -> dict:
         "postings_new": 0,
         "postings_resighted": 0,
         "postings_marked_inactive": 0,
+        # Per-source rollups — needed by the alert evaluator to detect a
+        # source that silently returns zero postings.
+        "by_source_new": {"workday": 0, "greenhouse": 0, "lever": 0},
+        "by_source_resighted": {"workday": 0, "greenhouse": 0, "lever": 0},
+        "alert_sent": False,
+        "alert_reasons": [],
+        "weekly_sent": False,
         "errors": [],
     }
     log.info("pulse: run starting — %d employers seeded", len(seed))
-    async with build_client() as client:
-        for employer in seed:
-            summary["employers_attempted"] += 1
-            try:
-                stats = await _crawl_employer(client, employer)
-                inactive_flipped = await _mark_inactive_misses(db, employer["name"], stats["seen_fps"])
-                summary["employers_ok"] += 1
-                summary["postings_new"] += stats["new"]
-                summary["postings_resighted"] += stats["resighted"]
-                summary["postings_marked_inactive"] += inactive_flipped
-                log.info("pulse: %s — new=%d resighted=%d inactive+=%d",
-                         employer["name"], stats["new"], stats["resighted"], inactive_flipped)
-            except Exception as e:  # noqa: BLE001 — one bad employer must not kill the run
-                summary["employers_failed"] += 1
-                summary["errors"].append({
-                    "employer": employer["name"],
-                    "source": employer["source"],
-                    "identifier": employer["identifier"],
-                    "error": f"{type(e).__name__}: {e}"[:400],
-                })
-                log.exception("pulse: employer failed %s", employer["name"])
+    try:
+        async with build_client() as client:
+            for employer in seed:
+                summary["employers_attempted"] += 1
+                src = employer["source"]
+                try:
+                    stats = await _crawl_employer(client, employer)
+                    inactive_flipped = await _mark_inactive_misses(db, employer["name"], stats["seen_fps"])
+                    summary["employers_ok"] += 1
+                    summary["postings_new"] += stats["new"]
+                    summary["postings_resighted"] += stats["resighted"]
+                    summary["by_source_new"][src] = summary["by_source_new"].get(src, 0) + stats["new"]
+                    summary["by_source_resighted"][src] = summary["by_source_resighted"].get(src, 0) + stats["resighted"]
+                    summary["postings_marked_inactive"] += inactive_flipped
+                    log.info("pulse: %s — new=%d resighted=%d inactive+=%d",
+                             employer["name"], stats["new"], stats["resighted"], inactive_flipped)
+                except Exception as e:  # noqa: BLE001 — one bad employer must not kill the run
+                    summary["employers_failed"] += 1
+                    summary["errors"].append({
+                        "employer": employer["name"],
+                        "source": employer["source"],
+                        "identifier": employer["identifier"],
+                        "error": f"{type(e).__name__}: {e}"[:400],
+                    })
+                    log.exception("pulse: employer failed %s", employer["name"])
+    except Exception as fatal:  # noqa: BLE001 — anomaly trigger (4): unhandled exception
+        summary["finished_at"] = _now_iso()
+        summary["errors"].append({
+            "employer": "__run__",
+            "source": "__run__",
+            "identifier": "__run__",
+            "error": f"UNHANDLED {type(fatal).__name__}: {fatal}"[:600],
+        })
+        summary["alert_sent"] = True
+        summary["alert_reasons"] = [f"Unhandled exception in run_crawl: {type(fatal).__name__}: {fatal}"[:400]]
+        # Fire the alert email BEFORE re-raising (per spec).
+        try:
+            from services.pulse.alerts import send_anomaly_email
+            await send_anomaly_email(summary, summary["alert_reasons"])
+        except Exception:
+            log.exception("pulse: failed to send fatal-exception alert")
+        try:
+            await db.pulse_runs.insert_one({**summary, "_created_at": summary["started_at"]})
+        except Exception:
+            log.exception("pulse: failed to persist crashed run summary")
+        raise
+
     summary["finished_at"] = _now_iso()
+
+    # ─── Anomaly evaluation + email (guarded) ────────────────────────────
+    try:
+        from services.pulse.alerts import evaluate_anomalies, send_anomaly_email
+        reasons = await evaluate_anomalies(db, summary)
+        if reasons:
+            summary["alert_reasons"] = reasons
+            sent = await send_anomaly_email(summary, reasons)
+            summary["alert_sent"] = bool(sent)
+            log.warning("pulse: %d anomaly reason(s) — email_sent=%s", len(reasons), summary["alert_sent"])
+    except Exception:
+        log.exception("pulse: anomaly evaluation/send failed (crawl continues)")
+
+    # ─── Weekly heartbeat on Mondays (regardless of health) ──────────────
+    try:
+        if datetime.now(timezone.utc).weekday() == 0:  # Mon = 0
+            from services.pulse.alerts import send_weekly_email
+            sent = await send_weekly_email(db, summary)
+            summary["weekly_sent"] = bool(sent)
+            log.info("pulse: weekly heartbeat email_sent=%s", summary["weekly_sent"])
+    except Exception:
+        log.exception("pulse: weekly-email send failed (crawl continues)")
+
     try:
         await db.pulse_runs.insert_one({**summary, "_created_at": summary["started_at"]})
     except Exception:
         log.exception("pulse: failed to persist run summary")
-    log.info("pulse: run finished — %s", {k: v for k, v in summary.items() if k != "errors"})
+    log.info("pulse: run finished — %s", {k: v for k, v in summary.items() if k not in ("errors", "by_source_new", "by_source_resighted")})
     return summary
 
 
