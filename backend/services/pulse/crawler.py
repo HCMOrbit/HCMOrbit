@@ -206,6 +206,84 @@ async def _record_zero_yield(db_: AsyncIOMotorDatabase, employer: dict, raw_yiel
     return int(result.get("zero_yield_streak") or 0)
 
 
+async def _write_daily_snapshot(db_: AsyncIOMotorDatabase, summary: dict) -> None:
+    """Persist a one-row-per-day rollup of the current active-postings state
+    to `pulse_daily_snapshots`. Idempotent: upsert on `snapshot_date`, so a
+    manual re-run same day overwrites. Vendor postings are excluded from
+    every field EXCEPT `total_active`, which remains inclusive per spec.
+
+    Must never break the crawl — every failure is caught + logged.
+    """
+    today = datetime.now(timezone.utc).date().isoformat()
+    active_match = {"is_active": True}
+    ex_vendor_match = {"is_active": True, "employer_type": {"$ne": "vendor"}}
+
+    total_active = await db_.pulse_postings.count_documents(active_match)
+    total_active_ex_vendor = await db_.pulse_postings.count_documents(ex_vendor_match)
+
+    async def _group_kv(field: str, match: dict) -> dict:
+        pipeline = [
+            {"$match": match},
+            {"$group": {"_id": f"${field}", "count": {"$sum": 1}}},
+        ]
+        out: dict = {}
+        async for r in db_.pulse_postings.aggregate(pipeline):
+            key = r.get("_id")
+            if key is None:
+                continue
+            out[key] = r["count"]
+        return out
+
+    by_module = {}
+    async for r in db_.pulse_postings.aggregate([
+        {"$match": ex_vendor_match},
+        {"$unwind": "$modules"},
+        {"$group": {"_id": "$modules", "count": {"$sum": 1}}},
+    ]):
+        by_module[r["_id"]] = r["count"]
+
+    by_employer_type = await _group_kv("employer_type", ex_vendor_match)
+    by_source = await _group_kv("source", ex_vendor_match)
+
+    by_module_and_type: list[dict] = []
+    async for r in db_.pulse_postings.aggregate([
+        {"$match": ex_vendor_match},
+        {"$unwind": "$modules"},
+        {"$group": {
+            "_id": {"module": "$modules", "employer_type": "$employer_type"},
+            "count": {"$sum": 1},
+        }},
+        {"$sort": {"count": -1}},
+    ]):
+        by_module_and_type.append({
+            "module": r["_id"]["module"],
+            "employer_type": r["_id"]["employer_type"],
+            "count": r["count"],
+        })
+
+    doc = {
+        "snapshot_date": today,
+        "created_at": _now_iso(),
+        "total_active": total_active,
+        "total_active_ex_vendor": total_active_ex_vendor,
+        "by_module": by_module,
+        "by_employer_type": by_employer_type,
+        "by_module_and_type": by_module_and_type,
+        "by_source": by_source,
+        "new_today": int(summary.get("postings_new") or 0),
+        "marked_inactive_today": int(summary.get("postings_marked_inactive") or 0),
+        "employers_ok": int(summary.get("employers_ok") or 0),
+        "employers_failed": int(summary.get("employers_failed") or 0),
+    }
+    await db_.pulse_daily_snapshots.update_one(
+        {"snapshot_date": today},
+        {"$set": doc},
+        upsert=True,
+    )
+    log.info("pulse: daily snapshot written for %s (total_active=%d, ex_vendor=%d)",
+             today, total_active, total_active_ex_vendor)
+
+
 async def run_crawl() -> dict:
     """Full nightly run. Returns the summary dict (also persisted to `pulse_runs`)."""
     started = _now_iso()
@@ -311,6 +389,12 @@ async def run_crawl() -> dict:
         raise
 
     summary["finished_at"] = _now_iso()
+
+    # ─── Daily snapshot (guarded — must never break the crawl) ───────────
+    try:
+        await _write_daily_snapshot(db, summary)
+    except Exception:
+        log.exception("pulse: daily snapshot write failed (crawl continues)")
 
     # ─── Anomaly evaluation + email (guarded) ────────────────────────────
     try:
