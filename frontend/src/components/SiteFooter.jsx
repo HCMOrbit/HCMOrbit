@@ -34,6 +34,7 @@ export default function SiteFooter() {
               <li><Link to="/knowledge-base" className="hover:text-[#0D9373] transition-colors">Knowledge Base</Link></li>
               <li><Link to="/ecosystem" className="hover:text-[#0D9373] transition-colors" data-testid="footer-ecosystem">Ecosystem</Link></li>
               <li><Link to="/career-hub" className="hover:text-[#0D9373] transition-colors" data-testid="footer-career-hub">Career Hub</Link></li>
+              <li><Link to="/career-hub" className="hover:text-[#0D9373] transition-colors" data-testid="footer-careers">Careers</Link></li>
               <li><Link to="/register" className="hover:text-[#0D9373] transition-colors">Join Community</Link></li>
               <li><Link to="/login" className="hover:text-[#0D9373] transition-colors">Sign In</Link></li>
             </ul>

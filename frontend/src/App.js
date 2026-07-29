@@ -45,6 +45,7 @@ import Cookies from "@/pages/Cookies";
 import WhyHCMOrbit from "@/pages/WhyHCMOrbit";
 import CareerNavigator from "@/careerNavigator/CareerNavigator";
 import Connect from "@/pages/Connect";
+import LaborVariance from "@/pages/LaborVariance";
 import CookieBanner from "@/components/CookieBanner";
 import SiteFooter from "@/components/SiteFooter";
 import ScrollToHash from "@/components/ScrollToHash";
@@ -125,6 +126,7 @@ function AppRoutes() {
       <Route path="/about/why-hcmorbit" element={<WhyHCMOrbit />} />
       <Route path="/career-hub" element={<CareerNavigator />} />
       <Route path="/connect" element={<Connect />} />
+      <Route path="/labor-variance" element={<LaborVariance />} />
     </Routes>
   );
 }

@@ -1,6 +1,19 @@
 """All Pydantic request/response models and shared type literals."""
 from typing import List, Optional, Literal
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
+
+
+def _norm_whitespace(v):
+    """Trim leading/trailing whitespace on incoming string fields. Empty
+    string collapses to None so downstream `is_null / non-empty` filters
+    stay consistent with what `POST /kb/docs` and `PATCH` already do
+    inline. Used by every KB write path — creates, updates, bulk imports."""
+    if v is None:
+        return None
+    if isinstance(v, str):
+        v = v.strip()
+        return v or None
+    return v
 
 
 # ---------- Type literals ----------
@@ -107,6 +120,8 @@ class KBDocIn(BaseModel):
     read_time: Optional[str] = None
     platform: Optional[str] = None
 
+    _trim_sub = field_validator("sub_module", mode="before")(_norm_whitespace)
+
 
 # ---------- Admin ----------
 class MemberPatchIn(BaseModel):
@@ -155,6 +170,8 @@ class KBDocPatchIn(BaseModel):
     sub_module: Optional[str] = None
     read_time: Optional[str] = None
     platform: Optional[str] = None
+
+    _trim_sub = field_validator("sub_module", mode="before")(_norm_whitespace)
 
 
 class KBCategoryCreateIn(BaseModel):

@@ -26,7 +26,7 @@ from welcome_emails import _send_via_resend
 log = logging.getLogger(__name__)
 
 # Hardcoded thresholds per spec ("do not build a settings UI").
-FAILED_EMPLOYERS_THRESHOLD_RATIO = 0.20
+FAILED_EMPLOYERS_THRESHOLD_RATIO = 0.10
 KNOWN_SOURCES = ("workday", "greenhouse", "lever")
 
 
@@ -72,6 +72,26 @@ async def evaluate_anomalies(db_: AsyncIOMotorDatabase, summary: dict) -> list[s
                     f"Source '{src}' returned 0 postings this run but "
                     f"{prev_by_source[src]} on the previous run ({prev.get('started_at')})."
                 )
+
+    # (4) any employer in this run's errors[] that was NOT in the previous
+    # successful run's errors[] — a newly-failing employer is signal even
+    # when the failed-employers ratio hasn't crossed the threshold.
+    this_failed = {
+        e.get("employer") for e in (summary.get("errors") or [])
+        if e.get("employer") and e.get("employer") != "__run__"
+    }
+    if prev and this_failed:
+        prev_failed = {
+            e.get("employer") for e in (prev.get("errors") or [])
+            if e.get("employer") and e.get("employer") != "__run__"
+        }
+        newly_failing = sorted(this_failed - prev_failed)
+        if newly_failing:
+            reasons.append(
+                f"Newly-failing employer(s) this run "
+                f"(not in errors on {prev.get('started_at')}): "
+                f"{', '.join(newly_failing)}."
+            )
     return reasons
 
 

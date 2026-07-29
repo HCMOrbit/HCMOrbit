@@ -85,6 +85,9 @@ async def on_startup():
     await db.kb_categories.create_index("slug", unique=True)
     await db.kb_docs.create_index("id", unique=True)
     await db.kb_docs.create_index([("category_id", 1), ("view_count", -1)])
+    # Compound for Career Hub track pages: filter is_published + category_slug,
+    # then group/sort client-side by sub_module. Covers ~1,150-doc scans.
+    await db.kb_docs.create_index([("is_published", 1), ("category_slug", 1)])
     # Unique catalog code (e.g. "HCM-CORE-KB-001"). Sparse via partial filter
     # so docs with no/null reference_id don't collide. Idempotent on restart;
     # if a duplicate value already exists we log the offending ref ids by
