@@ -45,6 +45,7 @@ import Cookies from "@/pages/Cookies";
 import WhyHCMOrbit from "@/pages/WhyHCMOrbit";
 import CareerNavigator from "@/careerNavigator/CareerNavigator";
 import Connect from "@/pages/Connect";
+import LaborVariance from "@/pages/LaborVariance";
 import CookieBanner from "@/components/CookieBanner";
 import SiteFooter from "@/components/SiteFooter";
 import ScrollToHash from "@/components/ScrollToHash";
@@ -125,6 +126,7 @@ function AppRoutes() {
       <Route path="/about/why-hcmorbit" element={<WhyHCMOrbit />} />
       <Route path="/career-hub" element={<CareerNavigator />} />
       <Route path="/connect" element={<Connect />} />
+      <Route path="/labor-variance" element={<LaborVariance />} />
     </Routes>
   );
 }
@@ -132,9 +134,10 @@ function AppRoutes() {
 function GlobalFooter() {
   const location = useLocation();
   const path = location.pathname;
-  // Hide footer on auth flows, OAuth callback, and the entire admin area
+  // Hide footer on auth flows, OAuth callback, the admin area, and the
+  // Labor Variance marketing page (which ships its own footer).
   const hidden =
-    ["/login", "/register", "/onboarding"].includes(path) ||
+    ["/login", "/register", "/onboarding", "/labor-variance"].includes(path) ||
     path === "/admin" ||
     path.startsWith("/admin/");
   if (hidden) return null;
