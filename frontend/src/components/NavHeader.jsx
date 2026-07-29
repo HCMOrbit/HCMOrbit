@@ -388,7 +388,7 @@ function MobileDrawer({ open, onClose }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1" data-testid="mobile-drawer-nav">
-          <DrawerLink to="/career-hub" label="Career Hub" testid="mobile-nav-career" onNavigate={onClose} />
+          <DrawerLink to="/labor-variance" label="Labor Variance" testid="mobile-nav-labor-variance" onNavigate={onClose} />
           <DrawerLink to="/knowledge-base" label="Knowledge Base" testid="mobile-nav-kb" onNavigate={onClose} />
           <DrawerLink to="/docwright" label="Docwright" testid="mobile-nav-docwright" onNavigate={onClose} />
 
@@ -594,7 +594,7 @@ export default function NavHeader() {
 
           {/* Center navigation */}
           <nav className="hidden lg:flex items-center gap-4 xl:gap-7" data-testid={user ? "nav-main" : "nav-main-guest"}>
-            <NavItem to="/career-hub" label="Career Hub" testid="nav-career" />
+            <NavItem to="/labor-variance" label="Labor Variance" testid="nav-labor-variance" />
             <NavItem to="/knowledge-base" label="Knowledge Base" hasCaret testid="nav-kb" />
             <NavItem to="/docwright" label="Docwright" testid="nav-docwright" />
             <EcosystemMenu />
