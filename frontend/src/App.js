@@ -134,10 +134,9 @@ function AppRoutes() {
 function GlobalFooter() {
   const location = useLocation();
   const path = location.pathname;
-  // Hide footer on auth flows, OAuth callback, the admin area, and the
-  // Labor Variance marketing page (which ships its own footer).
+  // Hide footer on auth flows, OAuth callback, and the entire admin area
   const hidden =
-    ["/login", "/register", "/onboarding", "/labor-variance"].includes(path) ||
+    ["/login", "/register", "/onboarding"].includes(path) ||
     path === "/admin" ||
     path.startsWith("/admin/");
   if (hidden) return null;

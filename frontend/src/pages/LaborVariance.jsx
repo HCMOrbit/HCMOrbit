@@ -1,4 +1,6 @@
 import React, { useEffect, useRef } from "react";
+import { ArrowRight } from "lucide-react";
+import NavHeader from "../components/NavHeader";
 
 /* ─── Design tokens ────────────────────────────────────────────────────────
    Applied as CSS custom properties inside `.lv-root` so nothing else in the
@@ -27,14 +29,6 @@ const TOKENS_CSS = `
 
 /* ─── Reset within the page only ────────────────────────────────────────── */
 .lv-root, .lv-root * { box-sizing: border-box; }
-.lv-root h1, .lv-root h2, .lv-root h3, .lv-root h4 {
-  font-family: var(--heading-font);
-  font-weight: 800;
-  letter-spacing: 0.005em;
-  color: var(--ink);
-  margin: 0;
-  line-height: 1.15;
-}
 .lv-root p { margin: 0; }
 .lv-root a { color: inherit; text-decoration: none; }
 .lv-root :focus-visible {
@@ -56,111 +50,14 @@ const TOKENS_CSS = `
 }
 .lv-eyebrow::before { content: "—"; color: var(--neutral); }
 
-/* ─── Buttons ─────────────────────────────────────────────────────────── */
-.lv-btn {
-  font-family: var(--mono-font);
-  font-weight: 500;
-  font-size: 13px;
-  letter-spacing: 0.03em;
-  padding: 13px 22px;
-  border: 1.5px solid var(--ink);
-  background: transparent;
-  color: var(--ink);
-  border-radius: 0;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 160ms ease, color 160ms ease;
-}
-.lv-btn:hover { background: var(--ink); color: var(--paper); }
-.lv-btn.lv-btn--primary { background: var(--ink); color: var(--paper); }
-.lv-btn.lv-btn--primary:hover { background: transparent; color: var(--ink); }
-.lv-btn.lv-btn--onink {
-  border-color: var(--paper);
-  background: var(--paper);
-  color: var(--ink);
-}
-.lv-btn.lv-btn--onink:hover { background: transparent; color: var(--paper); }
-
-/* ─── Layout containers ───────────────────────────────────────────────── */
-.lv-wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
-@media (max-width: 640px) { .lv-wrap { padding: 0 20px; } }
-
-/* ─── Sticky header ───────────────────────────────────────────────────── */
-.lv-header {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  background: rgba(247, 248, 246, 0.92);
-  backdrop-filter: saturate(140%) blur(6px);
-  -webkit-backdrop-filter: saturate(140%) blur(6px);
-  border-bottom: 1px solid var(--line);
-}
-.lv-header-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 32px;
-  max-width: 1180px;
-  margin: 0 auto;
-}
-.lv-brand {
-  font-family: var(--mono-font);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
-  letter-spacing: 0.02em;
-}
-.lv-brand-thin { color: var(--neutral); font-weight: 400; }
-.lv-nav {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-}
-.lv-nav a {
-  font-family: var(--mono-font);
-  font-size: 12.5px;
-  color: var(--ink);
-  letter-spacing: 0.02em;
-}
-.lv-nav a:hover { color: var(--neutral); }
-@media (max-width: 720px) {
-  .lv-header-inner { padding: 14px 20px; }
-  .lv-nav .lv-nav-link { display: none; }
-  .lv-nav { gap: 12px; }
-  .lv-nav .lv-btn { padding: 10px 14px; font-size: 12px; }
-}
-
 /* Chart SVG stays legible on narrow screens — allow horizontal scroll below
    a min-width rather than shrinking labels to unreadable sizes. */
 .lv-chart-svg-wrap { width: 100%; overflow-x: auto; overflow-y: hidden; }
 .lv-chart-svg { display: block; height: auto; min-width: 620px; width: 100%; }
 
-/* ─── Hero ────────────────────────────────────────────────────────────── */
-.lv-hero { padding: 96px 0 40px; }
-.lv-hero h1 {
-  font-size: clamp(38px, 5.6vw, 68px);
-  letter-spacing: -0.005em;
-  margin: 22px 0 26px;
-  max-width: 900px;
-}
-.lv-hero h1 .accent-red { color: var(--unfavorable); display: block; }
-.lv-hero-lede {
-  font-size: 18px;
-  line-height: 1.6;
-  color: var(--ink);
-  max-width: 760px;
-  margin-bottom: 32px;
-}
-.lv-hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
-.lv-hero-fine {
-  margin-top: 22px;
-  font-family: var(--mono-font);
-  font-size: 12px;
-  color: var(--neutral);
-  letter-spacing: 0.02em;
-}
+/* ─── Layout containers ───────────────────────────────────────────────── */
+.lv-wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+@media (max-width: 640px) { .lv-wrap { padding: 0 20px; } }
 
 /* ─── Hero chart card ─────────────────────────────────────────────────── */
 .lv-chart-card {
@@ -264,10 +161,14 @@ const TOKENS_CSS = `
 /* ─── Section shell ───────────────────────────────────────────────────── */
 .lv-section { padding: 88px 0; border-top: 1px solid var(--line); }
 .lv-section h2 {
+  font-family: var(--heading-font);
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.15;
+  letter-spacing: -0.005em;
   font-size: clamp(30px, 4vw, 42px);
   margin: 18px 0 18px;
   max-width: 900px;
-  letter-spacing: -0.005em;
 }
 .lv-section-sub {
   font-size: 17px;
@@ -544,30 +445,6 @@ const TOKENS_CSS = `
   margin-top: 22px;
 }
 
-/* ─── Footer ──────────────────────────────────────────────────────────── */
-.lv-footer {
-  background: var(--ink);
-  color: rgba(247, 248, 246, 0.72);
-  border-top: 1px solid rgba(216, 221, 217, 0.12);
-}
-.lv-footer-inner {
-  padding: 28px 32px;
-  max-width: 1180px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
-  font-family: var(--mono-font);
-  font-size: 12px;
-  letter-spacing: 0.02em;
-}
-.lv-footer a { color: rgba(247, 248, 246, 0.72); }
-.lv-footer a:hover { color: var(--paper); }
-.lv-footer-links { display: flex; gap: 22px; flex-wrap: wrap; }
-@media (max-width: 640px) { .lv-footer-inner { padding: 24px 20px; flex-direction: column; align-items: flex-start; } }
-
 /* ─── Fade-up on scroll ───────────────────────────────────────────────── */
 .lv-reveal {
   opacity: 0;
@@ -780,52 +657,86 @@ export default function LaborVariance() {
   return (
     <div className="lv-root" ref={rootRef} data-testid="labor-variance-page">
       <style>{TOKENS_CSS}</style>
-      <style>{`html { scroll-behavior: smooth; } .lv-root section[id] { scroll-margin-top: 88px; }`}</style>
+      <style>{`html { scroll-behavior: smooth; } .lv-root section[id] { scroll-margin-top: 80px; }`}</style>
 
-      {/* ─── Sticky Header ─── */}
-      <header className="lv-header" data-testid="lv-header">
-        <div className="lv-header-inner">
-          <a href="#top" className="lv-brand" data-testid="lv-brand">
-            HCMOrbit&nbsp;<span className="lv-brand-thin">/ Labor Variance</span>
-          </a>
-          <nav className="lv-nav" aria-label="Section navigation">
-            <a href="#method" className="lv-nav-link" data-testid="lv-nav-method">Methodology</a>
-            <a href="#how" className="lv-nav-link" data-testid="lv-nav-how">How it works</a>
-            <a href="#about" className="lv-nav-link" data-testid="lv-nav-about">About</a>
-            <a href="#contact" className="lv-btn lv-btn--primary" data-testid="lv-nav-cta">
-              Scope a call
-            </a>
-          </nav>
-        </div>
-      </header>
+      {/* ─── Shared site header ─── */}
+      <NavHeader />
 
-      {/* ─── Hero ─── */}
-      <section id="top" className="lv-hero">
-        <div className="lv-wrap">
-          <div className="lv-reveal">
-            <span className="lv-eyebrow">Labor Variance Assessment · For hospital finance leaders</span>
-            <h1 data-testid="lv-hero-h1">
-              Premier says you&apos;re over benchmark.
-              <span className="accent-red">The board wants to know why.</span>
-            </h1>
-            <p className="lv-hero-lede">
-              A fixed-scope diagnostic that quantifies how much of your labor cost gap is
-              justified by acuity and case mix — and decomposes the rest into five drivers
-              your operators can actually act on. Built from the UKG, Premier, Epic, and
-              Workday data you already have.
-            </p>
-            <div className="lv-hero-ctas">
-              <a href="#contact" className="lv-btn lv-btn--primary" data-testid="lv-hero-cta-primary">
-                Scope a call
-              </a>
-              <a href="#method" className="lv-btn" data-testid="lv-hero-cta-secondary">
-                See the methodology
-              </a>
+      {/* ─── Hero (site-styled: navy gradient card, amber eyebrow, teal accent) ─── */}
+      <div className="max-w-[1200px] mx-auto px-6 lg:px-8 pt-8" data-testid="lv-hero-wrap">
+        <section
+          id="top"
+          className="relative overflow-hidden"
+          style={{
+            background: "linear-gradient(135deg, #0a1628 0%, #0d2d3a 100%)",
+            borderRadius: 18,
+            color: "#ffffff",
+          }}
+          data-testid="lv-hero"
+        >
+          <div
+            className="absolute inset-0 opacity-[0.04]"
+            style={{
+              backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
+              backgroundSize: "32px 32px",
+            }}
+          />
+          <div className="absolute right-0 top-0 w-[600px] h-[600px] rounded-full bg-[#0D9373]/15 blur-[120px] pointer-events-none" />
+          <div className="relative px-8 lg:px-10 py-12 lg:py-14">
+            <div className="max-w-[900px]">
+              <div
+                data-testid="lv-hero-eyebrow"
+                style={{
+                  color: "#F5B731",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  marginBottom: 14,
+                }}
+              >
+                Labor Variance Assessment · For hospital finance leaders
+              </div>
+              <h1
+                data-testid="lv-hero-h1"
+                className="font-heading text-4xl sm:text-5xl lg:text-[52px] font-bold tracking-tight leading-[1.05]"
+              >
+                Premier says you&apos;re over benchmark.{" "}
+                <span className="text-[#0D9373]">The board wants to know why.</span>
+              </h1>
+              <p className="mt-4 text-base lg:text-lg text-white/70 max-w-2xl leading-relaxed">
+                A fixed-scope diagnostic that quantifies how much of your labor cost gap is
+                justified by acuity and case mix — and decomposes the rest into five drivers
+                your operators can actually act on. Built from the UKG, Premier, Epic, and
+                Workday data you already have.
+              </p>
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                <a
+                  href="#contact"
+                  data-testid="lv-hero-cta-primary"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md bg-[#0D9373] hover:bg-[#0b7c61] text-white font-medium transition-colors"
+                >
+                  Scope a call <ArrowRight className="w-4 h-4" />
+                </a>
+                <a
+                  href="#method"
+                  data-testid="lv-hero-cta-secondary"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md border border-white/30 hover:border-[#0D9373] hover:bg-white/5 text-white font-medium transition-colors"
+                >
+                  See the methodology
+                </a>
+              </div>
+              <p className="mt-4 text-xs text-white/50 tracking-wide">
+                4–6 weeks · Fixed fee · No new software to buy
+              </p>
             </div>
-            <p className="lv-hero-fine">4–6 weeks · Fixed fee · No new software to buy</p>
           </div>
+        </section>
+      </div>
 
-          <div className="lv-chart-card lv-reveal" data-testid="lv-chart-card">
+      {/* ─── Variance Bridge chart card (data artifact — untouched) ─── */}
+      <div className="lv-wrap" style={{ paddingTop: 40, paddingBottom: 40 }}>
+        <div className="lv-chart-card lv-reveal" data-testid="lv-chart-card">
             <h2 className="lv-chart-title">The Variance Bridge</h2>
             <p className="lv-chart-subtitle">
               Annualized labor cost · Illustrative multi-hospital system
@@ -854,9 +765,8 @@ export default function LaborVariance() {
               Figures are illustrative. Your bridge is built from your own UKG actuals,
               Premier cohort, and Epic census data.
             </p>
-          </div>
         </div>
-      </section>
+      </div>
 
       {/* ─── Problem ─── */}
       <section className="lv-section">
@@ -1101,18 +1011,6 @@ export default function LaborVariance() {
           </div>
         </div>
       </section>
-
-      {/* ─── Footer ─── */}
-      <footer className="lv-footer" data-testid="lv-footer">
-        <div className="lv-footer-inner">
-          <span>© 2026 HCMOrbit · Labor Variance is a service of HCMOrbit</span>
-          <div className="lv-footer-links">
-            <a href="/">HCMOrbit home</a>
-            <a href="#top">Healthcare Workforce Intelligence</a>
-            <a href="#contact">Contact</a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
